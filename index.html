@@ -151,7 +151,7 @@
         </button>
 
         <!-- QR Code Invite -->
-        <button id="btn-open-qr" class="p-2 rounded-2xl glass-panel text-amber-400 hover:bg-amber-500/10 transition-all active:scale-90" title="Mon QR Code / Invider">
+        <button id="btn-open-qr" class="p-2 rounded-2xl glass-panel text-amber-400 hover:bg-amber-500/10 transition-all active:scale-90" title="Mon QR Code / Inviter">
           <i data-lucide="qr-code" class="w-4 h-4"></i>
         </button>
 
@@ -297,7 +297,7 @@
       <section id="view-radar" class="tab-view h-full w-full flex-col relative">
         <div id="map-container" class="w-full h-full"></div>
         
-        <!-- Snapchat-Style Floating Radar Overlay Header -->
+        <!-- Floating Radar Overlay Header -->
         <div class="absolute top-3 left-3 right-3 z-[400] glass-panel p-3 rounded-2xl flex items-center justify-between text-xs font-mono shadow-2xl border-cyan-500/30">
           <div class="flex items-center gap-2">
             <i data-lucide="radar" class="w-4 h-4 text-cyan-400 animate-spin" style="animation-duration: 8s;"></i>
@@ -349,7 +349,7 @@
 
     </div>
 
-    <!-- BOTTOM NAVIGATION CARDS (NAV BAR) -->
+    <!-- BOTTOM NAVIGATION BAR -->
     <nav class="p-2.5 glass-panel border-t border-white/10 rounded-t-3xl z-30 flex items-center justify-around">
       <button data-target="chats" class="nav-tab active flex flex-col items-center gap-1 p-2 rounded-2xl text-emerald-400 transition-all active:scale-90">
         <i data-lucide="message-square" class="w-5 h-5"></i>
@@ -494,7 +494,6 @@
       </div>
     </div>
 
-    <!-- -->
     <!-- MODALE : MINI PROFIL UTILISATEUR (CLIC SUR UN PSEUDO) -->
     <div id="modal-user-profile" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 hidden">
       <div class="glass-panel p-5 rounded-3xl border border-white/20 text-center space-y-4 max-w-xs w-full">
@@ -800,9 +799,8 @@
               const dec = await CryptoEngine.decrypt(this.roomKey, raw.cipher, raw.iv);
               
               if (dec.type === 'CHAT') {
-                // If targeted DM message, verify recipient
                 if (dec.targetAlias && dec.targetAlias.toLowerCase() !== this.myAlias.toLowerCase()) {
-                  return; // Not for us
+                  return; // Message non destiné à notre alias
                 }
 
                 const isDM = !!dec.targetAlias;
@@ -830,7 +828,7 @@
               } else if (dec.type === 'WIKI_UPSERT') {
                 this.onWikiSync(dec.article);
               } else if (dec.type === 'WIKI_REQ') {
-                window.broadcastLocalWikis();
+                if (window.broadcastLocalWikis) window.broadcastLocalWikis();
               }
             }
           } catch(e) {}
@@ -908,7 +906,6 @@
 
         this.onMsg(msgObj);
 
-        // Derive key for the target channel if specified
         const key = options.channel ? await CryptoEngine.deriveRoomKey(options.channel) : this.roomKey;
         const targetChan = options.channel || this.channel;
 
@@ -943,7 +940,7 @@
     }
 
     /* ==========================================================================
-       4. INITIALISATION ET UI CONTROLLER (V5 ENHANCED)
+       4. INITIALISATION ET UI CONTROLLER
        ========================================================================== */
     document.addEventListener('DOMContentLoaded', async () => {
       const messagesFeed = document.getElementById('messages-feed');
@@ -960,7 +957,7 @@
       let selectedUserProfile = null;
       let contactBeingEdited = null;
 
-      // Load Encrypted Data
+      // Charger les données stockées de façon chiffrée
       let savedHistory = await SecureStore.loadDecrypted('chat_history', []);
       let savedGroups = await SecureStore.loadDecrypted('saved_groups', ['global', 'squad-alpha']);
       let savedContacts = await SecureStore.loadDecrypted('saved_contacts', []);
@@ -978,7 +975,7 @@
       let map = null, myMarker = null;
       const peerMarkers = new Map();
 
-      // Sheets and Modals
+      // Sheets & Modales
       const sheetAttach = document.getElementById('sheet-attach');
       const modalQR = document.getElementById('modal-qr');
       const modalGIF = document.getElementById('modal-gif-picker');
@@ -991,7 +988,7 @@
 
       lucide.createIcons();
 
-      // Instantiate Mesh with DM Handler
+      // Instancier le réseau Mesh
       const mesh = new SquadDiscoveryMesh(
         msg => handleNewMessage(msg),
         () => updatePeersUI(),
@@ -1006,22 +1003,130 @@
 
       await mesh.init();
 
-      // Initialize UI Views & Settings
+      // Paramètres & Identité
       document.getElementById('sec-my-id-full').textContent = `ID: ${mesh.myAlias} (${mesh.myId})`;
       document.getElementById('sec-fingerprint-settings').textContent = mesh.fingerprint;
 
+      // Fonctions de rendu UI
+      function renderGroupsUI() {
+        const container = document.getElementById('groups-list-cards');
+        if (!container) return;
+        
+        if (savedGroups.length === 0) {
+          container.innerHTML = `<div class="text-white/30 text-center py-3 text-xs font-mono">Aucun groupe. Démarrez-en un !</div>`;
+          return;
+        }
+        
+        container.innerHTML = '';
+        savedGroups.forEach(g => {
+          const isDM = g.startsWith('dm-');
+          let title = g;
+          if (isDM) {
+            const parts = g.replace('dm-', '').split('-and-');
+            const otherAlias = parts.find(p => p.toLowerCase() !== mesh.myAlias.toLowerCase()) || g;
+            title = `DM: ${getContactDisplayName(otherAlias)}`;
+          } else {
+            title = `# ${g.toUpperCase()}`;
+          }
+
+          const isActive = mesh.channel === g;
+          const card = document.createElement('div');
+          card.dataset.groupId = g;
+          card.className = `glass-card-3d p-3.5 rounded-2xl flex items-center justify-between cursor-pointer ${isActive ? 'border-emerald-500/80 bg-emerald-500/10' : 'border-white/10'}`;
+          card.innerHTML = `
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-xl ${isDM ? 'bg-cyan-500/20 text-cyan-400' : 'bg-emerald-500/20 text-emerald-400'} flex items-center justify-center text-xs font-mono">
+                ${isDM ? '💬' : '👥'}
+              </div>
+              <div>
+                <div class="text-xs font-bold ${isActive ? 'text-emerald-400' : 'text-white'}">${escapeHTML(title)}</div>
+                <div class="text-[9px] text-white/40 font-mono">${isDM ? 'Discussion privée' : 'Salon de groupe'}</div>
+              </div>
+            </div>
+            <div class="text-[10px] ${isActive ? 'text-emerald-400 font-bold' : 'text-white/40'} font-mono">
+              ${isActive ? 'ACTIF' : 'REJOINDRE'}
+            </div>
+          `;
+
+          card.addEventListener('click', () => {
+            mesh.switchChannel(g);
+            headerActiveViewTitle.textContent = isDM ? title : `# ${g.toUpperCase()}`;
+            messagesFeed.innerHTML = '';
+            savedHistory.forEach(m => { if (m.channel === g) renderMessageDOM(m); });
+            renderGroupsUI();
+            document.querySelector('.nav-tab[data-target="chats"]').click();
+            showToast(`Salon basculé sur ${title}`);
+          });
+
+          container.appendChild(card);
+        });
+      }
+
+      function renderWikiUI() {
+        const container = document.getElementById('wiki-articles-list');
+        if (!container) return;
+
+        const searchQuery = (document.getElementById('input-wiki-search')?.value || '').toLowerCase();
+        
+        const filtered = savedWikis.filter(art => {
+          const matchesTag = activeWikiTag === 'all' || art.tag === activeWikiTag;
+          const matchesSearch = !searchQuery || 
+            art.title.toLowerCase().includes(searchQuery) || 
+            art.content.toLowerCase().includes(searchQuery) ||
+            (art.author && art.author.toLowerCase().includes(searchQuery));
+          return matchesTag && matchesSearch;
+        });
+
+        if (filtered.length === 0) {
+          container.innerHTML = `<div class="text-white/30 text-center py-6 text-xs font-mono">Aucun guide trouvé. Soyez le premier à rédiger un guide P2P !</div>`;
+          return;
+        }
+
+        container.innerHTML = '';
+        filtered.forEach(art => {
+          const card = document.createElement('div');
+          card.className = "glass-card-3d p-4 rounded-2xl space-y-2 border-white/10 hover:border-emerald-500/40 cursor-pointer transition-all";
+          
+          const tagColors = {
+            survie: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+            tech: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
+            sante: 'bg-rose-500/20 text-rose-400 border-rose-500/30',
+            comms: 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+          };
+          const badgeStyle = tagColors[art.tag] || 'bg-white/10 text-white/60 border-white/15';
+
+          card.innerHTML = `
+            <div class="flex items-center justify-between">
+              <span class="text-[9px] px-2 py-0.5 rounded-full font-mono border ${badgeStyle}"># ${art.tag ? art.tag.toUpperCase() : 'GENERAL'}</span>
+              <span class="text-[9px] text-white/40 font-mono">${art.updatedAt || 'Récemment'}</span>
+            </div>
+            <h3 class="text-xs font-bold text-white leading-snug">${escapeHTML(art.title)}</h3>
+            <p class="text-[10px] text-white/60 line-clamp-2 leading-relaxed font-light">${escapeHTML(art.content.replace(/[#*`_]/g, ''))}</p>
+            <div class="flex items-center justify-between pt-1 border-t border-white/5 text-[9px] text-white/40 font-mono">
+              <span>Auteur: ${escapeHTML(art.author || 'Anonyme')}</span>
+              <span class="text-emerald-400 font-bold flex items-center gap-1">Lire le guide <i data-lucide="chevron-right" class="w-3 h-3"></i></span>
+            </div>
+          `;
+
+          card.addEventListener('click', () => openWikiReaderModal(art));
+          container.appendChild(card);
+        });
+        lucide.createIcons();
+      }
+
+      // Initialiser la vue des listes
       renderGroupsUI();
       renderContactsUI();
       renderWikiUI();
 
-      // Load Chat History
+      // Charger l'historique
       savedHistory.forEach(msg => {
         if (msg.channel === mesh.channel) renderMessageDOM(msg);
       });
 
       checkURLInvite();
 
-      /* ---- Direct DM Message Receiver ---- */
+      /* ---- Réception de messages privés (DMs) ---- */
       function handleDirectDMReceived(msg) {
         const dmChan = msg.channel;
         if (!savedGroups.includes(dmChan)) {
@@ -1037,13 +1142,26 @@
           renderMessageDOM(msg);
         } else {
           showToast(`📩 NOUVEAU MESSAGE PRIVÉ de ${msg.senderAlias}`);
-          // Add unread badge visual
           const groupCard = document.querySelector(`[data-group-id="${dmChan}"]`);
           if (groupCard) groupCard.classList.add('border-amber-400', 'animate-pulse');
         }
       }
 
-      /* ---- Navigation Tabs Controller ---- */
+      /* ---- Synchronisation du Wiki P2P ---- */
+      function handleWikiSyncReceived(article) {
+        if (!article || !article.id) return;
+        const idx = savedWikis.findIndex(w => w.id === article.id);
+        if (idx >= 0) {
+          savedWikis[idx] = article;
+        } else {
+          savedWikis.push(article);
+        }
+        SecureStore.saveEncrypted('saved_wikis', savedWikis);
+        renderWikiUI();
+        showToast(`💡 Guide sync: "${article.title}"`);
+      }
+
+      /* ---- Onglets de Navigation ---- */
       document.querySelectorAll('.nav-tab').forEach(tabBtn => {
         tabBtn.addEventListener('click', () => {
           document.querySelectorAll('.nav-tab').forEach(b => {
@@ -1073,7 +1191,7 @@
         });
       });
 
-      /* ---- Messages Render with Clickable Profiles ---- */
+      /* ---- Rendu des messages et Profils cliquables ---- */
       function handleNewMessage(msg) {
         if (!msg.destruct) {
           savedHistory.push(msg);
@@ -1131,15 +1249,10 @@
           </div>
         `;
 
-        // Clickable user profile
         wrapper.querySelectorAll('.btn-user-click').forEach(b => {
-          b.addEventListener('click', () => {
-            const alias = b.dataset.alias;
-            openUserProfileModal(alias, b.dataset.id);
-          });
+          b.addEventListener('click', () => openUserProfileModal(b.dataset.alias, b.dataset.id));
         });
 
-        // Quick add contact button
         const quickAddBtn = wrapper.querySelector('.btn-quick-add-contact');
         if (quickAddBtn) {
           quickAddBtn.addEventListener('click', () => {
@@ -1174,7 +1287,7 @@
         }
       }
 
-      /* ---- Open Mini Profile Modal ---- */
+      /* ---- Modale Profil Utilisateur ---- */
       function openUserProfileModal(alias, id) {
         selectedUserProfile = { alias, id };
         const existing = savedContacts.find(c => c.alias.toLowerCase() === alias.toLowerCase());
@@ -1188,9 +1301,7 @@
         modalUserProfile.classList.remove('hidden');
       }
 
-      document.getElementById('btn-close-user-profile').addEventListener('click', () => {
-        modalUserProfile.classList.add('hidden');
-      });
+      document.getElementById('btn-close-user-profile').addEventListener('click', () => modalUserProfile.classList.add('hidden'));
 
       document.getElementById('btn-profile-send-dm').addEventListener('click', () => {
         if (!selectedUserProfile) return;
@@ -1222,7 +1333,7 @@
         openEditContactModal(existing || { alias: selectedUserProfile.alias, nickname: '' });
       });
 
-      /* ---- Contact Edit / Nickname Modal ---- */
+      /* ---- Modale Fiche Contact & Surnoms ---- */
       function openEditContactModal(contact) {
         contactBeingEdited = contact;
         document.getElementById('input-contact-orig-alias').value = contact.alias;
@@ -1231,9 +1342,7 @@
         modalEditContact.classList.remove('hidden');
       }
 
-      document.getElementById('btn-close-edit-contact').addEventListener('click', () => {
-        modalEditContact.classList.add('hidden');
-      });
+      document.getElementById('btn-close-edit-contact').addEventListener('click', () => modalEditContact.classList.add('hidden'));
 
       document.getElementById('btn-save-contact').addEventListener('click', () => {
         if (!contactBeingEdited) return;
@@ -1268,7 +1377,115 @@
         showToast("Contact supprimé.");
       });
 
-      /* ---- Snap-Map GPS & Contact Integration ---- */
+      /* ---- Modale Éditeur & Lecteur Wiki ---- */
+      document.getElementById('btn-open-create-wiki').addEventListener('click', () => {
+        modalEditorWiki.classList.remove('hidden');
+      });
+      document.getElementById('btn-close-editor-wiki').addEventListener('click', () => {
+        modalEditorWiki.classList.add('hidden');
+      });
+
+      document.getElementById('btn-submit-save-wiki').addEventListener('click', () => {
+        const title = document.getElementById('wiki-edit-title').value.trim();
+        const tag = document.getElementById('wiki-edit-tag').value;
+        const author = document.getElementById('wiki-edit-author').value.trim() || mesh.myAlias;
+        const content = document.getElementById('wiki-edit-content').value.trim();
+
+        if (!title || !content) {
+          showToast("Veuillez remplir le titre et le contenu");
+          return;
+        }
+
+        const newArt = {
+          id: 'wiki-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+          title, tag, author, content,
+          updatedAt: new Date().toLocaleDateString()
+        };
+
+        savedWikis.unshift(newArt);
+        SecureStore.saveEncrypted('saved_wikis', savedWikis);
+        mesh.broadcastWiki(newArt);
+        renderWikiUI();
+        modalEditorWiki.classList.add('hidden');
+        document.getElementById('wiki-edit-title').value = '';
+        document.getElementById('wiki-edit-content').value = '';
+        showToast("Guide publié et synchronisé sur le réseau Mesh !");
+      });
+
+      function openWikiReaderModal(art) {
+        document.getElementById('wiki-read-title').textContent = art.title;
+        document.getElementById('wiki-read-tag-badge').textContent = `# ${art.tag ? art.tag.toUpperCase() : 'GUIDE'}`;
+        const bodyEl = document.getElementById('wiki-read-body');
+        if (window.marked && typeof window.marked.parse === 'function') {
+          bodyEl.innerHTML = window.marked.parse(art.content);
+        } else {
+          bodyEl.innerHTML = `<pre class="whitespace-pre-wrap">${escapeHTML(art.content)}</pre>`;
+        }
+        modalReaderWiki.classList.remove('hidden');
+      }
+
+      document.getElementById('btn-close-reader-wiki').addEventListener('click', () => modalReaderWiki.classList.add('hidden'));
+
+      // Filtres de recherche du Wiki
+      document.getElementById('input-wiki-search')?.addEventListener('input', renderWikiUI);
+      document.querySelectorAll('.btn-wiki-tag').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.btn-wiki-tag').forEach(b => {
+            b.className = "btn-wiki-tag px-3 py-1.5 rounded-xl bg-white/5 text-white/60 border border-white/10";
+          });
+          btn.className = "btn-wiki-tag active px-3 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40";
+          activeWikiTag = btn.dataset.tag;
+          renderWikiUI();
+        });
+      });
+
+      /* ---- Modales Groupe & Contacts ---- */
+      document.getElementById('btn-open-new-group').addEventListener('click', () => {
+        const listContainer = document.getElementById('group-select-contacts-list');
+        listContainer.innerHTML = '';
+        if (savedContacts.length === 0) {
+          listContainer.innerHTML = `<div class="text-[10px] text-white/40 font-mono">Aucun contact disponible.</div>`;
+        } else {
+          savedContacts.forEach(c => {
+            const label = document.createElement('label');
+            label.className = "flex items-center gap-2 p-2 rounded-xl glass-panel cursor-pointer text-xs";
+            label.innerHTML = `<input type="checkbox" value="${escapeHTML(c.alias)}" class="chk-group-member accent-emerald-500"> <span>${escapeHTML(c.nickname || c.alias)}</span>`;
+            listContainer.appendChild(label);
+          });
+        }
+        modalCreateGroup.classList.remove('hidden');
+      });
+
+      document.getElementById('btn-close-create-group').addEventListener('click', () => modalCreateGroup.classList.add('hidden'));
+
+      document.getElementById('btn-submit-create-group').addEventListener('click', () => {
+        const gName = document.getElementById('input-group-name').value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
+        if (!gName) {
+          showToast("Saisissez un nom de groupe valide");
+          return;
+        }
+        if (!savedGroups.includes(gName)) {
+          savedGroups.push(gName);
+          SecureStore.saveEncrypted('saved_groups', savedGroups);
+        }
+        renderGroupsUI();
+        modalCreateGroup.classList.add('hidden');
+        document.getElementById('input-group-name').value = '';
+        showToast(`Escouade #${gName} créée !`);
+      });
+
+      document.getElementById('btn-open-add-contact').addEventListener('click', () => modalAddContact.classList.remove('hidden'));
+      document.getElementById('btn-close-add-contact').addEventListener('click', () => modalAddContact.classList.add('hidden'));
+
+      document.getElementById('btn-submit-add-contact').addEventListener('click', () => {
+        const aliasVal = document.getElementById('input-contact-alias').value.trim();
+        if (!aliasVal) return;
+        openEditContactModal({ alias: aliasVal, nickname: '' });
+        modalAddContact.classList.add('hidden');
+        document.getElementById('input-contact-alias').value = '';
+      });
+
+      /* ---- Snap-Map & GPS ---- */
       document.getElementById('btn-toggle-my-gps-share').addEventListener('click', () => {
         mesh.shareGPSGlobal = !mesh.shareGPSGlobal;
         const btnTxt = document.getElementById('txt-gps-share-status');
@@ -1321,9 +1538,7 @@
           const px = e.popup.getElement();
           const dmBtn = px.querySelector('.btn-map-dm');
           if (dmBtn) {
-            dmBtn.addEventListener('click', () => {
-              openUserProfileModal(dmBtn.dataset.alias, id);
-            });
+            dmBtn.addEventListener('click', () => openUserProfileModal(dmBtn.dataset.alias, id));
           }
         });
 
@@ -1332,9 +1547,10 @@
 
       function renderContactsUI() {
         const container = document.getElementById('contacts-list-cards');
+        if (!container) return;
         document.getElementById('contacts-count-badge').textContent = savedContacts.length;
         if (savedContacts.length === 0) {
-          container.innerHTML = `<div class="text-white/30 text-center py-4 text-xs">Aucun contact. Scannez un QR Code d'un pote !</div>`;
+          container.innerHTML = `<div class="text-white/30 text-center py-4 text-xs font-mono">Aucun contact. Scannez le QR Code d'un pote !</div>`;
           return;
         }
         container.innerHTML = '';
@@ -1376,7 +1592,37 @@
         lucide.createIcons();
       }
 
-      /* ---- QR Link Import Check ---- */
+      /* ---- QR Code Modal ---- */
+      document.getElementById('btn-open-qr').addEventListener('click', () => {
+        const invitePayload = { alias: mesh.myAlias, channel: mesh.channel };
+        const b64 = btoa(JSON.stringify(invitePayload));
+        const baseURL = window.location.origin + window.location.pathname;
+        const fullInviteURL = `${baseURL}#invite=${b64}`;
+
+        const qrContainer = document.getElementById('qrcode-canvas');
+        qrContainer.innerHTML = '';
+
+        if (window.QRCode) {
+          new QRCode(qrContainer, {
+            text: fullInviteURL,
+            width: 180, height: 180,
+            colorDark: "#000000", colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.H
+          });
+        } else {
+          qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(fullInviteURL)}" class="w-44 h-44 rounded-xl">`;
+        }
+
+        modalQR.classList.remove('hidden');
+
+        document.getElementById('btn-copy-invite-link').onclick = () => {
+          navigator.clipboard.writeText(fullInviteURL);
+          showToast("Lien d'invitation copié !");
+        };
+      });
+
+      document.getElementById('btn-close-qr').addEventListener('click', () => modalQR.classList.add('hidden'));
+
       function checkURLInvite() {
         if (window.location.hash.startsWith('#invite=')) {
           try {
@@ -1405,6 +1651,181 @@
             } else { myMarker.setLatLng(coords); }
           });
         }
+      }
+
+      /* ---- SOS Trigger ---- */
+      document.getElementById('btn-trigger-sos').addEventListener('click', () => {
+        if ("geolocation" in navigator) {
+          navigator.geolocation.getCurrentPosition(pos => {
+            const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            mesh.sendBroadcast("⚠️ ALERTE DE SURVIE / S.O.S.", { isSOS: true, location: coords });
+            showToast("⚠️ S.O.S. TRANSMIS À LA SQUAD");
+          });
+        } else {
+          mesh.sendBroadcast("⚠️ ALERTE DE SURVIE / S.O.S.", { isSOS: true });
+        }
+      });
+
+      /* ---- GIF Selector ---- */
+      document.getElementById('btn-open-gif-picker').addEventListener('click', () => {
+        populateGIFGrid();
+        modalGIF.classList.remove('hidden');
+      });
+
+      document.getElementById('btn-close-gif-picker').addEventListener('click', () => modalGIF.classList.add('hidden'));
+
+      function populateGIFGrid() {
+        const container = document.getElementById('gif-grid');
+        container.innerHTML = '';
+        const gifs = [
+          { name: "Cyber Pulse", svg: `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none'><circle cx='50' cy='50' r='35' stroke='%2300ff9d' stroke-width='6'><animate attributeName='r' values='20;40;20' dur='1.5s' repeatCount='indefinite'/><animate attributeName='opacity' values='1;0.2;1' dur='1.5s' repeatCount='indefinite'/></circle></svg>` },
+          { name: "Matrix Radar", svg: `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none'><rect x='15' y='15' width='70' height='70' rx='10' stroke='%2300f0ff' stroke-width='4'/><line x1='15' y1='50' x2='85' y2='50' stroke='%2300f0ff' stroke-width='2'><animate attributeName='y1' values='15;85;15' dur='2s' repeatCount='indefinite'/><animate attributeName='y2' values='15;85;15' dur='2s' repeatCount='indefinite'/></line></svg>` },
+          { name: "SOS Flame", svg: `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M50 15 Q75 50 50 85 Q25 50 50 15 Z' fill='%23ff0055'><animate attributeName='transform' type='scale' values='1;1.2;1' transform-origin='50 50' dur='0.8s' repeatCount='indefinite'/></path></svg>` },
+          { name: "Lock Shield", svg: `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect x='30' y='45' width='40' height='35' rx='5' fill='%2310b981'/><path d='M38 45 V30 A12 12 0 0 1 62 30 V45' stroke='%2310b981' stroke-width='6' fill='none'><animate attributeName='stroke' values='%2310b981;%2300f0ff;%2310b981' dur='2s' repeatCount='indefinite'/></path></svg>` }
+        ];
+
+        gifs.forEach(g => {
+          const dataUri = `data:image/svg+xml;utf8,${g.svg}`;
+          const btn = document.createElement('button');
+          btn.className = "p-3 rounded-2xl glass-panel hover:border-amber-400/50 flex flex-col items-center gap-2 active:scale-95 transition-all";
+          btn.innerHTML = `<img src="${dataUri}" class="w-12 h-12"><span class="text-[10px] text-white/70 font-mono">${g.name}</span>`;
+          btn.addEventListener('click', () => {
+            activeAttachment = { name: g.name, type: 'image/svg+xml', data: dataUri };
+            modalGIF.classList.add('hidden');
+            setOptionBar(`GIF: ${g.name}`, "sparkles");
+            showToast("GIF sélectionné");
+          });
+          container.appendChild(btn);
+        });
+      }
+
+      /* ---- File & Attachments ---- */
+      document.getElementById('btn-open-attach').addEventListener('click', () => sheetAttach.classList.add('sheet-show'));
+      document.querySelectorAll('.btn-close-sheet').forEach(b => b.addEventListener('click', () => sheetAttach.classList.remove('sheet-show')));
+
+      document.getElementById('file-input-hidden').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (file.type.startsWith('image/')) {
+          compressImage(file, (base64) => {
+            activeAttachment = { name: file.name, type: file.type, data: base64 };
+            sheetAttach.classList.remove('sheet-show');
+            setOptionBar(`Photo: ${file.name}`, "image");
+            showToast("Photo compressée & prête");
+          });
+        } else {
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            activeAttachment = { name: file.name, type: file.type, data: evt.target.result };
+            sheetAttach.classList.remove('sheet-show');
+            setOptionBar(`Fichier: ${file.name}`, "file-text");
+            showToast("Fichier prêt");
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+
+      function compressImage(file, callback) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let w = img.width, h = img.height;
+            const max = 800;
+            if (w > max || h > max) {
+              if (w > h) { h = Math.round(h * max / w); w = max; }
+              else { w = Math.round(w * max / h); h = max; }
+            }
+            canvas.width = w; canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            callback(canvas.toDataURL('image/jpeg', 0.75));
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+
+      document.getElementById('btn-option-location').addEventListener('click', () => {
+        if ("geolocation" in navigator) {
+          navigator.geolocation.getCurrentPosition(pos => {
+            activeLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            sheetAttach.classList.remove('sheet-show');
+            setOptionBar("Position GPS capturée", "map-pin");
+            showToast("GPS prêt");
+            mesh.sendGPS(activeLocation);
+          });
+        }
+      });
+
+      document.getElementById('btn-option-timer').addEventListener('click', () => {
+        activeDestruct = 10;
+        sheetAttach.classList.remove('sheet-show');
+        setOptionBar("Auto-destruction: 10s", "timer");
+        showToast("Minuteur activé");
+      });
+
+      document.getElementById('btn-option-sim').addEventListener('click', () => {
+        sheetAttach.classList.remove('sheet-show');
+        setTimeout(() => {
+          handleNewMessage({
+            senderId: "sim-bot",
+            senderAlias: "Squad-Pote",
+            text: "Hello ! Message virtuel bien reçu sur le salon P2P.",
+            channel: mesh.channel,
+            timestamp: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+            fingerprint: mesh.fingerprint
+          });
+        }, 1000);
+      });
+
+      function setOptionBar(text, icon) {
+        document.getElementById('status-bar-options').classList.remove('hidden');
+        document.getElementById('status-option-text').textContent = text;
+        document.getElementById('status-option-icon').setAttribute('data-lucide', icon);
+        lucide.createIcons();
+      }
+
+      document.getElementById('btn-clear-options').addEventListener('click', () => {
+        activeDestruct = null;
+        activeLocation = null;
+        activeAttachment = null;
+        isSOSActive = false;
+        document.getElementById('status-bar-options').classList.add('hidden');
+      });
+
+      document.getElementById('btn-close-img-preview').addEventListener('click', () => {
+        document.getElementById('modal-image-preview').classList.add('hidden');
+      });
+
+      /* ---- Profile Alias & Purge ---- */
+      document.getElementById('input-profile-alias').addEventListener('change', (e) => {
+        const val = e.target.value.trim();
+        if (val) {
+          mesh.myAlias = val;
+          document.getElementById('sec-my-id-full').textContent = `ID: ${mesh.myAlias} (${mesh.myId})`;
+          showToast(`Alias mis à jour : ${mesh.myAlias}`);
+        }
+      });
+
+      document.getElementById('btn-panic-purge-full').addEventListener('click', () => {
+        if (confirm("ATTENTION : Cliquer sur Panic Purge effacera définitivement toutes les clés, messages et contacts localement enregistrés.")) {
+          SecureStore.purgeAll();
+        }
+      });
+
+      /* ---- UI Helpers ---- */
+      function updatePeersUI() {
+        const count = mesh.peers.size;
+        headerPeersCount.textContent = count === 0 ? "RECHERCHE DE POTES..." : `${count} POTE${count > 1 ? 'S' : ''} EN LIGNE`;
+      }
+
+      function showToast(txt) {
+        const toast = document.getElementById('toast');
+        document.getElementById('toast-text').textContent = txt;
+        toast.classList.remove('opacity-0', 'pointer-events-none');
+        setTimeout(() => toast.classList.add('opacity-0', 'pointer-events-none'), 2200);
       }
 
       function escapeHTML(str) {
