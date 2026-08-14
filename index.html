@@ -108,7 +108,6 @@
       </div>
     </header>
 
-    <!-- VUES PRINCIPALES -->
     <main id="main-content" class="flex-1 relative overflow-hidden flex flex-col">
       
       <!-- VIEW: CHATS -->
@@ -156,6 +155,13 @@
       <!-- VIEW: CONTACTS & SQUADS -->
       <section id="view-contacts" class="tab-view h-full w-full flex-col overflow-y-auto no-scrollbar p-4 space-y-6">
         <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-bold text-white/50 uppercase tracking-widest font-mono">En Ligne Dans ce Salon</h3>
+          </div>
+          <div id="online-peers-list" class="space-y-2"></div>
+        </div>
+
+        <div class="space-y-3 border-t border-white/10 pt-4">
           <div class="flex items-center justify-between">
             <h3 class="text-xs font-bold text-white/50 uppercase tracking-widest font-mono">Salons & Squads</h3>
             <button id="btn-new-group" class="text-emerald-400 bg-emerald-500/10 p-1.5 rounded-lg border border-emerald-500/20"><i data-lucide="folder-plus" class="w-4 h-4"></i></button>
@@ -223,7 +229,7 @@
             <h2 id="profile-alias-display" class="text-lg font-bold text-white flex items-center justify-center gap-2">
               Alias <button id="btn-edit-alias" class="text-emerald-400 p-1"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
             </h2>
-            <p class="text-[10px] text-white/40 font-mono">Identité Persistante (JWK)</p>
+            <p class="text-[10px] text-white/40 font-mono">Identité Persistante (WebCrypto PKCS8)</p>
           </div>
         </div>
 
@@ -244,7 +250,6 @@
 
     </main>
 
-    <!-- NAVIGATION TABS -->
     <nav class="h-16 glass-panel border-t border-white/10 flex justify-around items-center px-2 z-40 rounded-t-3xl">
       <button data-tab="view-chats" class="tab-btn active flex flex-col items-center gap-1 p-2 text-white/40 transition-colors w-16">
         <i data-lucide="message-square" class="w-5 h-5"></i>
@@ -269,8 +274,6 @@
       </button>
     </nav>
 
-    <!-- SHEETS & MODALS -->
-    
     <!-- SHEET: ATTACH -->
     <div id="sheet-attach" class="sheet-enter fixed inset-x-0 bottom-0 max-w-md mx-auto z-50">
       <div class="glass-panel rounded-t-3xl border-t border-white/20 p-5 space-y-4 bg-black/95 backdrop-blur-2xl">
@@ -514,7 +517,7 @@
     }
 
     /* ==========================================================================
-       2. MOTEUR CRYPTOGRAPHIQUE ECDH & JWK EXPORT
+       2. MOTEUR CRYPTOGRAPHIQUE ECDH (PKCS8/SPKI PERISTANTS)
        ========================================================================== */
     class CryptoEngine {
       static async generateECDHKeyPair() {
@@ -522,27 +525,37 @@
           { name: "ECDH", namedCurve: "P-256" }, true, ["deriveKey", "deriveBits"]
         );
       }
+
       static async exportPubKey(key) {
         const exp = await window.crypto.subtle.exportKey("spki", key);
         return btoa(String.fromCharCode(...new Uint8Array(exp)));
       }
+
       static async importPubKey(b64) {
         const bin = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
         return await window.crypto.subtle.importKey(
           "spki", bin.buffer, { name: "ECDH", namedCurve: "P-256" }, true, []
         );
       }
-      static async exportKeyJWK(key) {
-        return await window.crypto.subtle.exportKey("jwk", key);
+
+      static async exportKeyPKCS8(key) {
+        const exp = await window.crypto.subtle.exportKey("pkcs8", key);
+        return btoa(String.fromCharCode(...new Uint8Array(exp)));
       }
-      static async importKeyJWK(jwk, type) {
-        return await window.crypto.subtle.importKey("jwk", jwk, { name: "ECDH", namedCurve: "P-256" }, true, type === 'private' ? ["deriveKey", "deriveBits"] : []);
+
+      static async importKeyPKCS8(b64) {
+        const bin = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+        return await window.crypto.subtle.importKey(
+          "pkcs8", bin.buffer, { name: "ECDH", namedCurve: "P-256" }, true, ["deriveKey", "deriveBits"]
+        );
       }
+
       static async deriveECDHSharedKey(privateKey, publicKey) {
         return await window.crypto.subtle.deriveKey(
           { name: "ECDH", public: publicKey }, privateKey, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]
         );
       }
+
       static async deriveGroupKey(channelName) {
         const enc = new TextEncoder();
         const baseKey = await window.crypto.subtle.importKey("raw", enc.encode("squad-salt-" + channelName), "PBKDF2", false, ["deriveKey"]);
@@ -551,12 +564,14 @@
           baseKey, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]
         );
       }
+
       static async encrypt(aesKey, payload) {
         const enc = new TextEncoder();
         const iv = window.crypto.getRandomValues(new Uint8Array(12));
         const ciphertext = await window.crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, aesKey, enc.encode(JSON.stringify(payload)));
         return { cipher: btoa(String.fromCharCode(...new Uint8Array(ciphertext))), iv: btoa(String.fromCharCode(...new Uint8Array(iv))) };
       }
+
       static async decrypt(aesKey, cipherB64, ivB64) {
         const dec = new TextDecoder();
         const cipherBuf = Uint8Array.from(atob(cipherB64), c => c.charCodeAt(0)).buffer;
@@ -564,6 +579,7 @@
         const decrypted = await window.crypto.subtle.decrypt({ name: "AES-GCM", iv: ivBuf }, aesKey, cipherBuf);
         return JSON.parse(dec.decode(decrypted));
       }
+
       static async getFingerprint(pubKeyB64) {
         const enc = new TextEncoder();
         const hash = await window.crypto.subtle.digest('SHA-256', enc.encode(pubKeyB64));
@@ -590,28 +606,25 @@
         this.onWiki = onWiki;
         this.onPeersChanged = onPeersChanged;
         this.onGPS = onGPS;
-        this.onNewPeer = onNewPeer; // Pour déclencher la sync Wiki
+        this.onNewPeer = onNewPeer;
       }
 
       async init() {
-        // PERSISTANCE DE L'IDENTITÉ V8 (Crucial)
+        // PERSISTANCE FIABLE PAR PKCS8 / SPKI
         const savedIdentity = await SecureStore.loadDecrypted('my_identity_v8', null);
-        if (savedIdentity && savedIdentity.privJwk && savedIdentity.pubJwk) {
-          const priv = await CryptoEngine.importKeyJWK(savedIdentity.privJwk, 'private');
-          const pub = await CryptoEngine.importKeyJWK(savedIdentity.pubJwk, 'public');
-          this.keyPair = { privateKey: priv, publicKey: pub };
-          this.myPubKeyB64 = savedIdentity.pubKeyB64;
-          this.myId = savedIdentity.id;
-          this.myAlias = savedIdentity.alias;
+        if (savedIdentity && savedIdentity.privKeyB64 && savedIdentity.pubKeyB64) {
+          try {
+            const priv = await CryptoEngine.importKeyPKCS8(savedIdentity.privKeyB64);
+            const pub = await CryptoEngine.importPubKey(savedIdentity.pubKeyB64);
+            this.keyPair = { privateKey: priv, publicKey: pub };
+            this.myPubKeyB64 = savedIdentity.pubKeyB64;
+            this.myId = savedIdentity.id;
+            this.myAlias = savedIdentity.alias;
+          } catch(e) {
+            await this.generateNewIdentity();
+          }
         } else {
-          this.keyPair = await CryptoEngine.generateECDHKeyPair();
-          this.myPubKeyB64 = await CryptoEngine.exportPubKey(this.keyPair.publicKey);
-          this.myId = await CryptoEngine.getFingerprint(this.myPubKeyB64);
-          const privJwk = await CryptoEngine.exportKeyJWK(this.keyPair.privateKey);
-          const pubJwk = await CryptoEngine.exportKeyJWK(this.keyPair.publicKey);
-          await SecureStore.saveEncrypted('my_identity_v8', {
-            alias: this.myAlias, pubKeyB64: this.myPubKeyB64, id: this.myId, privJwk, pubJwk
-          });
+          await this.generateNewIdentity();
         }
 
         const brokers = ['wss://broker.emqx.io:8084/mqtt', 'wss://broker.hivemq.com:8884/mqtt'];
@@ -620,7 +633,6 @@
         this.client.on('connect', () => {
           document.getElementById('conn-status-dot').className = "w-3 h-3 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_currentColor]";
           this.subscribeTopics();
-          this.startHeartbeat();
         });
 
         this.client.on('error', () => {
@@ -654,18 +666,7 @@
           }
           if (changed) this.onPeersChanged();
         }, 5000);
-      }
 
-      subscribeTopics() {
-        if (!this.client || !this.client.connected) return;
-        this.client.subscribe(`bitweb/v8/channels/${this.channel}`);
-        this.client.subscribe(`bitweb/v8/users/${this.myId}`); // Canal DM personnel
-        this.client.publish(`bitweb/v8/channels/${this.channel}`, JSON.stringify({
-          type: 'PING', senderId: this.myId, alias: this.myAlias, pubKey: this.myPubKeyB64
-        }));
-      }
-
-      startHeartbeat() {
         setInterval(() => {
           if (this.client && this.client.connected) {
             this.client.publish(`bitweb/v8/channels/${this.channel}`, JSON.stringify({
@@ -673,6 +674,25 @@
             }));
           }
         }, 10000);
+      }
+
+      async generateNewIdentity() {
+        this.keyPair = await CryptoEngine.generateECDHKeyPair();
+        this.myPubKeyB64 = await CryptoEngine.exportPubKey(this.keyPair.publicKey);
+        this.myId = await CryptoEngine.getFingerprint(this.myPubKeyB64);
+        const privKeyB64 = await CryptoEngine.exportKeyPKCS8(this.keyPair.privateKey);
+        await SecureStore.saveEncrypted('my_identity_v8', {
+          alias: this.myAlias, pubKeyB64: this.myPubKeyB64, id: this.myId, privKeyB64
+        });
+      }
+
+      subscribeTopics() {
+        if (!this.client || !this.client.connected) return;
+        this.client.subscribe(`bitweb/v8/channels/${this.channel}`);
+        this.client.subscribe(`bitweb/v8/users/${this.myId}`);
+        this.client.publish(`bitweb/v8/channels/${this.channel}`, JSON.stringify({
+          type: 'PING', senderId: this.myId, alias: this.myAlias, pubKey: this.myPubKeyB64
+        }));
       }
 
       async switchChannel(newChan) {
@@ -686,7 +706,6 @@
       async handleChannelMessage(raw) {
         if (raw.type === 'PING') {
           if (!this.peers.has(raw.senderId)) {
-             // Nouveau téléphone détecté, on synchronise le Wiki en arrière-plan
              setTimeout(() => this.onNewPeer(), 1500);
           }
           this.peers.set(raw.senderId, { alias: raw.alias, pubKey: raw.pubKey, lastSeen: Date.now() });
@@ -695,7 +714,7 @@
           const groupKey = await CryptoEngine.deriveGroupKey(this.channel);
           try {
             const dec = await CryptoEngine.decrypt(groupKey, raw.cipher, raw.iv);
-            this.dispatchDecrypted(raw.senderId, raw.alias, dec, false, this.channel, raw.pubKey);
+            this.dispatchDecrypted(raw.senderId, raw.alias, dec, false, this.channel, raw.pubKey || raw.senderPubKey);
           } catch(e) {}
         }
       }
@@ -755,7 +774,7 @@
         const groupKey = await CryptoEngine.deriveGroupKey(this.channel);
         const enc = await CryptoEngine.encrypt(groupKey, payload);
         this.client.publish(`bitweb/v8/channels/${this.channel}`, JSON.stringify({
-          msgId, type: 'ENCRYPTED', senderId: this.myId, alias: this.myAlias, cipher: enc.cipher, iv: enc.iv
+          msgId, type: 'ENCRYPTED', senderId: this.myId, alias: this.myAlias, senderPubKey: this.myPubKeyB64, cipher: enc.cipher, iv: enc.iv
         }));
       }
 
@@ -800,7 +819,7 @@
     }
 
     /* ==========================================================================
-       4. INTERFACE UTILISATEUR & DOM
+       4. INTERFACE UTILISATEUR & EVENT HANDLERS
        ========================================================================== */
     document.addEventListener('DOMContentLoaded', async () => {
       try {
@@ -820,7 +839,47 @@
 
         lucide.createIcons();
 
-        // Fonctions déclarées pour la gestion UI
+        function renderOnlinePeers() {
+          const list = document.getElementById('online-peers-list');
+          list.innerHTML = '';
+          if (mesh.peers.size === 0) {
+            list.innerHTML = `<div class="text-white/30 text-xs text-center py-2 font-mono">Aucun pote détecté dans ce salon.</div>`;
+            return;
+          }
+          for (const [id, data] of mesh.peers.entries()) {
+            const div = document.createElement('div');
+            div.className = "p-3 rounded-xl glass-panel flex items-center justify-between";
+            div.innerHTML = `
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span class="text-xs font-bold text-emerald-400">${escapeHTML(data.alias)}</span>
+                <span class="text-[9px] text-white/40 font-mono">FP: ${id}</span>
+              </div>
+              <button class="btn-direct-dm text-xs font-bold px-2.5 py-1 bg-emerald-500 text-black rounded-lg active:scale-95" data-fp="${id}" data-pub="${data.pubKey}" data-alias="${escapeHTML(data.alias)}">💬 DM</button>
+            `;
+            list.appendChild(div);
+          }
+          document.querySelectorAll('.btn-direct-dm').forEach(b => b.onclick = (e) => {
+            const fp = e.currentTarget.dataset.fp;
+            const pub = e.currentTarget.dataset.pub;
+            const alias = e.currentTarget.dataset.alias;
+
+            if (!savedContacts.some(c => c.fingerprint === fp)) {
+              savedContacts.push({ alias, nickname: alias, pubKey: pub, fingerprint: fp });
+              SecureStore.saveEncrypted('saved_contacts', savedContacts);
+              renderContactsUI();
+            }
+            const dmChan = `dm-${fp}`;
+            if (!savedGroups.includes(dmChan)) { savedGroups.push(dmChan); SecureStore.saveEncrypted('saved_groups', savedGroups); }
+            mesh.switchChannel(dmChan);
+            document.getElementById('header-title').textContent = "DM SECURE";
+            messagesFeed.innerHTML = '';
+            savedHistory.forEach(m => { if (m.channel === dmChan) renderMessageDOM(m); });
+            document.querySelector('[data-tab="view-chats"]').click();
+            renderGroupsUI();
+          });
+        }
+
         function renderGroupsUI() {
           const list = document.getElementById('groups-list');
           list.innerHTML = '';
@@ -851,7 +910,7 @@
             const div = document.createElement('div');
             div.className = "p-3 rounded-xl glass-panel flex items-center justify-between";
             div.innerHTML = `
-              <div class="flex flex-col cursor-pointer profile-trigger" data-alias="${escapeHTML(c.nickname || c.alias)}" data-fp="${c.fingerprint}">
+              <div class="flex flex-col">
                 <span class="text-emerald-400 font-bold text-xs">${escapeHTML(c.nickname || c.alias)}</span>
                 <span class="text-[9px] text-white/40 font-mono">FP: ${c.fingerprint}</span>
               </div>
@@ -899,15 +958,14 @@
               document.getElementById('reader-title-bar').textContent = w.title;
               document.getElementById('reader-title').textContent = w.title;
               document.getElementById('reader-meta').textContent = `${w.tags} • Sync OK`;
-              const cleanMD = DOMPurify.sanitize(w.content);
-              document.getElementById('reader-content').innerHTML = marked.parse(cleanMD);
+              const cleanMD = typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(w.content) : w.content;
+              document.getElementById('reader-content').innerHTML = typeof marked !== 'undefined' ? marked.parse(cleanMD) : cleanMD;
               document.getElementById('modal-wiki-reader').classList.remove('hidden', 'translate-y-full');
             };
             list.appendChild(div);
           });
         }
 
-        // Init Engine
         const mesh = new SquadDiscoveryMesh(
           msg => {
             if (!msg.destruct) { savedHistory.push(msg); SecureStore.saveEncrypted('chat_history', savedHistory); }
@@ -915,7 +973,6 @@
           },
           msg => {
             const pseudoChan = msg.channel;
-            // DMs de contacts inconnus -> AutoSave public key pour pouvoir répondre
             if (msg.senderPubKey && !savedContacts.some(c => c.fingerprint === msg.fingerprint)) {
               savedContacts.push({ alias: msg.senderAlias, nickname: msg.senderAlias, pubKey: msg.senderPubKey, fingerprint: msg.fingerprint });
               SecureStore.saveEncrypted('saved_contacts', savedContacts);
@@ -935,7 +992,10 @@
             SecureStore.saveEncrypted('saved_wikis', savedWikis);
             renderWikiUI();
           },
-          () => document.getElementById('header-subtitle').textContent = `${mesh.peers.size} pairs actifs`,
+          () => {
+            document.getElementById('header-subtitle').textContent = `${mesh.peers.size} pairs actifs`;
+            renderOnlinePeers();
+          },
           (id, alias, coords) => {
             showToast(`GPS reçu de ${alias}`);
             if (!map) {
@@ -950,7 +1010,6 @@
             }
           },
           () => {
-            // New peer discovered, broadcast wikis
             savedWikis.forEach(w => mesh.broadcastWiki(w));
           }
         );
@@ -966,7 +1025,6 @@
         renderWikiUI();
         savedHistory.forEach(m => { if (m.channel === mesh.channel) renderMessageDOM(m); });
 
-        // Submit Chat (NO REFRESH!)
         chatForm.addEventListener('submit', async (e) => {
           e.preventDefault();
           const text = messageInput.value.trim();
@@ -990,7 +1048,6 @@
           activeDestruct = null; activeLocation = null; activeAttachment = null; isSOSActive = false;
         });
 
-        // DOM Message Render
         function renderMessageDOM(msg) {
           const isSelf = msg.isSelf;
           const wrapper = document.createElement('div');
@@ -1001,10 +1058,9 @@
 
           let extra = '';
           if (msg.location) extra += `<div class="mt-2 p-2 rounded-xl bg-cyan-950/60 border border-cyan-500/40 text-[10px] text-cyan-300">GPS partagé: ${msg.location.lat.toFixed(3)}, ${msg.location.lng.toFixed(3)}</div>`;
-          if (msg.attachment && msg.attachment.type.startsWith('image/')) extra += `<img src="${msg.attachment.data}" class="mt-2 max-w-[200px] rounded-xl border border-white/20">`;
-          if (msg.attachment && msg.attachment.type.includes('svg')) extra += `<img src="${msg.attachment.data}" class="mt-1 w-16 h-16">`;
+          if (msg.attachment && msg.attachment.type.startsWith('image/')) extra += `<img src="${msg.attachment.data}" class="mt-2 max-w-[200px] rounded-xl border border-white/20 cursor-pointer img-expandable">`;
 
-          let destruct = msg.destruct ? `<span class="text-[9px] text-rose-400 font-mono"><span class="timer-val">${msg.destruct}</span>s</span>` : '';
+          let destruct = msg.destruct ? `<span class="text-[9px] text-rose-400 font-mono"><span class="timer-val">${msg.destruct}s</span></span>` : '';
           
           let displayName = msg.senderAlias;
           const contact = savedContacts.find(c => c.fingerprint === msg.fingerprint);
@@ -1023,6 +1079,14 @@
             </div>
           `;
 
+          const imgEl = wrapper.querySelector('.img-expandable');
+          if (imgEl) {
+            imgEl.onclick = () => {
+              document.getElementById('img-preview-target').src = msg.attachment.data;
+              document.getElementById('modal-image-preview').classList.remove('hidden');
+            };
+          }
+
           messagesFeed.appendChild(wrapper);
           messagesFeed.scrollTop = messagesFeed.scrollHeight;
           lucide.createIcons();
@@ -1038,7 +1102,6 @@
           }
         }
 
-        // TABS ROUTER
         document.querySelectorAll('.tab-btn').forEach(btn => {
           btn.addEventListener('click', () => {
             document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('text-emerald-400'); b.classList.add('text-white/40'); });
@@ -1047,7 +1110,6 @@
             const target = document.getElementById(btn.dataset.tab);
             target.classList.add('active');
             
-            // MAP INIT
             if (btn.dataset.tab === 'view-radar') {
               if (!map) {
                 map = L.map('map-container').setView([46.8, 8.2], 5);
@@ -1059,7 +1121,6 @@
         });
         document.querySelector('[data-tab="view-chats"]').click();
 
-        // Options bar helper
         function setOptionBar(text, icon) {
           document.getElementById('status-bar-options').classList.remove('hidden');
           document.getElementById('status-option-text').textContent = text;
@@ -1072,7 +1133,7 @@
           document.getElementById('status-bar-options').classList.add('hidden');
         };
 
-        // Attachment Compression
+        // Compression d'image automatique (500px, 0.6 quality)
         document.getElementById('file-input-hidden').addEventListener('change', (e) => {
           const file = e.target.files[0];
           if (!file) return;
@@ -1084,13 +1145,13 @@
               img.onload = () => {
                 const canvas = document.createElement('canvas');
                 let w = img.width, h = img.height;
-                const max = 600; // Limitation P2P
+                const max = 500;
                 if (w > max || h > max) { if (w > h) { h = Math.round(h * max / w); w = max; } else { w = Math.round(w * max / h); h = max; } }
                 canvas.width = w; canvas.height = h;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, w, h);
-                activeAttachment = { name: file.name, type: 'image/jpeg', data: canvas.toDataURL('image/jpeg', 0.8) };
-                setOptionBar("Photo prête", "image");
+                activeAttachment = { name: file.name, type: 'image/jpeg', data: canvas.toDataURL('image/jpeg', 0.6) };
+                setOptionBar("Photo optimisée", "image");
               };
               img.src = evt.target.result;
             };
@@ -1120,7 +1181,6 @@
           } else setOptionBar("S.O.S.", "alert-triangle");
         };
 
-        // Modals
         document.getElementById('btn-open-attach').onclick = () => document.getElementById('sheet-attach').classList.add('sheet-show');
         document.querySelectorAll('.btn-close-sheet').forEach(b => b.onclick = () => document.querySelectorAll('.sheet-enter').forEach(s => s.classList.remove('sheet-show')));
 
@@ -1178,7 +1238,6 @@
         };
         document.getElementById('btn-close-qr').onclick = () => document.getElementById('modal-qr').classList.add('hidden');
 
-        // Check QR Invite
         if (window.location.hash.startsWith('#invite=')) {
           try {
             const data = JSON.parse(atob(window.location.hash.replace('#invite=', '')));
@@ -1194,7 +1253,6 @@
           history.replaceState(null, "", window.location.pathname);
         }
 
-        // GPS Share Selective
         document.getElementById('btn-open-gps-share').onclick = () => {
           const list = document.getElementById('gps-contacts-list');
           list.innerHTML = '';
@@ -1219,7 +1277,6 @@
           }
         };
 
-        // WIKI Editor
         document.getElementById('btn-new-wiki').onclick = () => document.getElementById('modal-wiki-editor').classList.remove('translate-y-full', 'hidden');
         document.getElementById('btn-close-wiki').onclick = () => document.getElementById('modal-wiki-editor').classList.add('translate-y-full');
         document.getElementById('btn-save-wiki').onclick = () => {
@@ -1233,8 +1290,8 @@
           }
         };
         document.getElementById('btn-close-wiki-reader').onclick = () => document.getElementById('modal-wiki-reader').classList.add('translate-y-full');
+        document.getElementById('btn-close-img-preview').onclick = () => document.getElementById('modal-image-preview').classList.add('hidden');
 
-        // Panic Purge
         document.getElementById('btn-panic-purge').onclick = () => document.getElementById('modal-panic-confirm').classList.remove('hidden');
         document.getElementById('btn-cancel-panic').onclick = () => document.getElementById('modal-panic-confirm').classList.add('hidden');
         document.getElementById('btn-confirm-panic').onclick = () => SecureStore.purgeAll();
