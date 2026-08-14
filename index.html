@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-eOhqk1PBFqX9rdvsbzox9NiywDMkK5foX/K0E1u5ODQ='; style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob: mediastream:; connect-src wss: https: blob:; worker-src blob:; manifest-src blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-MlcUt3BuBE7/peWxwj3dDr/DWM6PAA/aZM7gen/Zjow='; style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob: mediastream:; connect-src wss: https: blob:; worker-src blob:; manifest-src blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
 <meta name="theme-color" content="#060606">
 <title>MESHCHAT // TERMINAL NOSTR-MESH</title>
 <style>
@@ -187,6 +187,7 @@ details>*:not(summary){margin-top:10px}
 #call-ui{position:fixed;inset:0;background:#000;z-index:160;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
 #remote-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
 #remote-audio{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.voice-player{display:flex;align-items:center;gap:9px;min-width:210px;max-width:310px;border:1px solid var(--dim);background:#000;padding:8px 9px;margin-bottom:5px}.voice-player audio{display:none}.voice-play{width:30px;height:30px;padding:0;border:1px solid var(--beige);color:var(--beige);font-size:.72rem;flex-shrink:0}.voice-wave{flex:1;height:5px;background:var(--dim2);position:relative;cursor:pointer}.voice-wave i{display:block;height:100%;width:0;background:var(--beige);pointer-events:none}.voice-time{font-size:.6rem;color:var(--dim);white-space:nowrap;min-width:34px;text-align:right}
 #local-video{position:absolute;bottom:110px;right:16px;width:110px;border:1px solid var(--beige);z-index:2;background:#111}
 #call-info{z-index:2;text-align:center}
 #call-info h2{font-size:1.1rem;letter-spacing:3px}
@@ -2693,7 +2694,7 @@ const Safe={
   image:v=>typeof v==='string'&&v.length<=1600000&&/^data:image\/(?:jpeg|png|webp|gif);base64,[A-Za-z0-9+/=]+$/i.test(v)?v:'',
   media:m=>{
     if(!m||typeof m!=='object'||!['image','video','audio','file'].includes(m.kind)||typeof m.data!=='string'||m.data.length>12500000)return null;
-    const types={image:'image\/(?:jpeg|png|webp|gif)',video:'video\/(?:mp4|webm)',audio:'audio\/(?:mpeg|mp4|ogg|webm)',file:'(?:application\/(?:pdf|zip|x-7z-compressed|octet-stream|vnd\.[a-z0-9.+-]+)|text\/plain)'};
+    const types={image:'image\/(?:jpeg|png|webp|gif)',video:'video\/(?:mp4|webm)',audio:'audio\/(?:mpeg|mp4|ogg|webm|wav|x-wav)(?:;codecs=[A-Za-z0-9._,-]+)?',file:'(?:application\/(?:pdf|zip|x-7z-compressed|octet-stream|vnd\.[a-z0-9.+-]+)|text\/plain)'};
     const rx=new RegExp('^data:'+types[m.kind]+';base64,[A-Za-z0-9+/=]+$','i');
     if(!rx.test(m.data))return null;
     return {kind:m.kind,name:Safe.text(m.name,120)||'piece_jointe',size:Number.isSafeInteger(m.size)&&m.size>=0&&m.size<=26214400?m.size:0,data:m.data};
@@ -3031,8 +3032,13 @@ const Outbox={
 /* ================================================================
    P2P WEBRTC : DataChannel + auto-négociation via relais
    ================================================================ */
+const ICECFG={
+  async load(){const t=await DB.kvGet('turn');if(!t||typeof t!=='object'||!Array.isArray(t.urls)||!t.urls.length)return;const urls=t.urls.filter(x=>typeof x==='string'&&/^(turn|turns):/.test(x)).slice(0,4);if(urls.length&&typeof t.username==='string'&&typeof t.credential==='string'&&t.username.length<=200&&t.credential.length<=300)NET.ICE.iceServers.push({urls,username:t.username,credential:t.credential});},
+  async save(urls,username,credential){const clean=String(urls||'').split(/[\s,]+/).filter(x=>/^(turn|turns):/.test(x)).slice(0,4);if(!clean.length)return toast('!! URL TURN OU TURNS REQUISE');if(String(username||'').length>200||String(credential||'').length>300)return toast('!! IDENTIFIANTS TURN TROP LONGS');await DB.kvSet('turn',{urls:clean,username:String(username||''),credential:String(credential||'')});NET.ICE.iceServers=NET.ICE.iceServers.filter(s=>!s.username);NET.ICE.iceServers.push({urls:clean,username:String(username||''),credential:String(credential||'')});toast('>> RELAIS TURN ENREGISTRE — NOUVEAUX APPELS UNIQUEMENT')},
+  status:()=>NET.ICE.iceServers.some(s=>s.username)?'TURN CONFIGURE':'STUN SEULEMENT'
+};
 const NET={
-  ICE:{iceServers:[{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']},{urls:'stun:stun.cloudflare.com:3478'}]},
+  ICE:{iceServers:[{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']},{urls:'stun:stun.cloudflare.com:3478'}],iceCandidatePoolSize:10,bundlePolicy:'max-bundle',rtcpMuxPolicy:'require'},
   CHUNK:15000,MAX_BUF:4*1048576,MAX_MESSAGE:18000000,frag:new Map(),
   _send(dc,str){
     if(str.length<=NET.CHUNK){try{dc.send(str)}catch(e){}return}
@@ -3368,7 +3374,7 @@ const CALL={
   setup(peerId){
     const pc=new RTCPeerConnection(NET.ICE);CALL.pc=pc;CALL.pendingIce=[];
     pc.onicecandidate=e=>{if(e.candidate)CALL.sig(peerId,{a:'ice',c:e.candidate.toJSON()})};
-    pc.oniceconnectionstatechange=()=>{if(['failed','closed'].includes(pc.iceConnectionState))CALL.end(false)};
+    pc.oniceconnectionstatechange=async()=>{const cs=$('#call-status');if(cs)cs.textContent='ICE: '+pc.iceConnectionState.toUpperCase()+' // '+ICECFG.status();if(pc.iceConnectionState==='failed'&&S.call?.dir==='out'){try{const retry=await pc.createOffer({iceRestart:true});await pc.setLocalDescription(retry);CALL.sig(peerId,{a:'offer',sdp:{type:retry.type,sdp:retry.sdp},video:S.call.video,restart:true})}catch(e){CALL.end(false)}}else if(pc.iceConnectionState==='closed')CALL.end(false)};
     pc.ontrack=async e=>{
       const stream=e.streams[0]||new MediaStream([e.track]),ra=$('#remote-audio'),rv=$('#remote-video');
       if(ra&&ra.srcObject!==stream){ra.srcObject=stream;ra.muted=false;ra.volume=1;try{await ra.play()}catch(err){}}
@@ -3485,6 +3491,17 @@ function startMesh(cv,peerFn){
    INTERFACE
    ================================================================ */
 const EMOJIS=['👍','❤️','😂','😮','😢','🔥'];
+const VUI={
+  fmt:s=>{s=Math.max(0,Math.floor(Number.isFinite(s)?s:0));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')},
+  bind(root){
+    const audio=root.querySelector('audio'),play=root.querySelector('.voice-play'),wave=root.querySelector('.voice-wave'),bar=wave.querySelector('i'),time=root.querySelector('.voice-time');if(!audio||!play||root.dataset.bound)return;root.dataset.bound='1';
+    const paint=()=>{const duration=Number.isFinite(audio.duration)&&audio.duration>0?audio.duration:0;bar.style.width=(duration?Math.min(100,(audio.currentTime/duration)*100):0)+'%';time.textContent=VUI.fmt(audio.currentTime||0)};
+    const sync=()=>{play.textContent=audio.paused?'[▶]':'[■]';paint()};
+    play.addEventListener('click',async()=>{try{if(audio.paused)await audio.play();else audio.pause()}catch(e){toast('!! LECTURE AUDIO BLOQUEE PAR LE NAVIGATEUR')}sync()});
+    wave.addEventListener('click',e=>{if(Number.isFinite(audio.duration)&&audio.duration>0){const r=wave.getBoundingClientRect();audio.currentTime=Math.max(0,Math.min(audio.duration,(e.clientX-r.left)/r.width*audio.duration));paint()}});
+    audio.addEventListener('loadedmetadata',paint);audio.addEventListener('timeupdate',paint);audio.addEventListener('play',sync);audio.addEventListener('pause',sync);audio.addEventListener('ended',()=>{audio.currentTime=0;sync()});audio.addEventListener('error',()=>{time.textContent='ERR';play.disabled=true});
+  }
+};
 const UI={
   expireLabel:ms=>({0:'DESACTIVE',3600000:'1 HEURE',86400000:'24 HEURES',604800000:'7 JOURS'})[ms]||'—',
   dotHtml(id){const st=onlineState(id);return st?`<span class="online-dot ${st===2?'p2p':'relay'}"></span>`:''},
@@ -3559,7 +3576,7 @@ const UI={
     const src=esc(safe.data);
     if(safe.kind==='image')return `<img src="${src}" loading="lazy" alt="image jointe">`;
     if(safe.kind==='video')return `<video src="${src}" controls></video>`;
-    if(safe.kind==='audio')return `<audio src="${src}" controls style="max-width:230px"></audio>`;
+    if(safe.kind==='audio')return `<div class="voice-player"><audio preload="metadata" src="${src}"></audio><button type="button" class="voice-play" aria-label="Lire la note vocale">[▶]</button><div class="voice-wave" role="slider" aria-label="Progression"><i></i></div><span class="voice-time">0:00</span></div>`;
     return `<a class="file-chip" href="${src}" download="${esc(safe.name)}" style="color:var(--bright)">◈ <span>${esc(safe.name)}<br><small class="dim">${(safe.size/1024).toFixed(1)} KO</small></span></a>`},
   appendMsg(m,silent){
     if(S.activeChat!==m.chatId)return;
@@ -3576,6 +3593,7 @@ const UI={
     $('#msgs').appendChild(el);
     el.querySelector('[data-menu]')?.addEventListener('click',e=>{e.stopPropagation();UI.msgMenu(e,m)});
     el.querySelectorAll('[data-re]').forEach(s=>s.onclick=()=>MSG.react(m.id,s.dataset.re));
+    el.querySelectorAll('.voice-player').forEach(VUI.bind);
     if(!silent)$('#msgs').scrollTop=$('#msgs').scrollHeight;
   },
   msgMenu(e,m){
@@ -3902,6 +3920,7 @@ const Modal={
         <div class="stat-card"><b>${S.peers.size}</b><span>LIENS P2P</span></div>
         <div class="stat-card"><b>${S.contacts.size}</b><span>PAIRS</span></div>
         <div class="stat-card"><b>${S.groups.size}</b><span>GROUPES</span></div></div>
+      <details><summary>◈ RELAIS TURN — FIABILITE DES APPELS</summary><p class="dim" style="font-size:.64rem;line-height:1.6">STATUT: ${ICECFG.status()}. Un TURN est nécessaire lorsque deux réseaux ne permettent pas de lien P2P direct. Vos identifiants TURN sont chiffrés dans le stockage local.</p><div class="field"><label>URL TURN / TURNS</label><input id="turn-urls" placeholder="turns:turn.exemple.com:5349?transport=tcp"></div><div class="field"><label>UTILISATEUR TURN</label><input id="turn-user" autocomplete="off"></div><div class="field"><label>MOT DE PASSE TURN</label><input id="turn-cred" type="password" autocomplete="new-password"></div><button class="btn-sm" id="turn-save" style="width:100%">[ ENREGISTRER LE RELAIS TURN ]</button></details>
       <details><summary>◈ GESTIONNAIRE DE RELAIS NOSTR</summary>
         ${relayRows}
         <div style="display:flex;gap:8px"><input id="relay-add" placeholder="wss://relay.exemple.com">
@@ -3924,6 +3943,7 @@ const Modal={
       for(const[cid]of S.contacts){const r=await sendPayload(cid,{t:'profile',...MYPROFILE()});
         if(!r)Outbox.add(cid,{t:'profile',...MYPROFILE()})}
       toast('>> PROFIL PROPAGE');Modal.close()};
+    $('#turn-save').onclick=()=>ICECFG.save($('#turn-urls').value,$('#turn-user').value,$('#turn-cred').value);
     $$('[data-rdel]').forEach(b=>b.onclick=async()=>{
       const r=Nostr.relays.get(b.dataset.rdel);
       if(r){r.removed=true;try{r.ws?.close()}catch(e){}}
@@ -4060,6 +4080,7 @@ async function enterApp(){
   UI.renderChatList();UI.renderCommList();UI.renderCallList();UI.renderStatusList();
   startMesh($('#mesh-canvas'),()=>S.peers.size);
   startSyncLines();
+  await ICECFG.load();
   Nostr.init();
   NET.startHeartbeat();
   Discovery.start();
@@ -4179,13 +4200,15 @@ function bindEvents(){
     rec.onstop=async()=>{
       stream.getTracks().forEach(t=>t.stop());
       S.mediaRec=null;sendBtn.classList.remove('rec');refreshBtn();
-      const blob=new Blob(chunks,{type:rec.mimeType||'audio/webm'});
+      const mime=rec.mimeType&&/^audio\/(webm|ogg|mp4|mpeg|wav)/i.test(rec.mimeType)?rec.mimeType:'audio/webm';
+      const blob=new Blob(chunks,{type:mime});
       if(blob.size<800)return;
       const data=await fileToB64(blob);
       const p2p=!!S.peers.get(S.activeChat)?.dc&&S.peers.get(S.activeChat).dc.readyState==='open';
       if(data.length>12500000)return toast('!! NOTE VOCALE TROP LONGUE (MAX 8 MO)');
       if(!p2p&&data.length>800000)toast('>> NOTE VOCALE EN ATTENTE DU LIEN P2P');
-      await MSG.sendText(S.activeChat,'',{kind:'audio',name:'note_vocale.webm',size:blob.size,data});
+      const ext=mime.includes('ogg')?'ogg':mime.includes('mp4')?'m4a':mime.includes('wav')?'wav':'webm';
+      await MSG.sendText(S.activeChat,'',{kind:'audio',name:'note_vocale.'+ext,size:blob.size,data});
     };
     rec.start();toast('>> ENREGISTREMENT… [■] POUR ENVOYER');
     setTimeout(()=>{if(S.mediaRec===rec)rec.stop()},120000);
