@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark h-full bg-black text-white selection:bg-emerald-500 selection:text-black">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>BitWeb Mesh V10 - Ultimate Squad</title>
+  
+  <meta name="theme-color" content="#000000">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- QRCode Generator -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- DOMPurify & Marked -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Leaflet Dark Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
+            mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    * { -webkit-tap-highlight-color: transparent; }
+    body { overscroll-behavior-y: none; }
+
+    .glass-panel {
+      background: rgba(14, 14, 20, 0.88);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+    }
+    .glass-bubble-self {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.28) 0%, rgba(5, 150, 105, 0.15) 100%);
+      border: 1px solid rgba(0, 255, 157, 0.35);
+    }
+    .glass-bubble-peer {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.65) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    .glass-bubble-sos {
+      background: linear-gradient(135deg, rgba(255, 0, 85, 0.4) 0%, rgba(153, 27, 27, 0.25) 100%);
+      border: 1px solid rgba(255, 0, 85, 0.7);
+    }
+
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    
+    .tab-view { display: none; }
+    .tab-view.active { display: flex; }
+
+    #map-container {
+      width: 100%;
+      height: 100%;
+      min-height: 100%;
+      background: #09090b;
+    }
+    .leaflet-container { background: #09090b !important; }
+  </style>
+</head>
+<body class="h-full w-full bg-black text-white font-sans overflow-hidden flex flex-col justify-between">
+
+  <!-- Halo Lumineux Cyber -->
+  <div class="fixed top-[-10%] left-[-10%] w-[60vw] h-[60vw] bg-emerald-600/15 rounded-full blur-[100px] pointer-events-none z-0"></div>
+  <div class="fixed bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] bg-cyan-600/15 rounded-full blur-[100px] pointer-events-none z-0"></div>
+
+  <div class="relative z-10 h-full w-full max-w-md mx-auto flex flex-col justify-between overflow-hidden sm:border-x sm:border-white/10 shadow-2xl bg-black/70">
+
+    <!-- HEADER -->
+    <header class="p-3.5 flex items-center justify-between glass-panel sticky top-0 z-30 rounded-b-3xl">
+      <div class="flex items-center gap-3">
+        <span id="conn-status-dot" class="w-3 h-3 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_#10b981]"></span>
+        <div>
+          <span id="header-title" class="font-bold text-xs tracking-wider text-white block uppercase"># GLOBAL</span>
+          <span id="header-subtitle" class="text-[10px] text-emerald-400 font-mono">Chiffrement ECDH Actif</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="btn-trigger-sos" class="p-2 rounded-xl bg-rose-500/10 text-rose-500 border border-rose-500/30 hover:bg-rose-500 hover:text-white active:scale-90 transition-all">
+          <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- CONTENU PRINCIPAL -->
+    <main id="main-content" class="flex-1 relative overflow-hidden flex flex-col">
+      
+      <!-- VUE: CHATS -->
+      <section id="view-chats" class="tab-view active h-full w-full flex-col relative">
+        <div id="messages-feed" class="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar pb-28">
+          <div class="p-4 rounded-3xl glass-panel text-center space-y-2 relative border border-emerald-500/30">
+            <div class="inline-flex p-2.5 rounded-2xl bg-emerald-500/10 text-emerald-400">
+              <i data-lucide="shield-check" class="w-6 h-6"></i>
+            </div>
+            <h2 class="text-xs font-bold tracking-wider text-white uppercase">BitWeb V10 - Réseau Temps Réel</h2>
+            <p class="text-[10px] text-white/60 leading-relaxed font-mono">
+              Chiffrement E2EE P2P persistant (ECDH P-256 + AES-GCM). Messages, DMs, GPS & Wiki synchronisés instantanément.
+            </p>
+          </div>
+        </div>
+
+        <!-- BARRE DE SAISIE -->
+        <div class="absolute bottom-0 inset-x-0 p-3 bg-gradient-to-t from-black via-black/95 to-transparent z-40">
+          <div id="status-bar-options" class="hidden mb-2 px-3 py-2 rounded-2xl glass-panel flex items-center justify-between text-[11px] font-mono border border-emerald-500/30">
+            <div class="flex items-center gap-2 text-emerald-400 truncate mr-2">
+              <i id="status-option-icon" data-lucide="paperclip" class="w-3.5 h-3.5 shrink-0"></i>
+              <span id="status-option-text" class="truncate font-bold">Option active</span>
+            </div>
+            <button type="button" id="btn-clear-options" class="p-1 rounded-md bg-white/10 text-white/70 hover:text-rose-400 transition-colors shrink-0">
+              <i data-lucide="x" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+
+          <form id="chat-form" class="flex items-center gap-2 max-w-full">
+            <div class="flex-1 flex items-center gap-1.5 px-2 py-1.5 rounded-3xl glass-panel focus-within:border-emerald-500/50 transition-all">
+              <button type="button" id="btn-open-attach" class="p-2 text-white/60 hover:text-emerald-400 transition-all rounded-full bg-white/5">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+              </button>
+              <input type="text" id="message-input" placeholder="Message chiffré..." autocomplete="off" class="flex-1 w-full bg-transparent border-none text-xs text-white placeholder-white/30 focus:outline-none px-1 font-sans">
+            </div>
+            <button type="submit" class="p-3 rounded-full bg-emerald-500 text-black shadow-[0_0_15px_rgba(16,185,129,0.4)] hover:bg-emerald-400 active:scale-90 transition-all shrink-0">
+              <i data-lucide="send" class="w-4 h-4"></i>
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <!-- VUE: POTES & SALONS -->
+      <section id="view-contacts" class="tab-view h-full w-full flex-col overflow-y-auto no-scrollbar p-4 space-y-6">
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-bold text-white/50 uppercase tracking-widest font-mono">Membres Actifs Réseau</h3>
+          </div>
+          <div id="online-peers-list" class="space-y-2"></div>
+        </div>
+
+        <div class="space-y-3 border-t border-white/10 pt-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-bold text-white/50 uppercase tracking-widest font-mono">Salons de Discussion</h3>
+            <button id="btn-new-group" class="text-emerald-400 bg-emerald-500/10 p-1.5 rounded-lg border border-emerald-500/20"><i data-lucide="folder-plus" class="w-4 h-4"></i></button>
+          </div>
+          <div id="groups-list" class="grid grid-cols-2 gap-2"></div>
+        </div>
+
+        <div class="space-y-3 border-t border-white/10 pt-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-bold text-white/50 uppercase tracking-widest font-mono">Carnet Privé (DMs)</h3>
+            <div class="flex gap-2">
+              <button id="btn-scan-qr" class="text-amber-400 bg-amber-500/10 p-1.5 rounded-lg border border-amber-500/20"><i data-lucide="qr-code" class="w-4 h-4"></i></button>
+              <button id="btn-add-contact" class="text-cyan-400 bg-cyan-500/10 p-1.5 rounded-lg border border-cyan-500/20"><i data-lucide="user-plus" class="w-4 h-4"></i></button>
+            </div>
+          </div>
+          <div id="contacts-list" class="space-y-2"></div>
+        </div>
+      </section>
+
+      <!-- VUE: WIKI -->
+      <section id="view-wiki" class="tab-view h-full w-full flex-col overflow-y-auto no-scrollbar p-4 space-y-4 relative">
+        <div class="flex justify-between items-center bg-emerald-900/30 p-3 rounded-2xl border border-emerald-500/20">
+          <div class="flex items-center gap-2 text-emerald-400">
+            <i data-lucide="library" class="w-5 h-5"></i>
+            <span class="text-xs font-bold uppercase tracking-widest">Base de Survie</span>
+          </div>
+          <button id="btn-new-wiki" class="px-3 py-1.5 bg-emerald-500 text-black text-xs font-bold rounded-xl active:scale-95 shadow-lg"><i data-lucide="plus" class="w-3.5 h-3.5 inline"></i> Créer</button>
+        </div>
+        
+        <div class="relative">
+          <i data-lucide="search" class="w-4 h-4 absolute left-3 top-3 text-white/40"></i>
+          <input type="text" id="search-wiki" placeholder="Rechercher un article..." class="w-full bg-white/5 border border-white/10 rounded-2xl pl-9 pr-4 py-2.5 text-xs text-white focus:border-emerald-500 focus:outline-none transition-colors">
+        </div>
+
+        <div id="wiki-list" class="space-y-2.5 pb-24"></div>
+      </section>
+
+      <!-- VUE: RADAR -->
+      <section id="view-radar" class="tab-view h-full w-full flex-col relative">
+        <div id="map-container"></div>
+        
+        <div class="absolute top-3 left-3 right-3 z-[400] glass-panel p-3 rounded-2xl flex items-center justify-between text-xs font-mono shadow-2xl border-cyan-500/30">
+          <div class="flex items-center gap-2">
+            <i data-lucide="radar" class="w-4 h-4 text-cyan-400 animate-spin" style="animation-duration: 8s;"></i>
+            <div>
+              <span class="text-white font-bold block">RADAR GPS</span>
+              <span id="radar-peers-count" class="text-emerald-400 text-[9px]">0 POSITIONS DÉTECTÉES</span>
+            </div>
+          </div>
+          <button id="btn-open-gps-share" class="px-2.5 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[10px] font-bold flex items-center gap-1.5 active:scale-95 transition-all">
+            <i data-lucide="navigation" class="w-3 h-3"></i> <span>Partager GPS</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- VUE: PROFIL -->
+      <section id="view-profile" class="tab-view h-full w-full flex-col overflow-y-auto no-scrollbar p-5 space-y-6">
+        <div class="flex flex-col items-center text-center space-y-3 mt-4">
+          <div class="w-20 h-20 rounded-full bg-gradient-to-tr from-emerald-500 to-cyan-500 p-1 shadow-[0_0_30px_rgba(16,185,129,0.3)]">
+            <div class="w-full h-full rounded-full bg-black flex items-center justify-center">
+              <i data-lucide="user" class="w-8 h-8 text-white/60"></i>
+            </div>
+          </div>
+          <div>
+            <h2 id="profile-alias-display" class="text-lg font-bold text-white flex items-center justify-center gap-2">
+              Alias
+            </h2>
+            <p class="text-[10px] text-white/40 font-mono">Clef ECDH P-256 Générée</p>
+          </div>
+        </div>
+
+        <div class="glass-panel p-4 rounded-3xl space-y-4">
+          <div>
+            <label class="text-[9px] text-white/50 uppercase tracking-widest font-mono">Mon Fingerprint SHA-256</label>
+            <div class="mt-1 p-2.5 bg-black/50 border border-white/10 rounded-xl flex justify-between items-center">
+              <code id="profile-fp" class="text-emerald-400 text-xs font-bold tracking-wider">...</code>
+              <button id="btn-copy-fp" class="text-white/60 hover:text-emerald-400"><i data-lucide="copy" class="w-4 h-4"></i></button>
+            </div>
+          </div>
+          <div>
+            <label class="text-[9px] text-white/50 uppercase tracking-widest font-mono">Ma Clé Publique (Exportable)</label>
+            <textarea id="profile-pubkey" readonly class="mt-1 w-full h-16 bg-black/50 border border-white/10 rounded-xl p-2 text-[9px] font-mono text-white/70 resize-none focus:outline-none"></textarea>
+          </div>
+        </div>
+
+        <button id="btn-panic-purge" class="w-full py-4 rounded-2xl bg-gradient-to-r from-rose-700 to-red-900 text-white font-bold text-xs uppercase tracking-widest shadow-[0_0_20px_rgba(255,0,85,0.4)] active:scale-95 transition-all flex justify-center items-center gap-2">
+          <i data-lucide="zap" class="w-5 h-5"></i> Purge Totale de Sécurité
+        </button>
+      </section>
+
+    </main>
+
+    <!-- NAVIGATION BARRE INFÉRIEURE -->
+    <nav class="h-16 glass-panel border-t border-white/10 flex justify-around items-center px-2 z-40 rounded-t-3xl">
+      <button data-tab="view-chats" class="tab-btn active flex flex-col items-center gap-1 p-2 text-emerald-400 transition-colors w-16">
+        <i data-lucide="message-square" class="w-5 h-5"></i>
+        <span class="text-[9px] font-mono tracking-wider">CHATS</span>
+      </button>
+      <button data-tab="view-contacts" class="tab-btn flex flex-col items-center gap-1 p-2 text-white/40 transition-colors w-16">
+        <i data-lucide="users" class="w-5 h-5"></i>
+        <span class="text-[9px] font-mono tracking-wider">POTES</span>
+      </button>
+      <button data-tab="view-wiki" class="tab-btn flex flex-col items-center gap-1 p-2 text-white/40 transition-colors w-16 relative">
+        <i data-lucide="book" class="w-5 h-5"></i>
+        <span class="text-[9px] font-mono tracking-wider">WIKI</span>
+      </button>
+      <button data-tab="view-radar" class="tab-btn flex flex-col items-center gap-1 p-2 text-white/40 transition-colors w-16">
+        <i data-lucide="map" class="w-5 h-5"></i>
+        <span class="text-[9px] font-mono tracking-wider">RADAR</span>
+      </button>
+      <button data-tab="view-profile" class="tab-btn flex flex-col items-center gap-1 p-2 text-white/40 transition-colors w-16">
+        <i data-lucide="shield" class="w-5 h-5"></i>
+        <span class="text-[9px] font-mono tracking-wider">PROFIL</span>
+      </button>
+    </nav>
+
+    <!-- MODAL ATTACHMENT OPTIONS -->
+    <div id="sheet-attach" class="fixed inset-x-0 bottom-0 max-w-md mx-auto z-50 transform translate-y-full transition-transform duration-300">
+      <div class="glass-panel rounded-t-3xl border-t border-white/20 p-5 space-y-4 bg-black/95 backdrop-blur-2xl">
+        <div class="w-12 h-1 bg-white/20 rounded-full mx-auto"></div>
+        <div class="flex justify-between items-center">
+          <h3 class="text-xs font-bold text-white uppercase tracking-wider">Options du Message</h3>
+          <button class="btn-close-sheet text-white/50 p-1"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <label class="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-emerald-500/50 flex flex-col gap-2 cursor-pointer active:scale-95 transition-all">
+            <i data-lucide="image" class="w-6 h-6 text-emerald-400"></i>
+            <div>
+              <div class="text-xs font-bold text-white">Photo / Fichier</div>
+              <div class="text-[9px] text-white/50">Compression optimisée</div>
+            </div>
+            <input type="file" id="file-input-hidden" class="hidden" accept="image/*">
+          </label>
+          <button type="button" id="btn-option-location" class="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-cyan-500/50 flex flex-col gap-2 text-left active:scale-95 transition-all">
+            <i data-lucide="map-pin" class="w-6 h-6 text-cyan-400"></i>
+            <div>
+              <div class="text-xs font-bold text-white">Position GPS</div>
+              <div class="text-[9px] text-white/50">Envoyer ma position</div>
+            </div>
+          </button>
+          <button type="button" id="btn-option-timer" class="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-rose-500/50 flex flex-col gap-2 text-left active:scale-95 transition-all">
+            <i data-lucide="timer" class="w-6 h-6 text-rose-400"></i>
+            <div>
+              <div class="text-xs font-bold text-white">Auto-Destruction</div>
+              <div class="text-[9px] text-white/50">Chrono 10 secondes</div>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: AJOUTER UN CONTACT -->
+    <div id="modal-add-contact" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 hidden">
+      <div class="glass-panel p-5 rounded-3xl border border-cyan-500/40 text-left space-y-4 max-w-xs w-full">
+        <div class="flex justify-between items-center">
+          <h3 class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+            <i data-lucide="user-plus" class="w-4 h-4 text-cyan-400"></i> Ajouter un Contact
+          </h3>
+          <button id="btn-close-add-contact" class="text-white/60 hover:text-white p-1"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        <div class="space-y-3">
+          <input type="text" id="input-contact-alias" placeholder="Surnom du contact..." class="w-full bg-black/50 border border-white/20 rounded-xl px-3 py-2 text-xs font-sans text-white focus:outline-none focus:border-cyan-500">
+          <textarea id="input-contact-pubkey" placeholder="Clé Publique (Base64 SPKI) ou Fingerprint..." class="w-full h-24 bg-black/50 border border-white/20 rounded-xl px-3 py-2 text-[10px] font-mono text-white focus:outline-none focus:border-cyan-500 resize-none"></textarea>
+        </div>
+        <button id="btn-confirm-add-contact" class="w-full py-2.5 rounded-xl bg-cyan-500 text-black font-bold text-xs uppercase active:scale-95 transition-all">Enregistrer</button>
+      </div>
+    </div>
+
+    <!-- MODAL: NOUVEAU SALON -->
+    <div id="modal-new-group" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 hidden">
+      <div class="glass-panel p-5 rounded-3xl border border-emerald-500/40 text-left space-y-4 max-w-xs w-full">
+        <div class="flex justify-between items-center">
+          <h3 class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+            <i data-lucide="folder-plus" class="w-4 h-4 text-emerald-400"></i> Nouveau Salon
+          </h3>
+          <button id="btn-close-new-group" class="text-white/60 hover:text-white p-1"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        <input type="text" id="input-group-name" placeholder="Nom du salon (ex: tactique)..." class="w-full bg-black/50 border border-white/20 rounded-xl px-3 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-emerald-500">
+        <button id="btn-confirm-new-group" class="w-full py-2.5 rounded-xl bg-emerald-500 text-black font-bold text-xs uppercase active:scale-95 transition-all">Créer</button>
+      </div>
+    </div>
+
+    <!-- MODAL: WIKI EDITOR -->
+    <div id="modal-wiki-editor" class="fixed inset-0 z-50 bg-black flex flex-col hidden">
+      <header class="p-3.5 glass-panel flex items-center justify-between border-b border-white/10">
+        <div class="flex items-center gap-2 text-emerald-400">
+          <i data-lucide="edit-2" class="w-5 h-5"></i>
+          <span class="text-xs font-bold uppercase tracking-widest text-white">Créer un Article Wiki</span>
+        </div>
+        <div class="flex gap-2">
+          <button id="btn-close-wiki" class="p-2 text-white/50 hover:text-white bg-white/5 rounded-lg"><i data-lucide="x" class="w-4 h-4"></i></button>
+          <button id="btn-save-wiki" class="px-3 py-1.5 bg-emerald-500 text-black text-xs font-bold rounded-lg active:scale-95">Publier Réseau</button>
+        </div>
+      </header>
+      <div class="flex-1 flex flex-col p-4 space-y-4">
+        <input type="text" id="wiki-title" placeholder="Titre de l'article..." class="w-full bg-transparent border-b border-white/20 text-lg font-bold text-white focus:border-emerald-500 focus:outline-none py-2 font-sans">
+        <input type="text" id="wiki-tags" placeholder="#radio, #survie..." class="w-full bg-transparent border-b border-white/20 text-xs font-mono text-emerald-400 focus:border-emerald-500 focus:outline-none py-1">
+        <textarea id="wiki-content" placeholder="Rédigez en Markdown..." class="flex-1 w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-mono text-white focus:outline-none focus:border-emerald-500/50 resize-none"></textarea>
+      </div>
+    </div>
+
+    <!-- MODAL: WIKI READER -->
+    <div id="modal-wiki-reader" class="fixed inset-0 z-50 bg-black flex flex-col hidden">
+      <header class="p-3.5 glass-panel flex items-center justify-between border-b border-white/10 shrink-0">
+        <div class="flex items-center gap-2">
+          <button id="btn-close-wiki-reader" class="p-2 text-white/60 hover:text-white"><i data-lucide="arrow-left" class="w-5 h-5"></i></button>
+          <span class="text-xs font-mono text-emerald-400 truncate w-40" id="reader-title-bar">...</span>
+        </div>
+      </header>
+      <div class="flex-1 overflow-y-auto bg-black p-5 relative">
+        <h1 id="reader-title" class="text-2xl font-black mb-2 text-white"></h1>
+        <div id="reader-meta" class="text-[10px] text-white/40 font-mono mb-6 pb-4 border-b border-white/10"></div>
+        <div id="reader-content" class="text-sm text-white/80 leading-relaxed space-y-4"></div>
+      </div>
+    </div>
+
+    <!-- MODAL: QR CODE -->
+    <div id="modal-qr" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 hidden">
+      <div class="glass-panel p-6 rounded-3xl border border-amber-500/40 text-center space-y-4 max-w-[280px] w-full">
+        <div class="flex justify-between items-center">
+          <h3 class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+            <i data-lucide="qr-code" class="w-4 h-4 text-amber-400"></i> Mon QR d'invitation
+          </h3>
+          <button id="btn-close-qr" class="text-white/60 hover:text-white p-1"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        <div class="p-3 bg-white rounded-2xl flex justify-center items-center mx-auto w-fit">
+          <div id="qrcode-canvas"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: GPS SHARE MULTI -->
+    <div id="modal-gps-share" class="fixed inset-0 z-[60] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 hidden">
+      <div class="glass-panel p-5 rounded-3xl border border-cyan-500/40 text-left space-y-4 max-w-xs w-full">
+        <div class="flex justify-between items-center">
+          <h3 class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+            <i data-lucide="navigation" class="w-4 h-4 text-cyan-400"></i> Transmettre Position
+          </h3>
+          <button id="btn-close-gps-share" class="text-white/60 hover:text-white p-1"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        <p class="text-[10px] text-white/60">Transmet instantanément votre position GPS aux membres connectés sur le radar.</p>
+        <button id="btn-start-gps-share" class="w-full py-2.5 rounded-2xl bg-cyan-500 text-black font-bold text-xs uppercase active:scale-95">Transmettre Ma Position</button>
+      </div>
+    </div>
+
+    <!-- MODAL: IMAGE PREVIEW -->
+    <div id="modal-image-preview" class="fixed inset-0 z-[70] bg-black/95 backdrop-blur-xl flex items-center justify-center p-2 hidden">
+      <button id="btn-close-img-preview" class="absolute top-6 right-6 p-2 text-white/60 hover:text-white bg-white/10 rounded-full"><i data-lucide="x" class="w-6 h-6"></i></button>
+      <img id="img-preview-target" class="max-w-full max-h-[85vh] rounded-xl object-contain">
+    </div>
+
+    <!-- MODAL: PANIC CONFIRM -->
+    <div id="modal-panic-confirm" class="fixed inset-0 z-[80] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 hidden">
+      <div class="glass-panel p-6 rounded-3xl border border-rose-600 shadow-[0_0_50px_rgba(225,29,72,0.4)] text-center space-y-5 max-w-[280px] w-full">
+        <div class="w-16 h-16 mx-auto rounded-full bg-rose-500/20 flex items-center justify-center">
+          <i data-lucide="zap" class="w-8 h-8 text-rose-500"></i>
+        </div>
+        <div>
+          <h3 class="text-sm font-bold text-white uppercase tracking-wider">Purge de Sécurité</h3>
+          <p class="text-[10px] text-white/60 mt-2">Ceci effacera irrémédiablement vos identités, vos clés chiffrées et l'historique.</p>
+        </div>
+        <div class="flex gap-2">
+          <button id="btn-cancel-panic" class="flex-1 py-2.5 rounded-xl glass-panel text-xs text-white">Annuler</button>
+          <button id="btn-confirm-panic" class="flex-1 py-2.5 rounded-xl bg-rose-600 text-white font-bold text-xs uppercase shadow-lg">Purger</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast" class="fixed top-16 left-1/2 transform -translate-x-1/2 z-[100] glass-panel px-4 py-2 rounded-2xl text-xs font-mono text-emerald-400 border border-emerald-500/40 transition-all opacity-0 pointer-events-none shadow-[0_0_20px_rgba(16,185,129,0.3)] flex items-center gap-2">
+      <i data-lucide="check-circle" class="w-4 h-4"></i>
+      <span id="toast-text">Succès</span>
+    </div>
+
+  </div>
+
+  <!-- SCRIPT BASE DE DONNÉES TEMPS RÉEL FIREBASE -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    /* ==========================================================================
+       1. CRYPTOGRAPHIE ECDH + AES-GCM (SECU DE BOUT EN BOUT)
+       ========================================================================== */
+    class BitCrypto {
+      static async generateKeyPair() {
+        return await window.crypto.subtle.generateKey(
+          { name: "ECDH", namedCurve: "P-256" },
+          true,
+          ["deriveKey", "deriveBits"]
+        );
+      }
+
+      static async exportPubKey(pubKey) {
+        const exported = await window.crypto.subtle.exportKey("spki", pubKey);
+        return btoa(String.fromCharCode(...new Uint8Array(exported)));
+      }
+
+      static async importPubKey(spkiB64) {
+        const bin = Uint8Array.from(atob(spkiB64), c => c.charCodeAt(0));
+        return await window.crypto.subtle.importKey(
+          "spki",
+          bin.buffer,
+          { name: "ECDH", namedCurve: "P-256" },
+          true,
+          []
+        );
+      }
+
+      static async exportPrivKey(privKey) {
+        const exported = await window.crypto.subtle.exportKey("pkcs8", privKey);
+        return btoa(String.fromCharCode(...new Uint8Array(exported)));
+      }
+
+      static async importPrivKey(pkcs8B64) {
+        const bin = Uint8Array.from(atob(pkcs8B64), c => c.charCodeAt(0));
+        return await window.crypto.subtle.importKey(
+          "pkcs8",
+          bin.buffer,
+          { name: "ECDH", namedCurve: "P-256" },
+          true,
+          ["deriveKey", "deriveBits"]
+        );
+      }
+
+      static async deriveSharedAESKey(privateKey, foreignPublicKey) {
+        return await window.crypto.subtle.deriveKey(
+          { name: "ECDH", public: foreignPublicKey },
+          privateKey,
+          { name: "AES-GCM", length: 256 },
+          false,
+          ["encrypt", "decrypt"]
+        );
+      }
+
+      static async deriveGroupAESKey(channelName) {
+        const enc = new TextEncoder();
+        const baseKey = await window.crypto.subtle.importKey("raw", enc.encode("bitweb-chan-" + channelName), "PBKDF2", false, ["deriveKey"]);
+        return await window.crypto.subtle.deriveKey(
+          { name: "PBKDF2", salt: enc.encode("bitweb-salt-v10"), iterations: 100000, hash: "SHA-256" },
+          baseKey,
+          { name: "AES-GCM", length: 256 },
+          false,
+          ["encrypt", "decrypt"]
+        );
+      }
+
+      static async encrypt(aesKey, payload) {
+        const enc = new TextEncoder();
+        const iv = window.crypto.getRandomValues(new Uint8Array(12));
+        const cipherBuf = await window.crypto.subtle.encrypt(
+          { name: "AES-GCM", iv },
+          aesKey,
+          enc.encode(JSON.stringify(payload))
+        );
+        return {
+          cipherB64: btoa(String.fromCharCode(...new Uint8Array(cipherBuf))),
+          ivB64: btoa(String.fromCharCode(...new Uint8Array(iv)))
+        };
+      }
+
+      static async decrypt(aesKey, cipherB64, ivB64) {
+        const cipherBuf = Uint8Array.from(atob(cipherB64), c => c.charCodeAt(0)).buffer;
+        const ivBuf = Uint8Array.from(atob(ivB64), c => c.charCodeAt(0)).buffer;
+        const decBuf = await window.crypto.subtle.decrypt(
+          { name: "AES-GCM", iv: ivBuf },
+          aesKey,
+          cipherBuf
+        );
+        return JSON.parse(new TextDecoder().decode(decBuf));
+      }
+
+      static async getFingerprint(spkiB64) {
+        const enc = new TextEncoder();
+        const hash = await window.crypto.subtle.digest("SHA-256", enc.encode(spkiB64));
+        return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 8).toUpperCase();
+      }
+    }
+
+    /* ==========================================================================
+       2. REPERTOIRE LOCAL & STOCKAGE
+       ========================================================================== */
+    class BitStore {
+      static get(key, def = null) {
+        try {
+          const item = localStorage.getItem('bw10_' + key);
+          return item ? JSON.parse(item) : def;
+        } catch(e) { return def; }
+      }
+      static set(key, val) {
+        try { localStorage.setItem('bw10_' + key, JSON.stringify(val)); } catch(e) {}
+      }
+      static purge() {
+        localStorage.clear();
+        window.location.reload();
+      }
+    }
+
+    /* ==========================================================================
+       3. APPLICATION & INITIALISATION TEMPS REEL
+       ========================================================================== */
+    document.addEventListener('DOMContentLoaded', async () => {
+      let keyPair = null;
+      let myPubKeyB64 = "";
+      let myPrivKeyB64 = "";
+      let myFp = "";
+      let myAlias = BitStore.get('my_alias', "Squad-" + Math.floor(1000 + Math.random() * 9000));
+
+      // Gestion Identité Cryptographique Persistante
+      const savedKeys = BitStore.get('my_crypto_keys', null);
+      if (savedKeys && savedKeys.pubB64 && savedKeys.privB64) {
+        try {
+          myPubKeyB64 = savedKeys.pubB64;
+          myPrivKeyB64 = savedKeys.privB64;
+          myFp = savedKeys.fp;
+          const pub = await BitCrypto.importPubKey(myPubKeyB64);
+          const priv = await BitCrypto.importPrivKey(myPrivKeyB64);
+          keyPair = { publicKey: pub, privateKey: priv };
+        } catch(e) {
+          await generateIdentity();
+        }
+      } else {
+        await generateIdentity();
+      }
+
+      async function generateIdentity() {
+        keyPair = await BitCrypto.generateKeyPair();
+        myPubKeyB64 = await BitCrypto.exportPubKey(keyPair.publicKey);
+        myPrivKeyB64 = await BitCrypto.exportPrivKey(keyPair.privateKey);
+        myFp = await BitCrypto.getFingerprint(myPubKeyB64);
+        BitStore.set('my_crypto_keys', { pubB64: myPubKeyB64, privB64: myPrivKeyB64, fp: myFp });
+      }
+
+      // Initialisation Interface Profil
+      document.getElementById('profile-alias-display').textContent = myAlias;
+      document.getElementById('profile-fp').textContent = myFp;
+      document.getElementById('profile-pubkey').value = myPubKeyB64;
+
+      // Variables d'état
+      let activeChannel = "global";
+      let savedHistory = BitStore.get('chat_history', []);
+      let savedGroups = BitStore.get('saved_groups', ['global']);
+      let savedContacts = BitStore.get('saved_contacts', []);
+      let savedWikis = BitStore.get('saved_wikis', [
+        { id: 'w1', title: 'Guide de Survie Mesh V10', tags: '#survie #radio', content: '### Protocole Mesh V10\n1. Communications E2EE automatiques.\n2. Partage GPS sécurisé.\n3. Synchronisation Wiki temps réel.', timestamp: Date.now() }
+      ]);
+
+      const onlinePeers = new Map();
+      let activeDestruct = null, activeLocation = null, activeAttachment = null, isSOSActive = false;
+      let map = null;
+      const mapMarkers = new Map();
+
+      const messagesFeed = document.getElementById('messages-feed');
+      const chatForm = document.getElementById('chat-form');
+      const messageInput = document.getElementById('message-input');
+
+      lucide.createIcons();
+
+      // Setup Firebase
+      const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "demo", authDomain: "demo", projectId: "demo" };
+      const appId = typeof __app_id !== 'undefined' ? __app_id : 'bitweb-mesh-v10';
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+
+      // Authentification
+      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+        await signInWithCustomToken(auth, __initial_auth_token);
+      } else {
+        await signInAnonymously(auth);
+      }
+
+      onAuthStateChanged(auth, (user) => {
+        if (!user) return;
+        
+        // Dynamic Collections
+        const msgsCol = collection(db, 'artifacts', appId, 'public', 'data', 'messages_v10');
+        const presenceCol = collection(db, 'artifacts', appId, 'public', 'data', 'presence_v10');
+        const wikisCol = collection(db, 'artifacts', appId, 'public', 'data', 'wikis_v10');
+
+        // Envoi Signal Présence
+        async function pulsePresence() {
+          try {
+            await addDoc(presenceCol, {
+              fp: myFp,
+              alias: myAlias,
+              pubKey: myPubKeyB64,
+              timestamp: Date.now()
+            });
+          } catch(e) {}
+        }
+        pulsePresence();
+        setInterval(pulsePresence, 15000);
+
+        // Ecoute Présence
+        onSnapshot(presenceCol, (snapshot) => {
+          const now = Date.now();
+          snapshot.docChanges().forEach(change => {
+            if (change.type === "added") {
+              const data = change.doc.data();
+              if (data.fp !== myFp && (now - data.timestamp < 35000)) {
+                onlinePeers.set(data.fp, { alias: data.alias, pubKey: data.pubKey, lastSeen: data.timestamp });
+              }
+            }
+          });
+          renderOnlinePeers();
+        }, (err) => {});
+
+        // Ecoute Wiki
+        onSnapshot(wikisCol, (snapshot) => {
+          snapshot.docChanges().forEach(change => {
+            if (change.type === "added") {
+              const article = change.doc.data().article;
+              if (article) {
+                const idx = savedWikis.findIndex(w => w.id === article.id);
+                if (idx === -1) {
+                  savedWikis.push(article);
+                  BitStore.set('saved_wikis', savedWikis);
+                  renderWikiUI();
+                }
+              }
+            }
+          });
+        }, (err) => {});
+
+        // Ecoute Messages Temps Réel
+        const processedMsgIds = new Set();
+        onSnapshot(msgsCol, async (snapshot) => {
+          for (const change of snapshot.docChanges()) {
+            if (change.type === "added") {
+              const raw = change.doc.data();
+              if (processedMsgIds.has(change.doc.id) || raw.senderFp === myFp) continue;
+              processedMsgIds.add(change.doc.id);
+
+              try {
+                if (raw.isDM) {
+                  if (raw.targetFp === myFp) {
+                    const foreignPub = await BitCrypto.importPubKey(raw.senderPubKey);
+                    const aesKey = await BitCrypto.deriveSharedAESKey(keyPair.privateKey, foreignPub);
+                    const decrypted = await BitCrypto.decrypt(aesKey, raw.cipherB64, raw.ivB64);
+
+                    const msgObj = {
+                      msgId: change.doc.id,
+                      senderFp: raw.senderFp,
+                      senderAlias: raw.senderAlias,
+                      senderPubKey: raw.senderPubKey,
+                      isDM: true,
+                      targetFp: raw.targetFp,
+                      channel: `dm-${raw.senderFp}`,
+                      text: decrypted.text,
+                      isSOS: decrypted.isSOS,
+                      destruct: decrypted.destruct,
+                      location: decrypted.location,
+                      attachment: decrypted.attachment,
+                      timestamp: decrypted.timestamp || new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
+                    };
+
+                    if (!savedContacts.some(c => c.fp === raw.senderFp)) {
+                      savedContacts.push({ fp: raw.senderFp, alias: raw.senderAlias, pubKey: raw.senderPubKey });
+                      BitStore.set('saved_contacts', savedContacts);
+                      renderContactsUI();
+                    }
+
+                    const dmChan = `dm-${raw.senderFp}`;
+                    if (!savedGroups.includes(dmChan)) {
+                      savedGroups.push(dmChan);
+                      BitStore.set('saved_groups', savedGroups);
+                      renderGroupsUI();
+                    }
+
+                    savedHistory.push(msgObj);
+                    BitStore.set('chat_history', savedHistory);
+
+                    if (activeChannel === dmChan) {
+                      renderMessageDOM(msgObj, false);
+                    } else {
+                      showToast(`Nouveau DM de ${raw.senderAlias}`);
+                    }
+
+                    if (decrypted.location) {
+                      updateMapMarker(raw.senderFp, raw.senderAlias, decrypted.location);
+                    }
+                  }
+                } else if (raw.channel === activeChannel || savedGroups.includes(raw.channel)) {
+                  const groupKey = await BitCrypto.deriveGroupAESKey(raw.channel);
+                  const decrypted = await BitCrypto.decrypt(groupKey, raw.cipherB64, raw.ivB64);
+
+                  const msgObj = {
+                    msgId: change.doc.id,
+                    senderFp: raw.senderFp,
+                    senderAlias: raw.senderAlias,
+                    isDM: false,
+                    channel: raw.channel,
+                    text: decrypted.text,
+                    isSOS: decrypted.isSOS,
+                    destruct: decrypted.destruct,
+                    location: decrypted.location,
+                    attachment: decrypted.attachment,
+                    timestamp: decrypted.timestamp || new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
+                  };
+
+                  savedHistory.push(msgObj);
+                  BitStore.set('chat_history', savedHistory);
+
+                  if (activeChannel === raw.channel) {
+                    renderMessageDOM(msgObj, false);
+                  }
+
+                  if (decrypted.location) {
+                    updateMapMarker(raw.senderFp, raw.senderAlias, decrypted.location);
+                  }
+                }
+              } catch(e) {}
+            }
+          }
+        }, (err) => {});
+
+        // Envoi de Message Réseau
+        chatForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const text = messageInput.value.trim();
+          if (!text && !activeLocation && !activeAttachment && !isSOSActive) return;
+
+          const isDM = activeChannel.startsWith('dm-');
+          const targetFp = isDM ? activeChannel.replace('dm-', '') : null;
+
+          const payload = {
+            text: text || (isSOSActive ? "S.O.S. ALERTE" : ""),
+            isSOS: isSOSActive,
+            destruct: activeDestruct,
+            location: activeLocation,
+            attachment: activeAttachment,
+            timestamp: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
+          };
+
+          try {
+            let encResult = null;
+
+            if (isDM) {
+              const contact = savedContacts.find(c => c.fp === targetFp) || Array.from(onlinePeers.values()).find(p => p.fp === targetFp);
+              if (!contact || !contact.pubKey) {
+                showToast("Clé publique introuvable pour ce contact");
+                return;
+              }
+              const foreignPub = await BitCrypto.importPubKey(contact.pubKey);
+              const aesKey = await BitCrypto.deriveSharedAESKey(keyPair.privateKey, foreignPub);
+              encResult = await BitCrypto.encrypt(aesKey, payload);
+
+              await addDoc(msgsCol, {
+                isDM: true,
+                senderFp: myFp,
+                senderAlias: myAlias,
+                senderPubKey: myPubKeyB64,
+                targetFp: targetFp,
+                cipherB64: encResult.cipherB64,
+                ivB64: encResult.ivB64,
+                createdAt: Date.now()
+              });
+            } else {
+              const groupKey = await BitCrypto.deriveGroupAESKey(activeChannel);
+              encResult = await BitCrypto.encrypt(groupKey, payload);
+
+              await addDoc(msgsCol, {
+                isDM: false,
+                channel: activeChannel,
+                senderFp: myFp,
+                senderAlias: myAlias,
+                cipherB64: encResult.cipherB64,
+                ivB64: encResult.ivB64,
+                createdAt: Date.now()
+              });
+            }
+
+            const localMsg = {
+              msgId: 'local-' + Date.now(),
+              senderFp: myFp,
+              senderAlias: myAlias,
+              channel: activeChannel,
+              isDM,
+              targetFp,
+              text: payload.text,
+              isSOS: payload.isSOS,
+              destruct: payload.destruct,
+              location: payload.location,
+              attachment: payload.attachment,
+              timestamp: payload.timestamp
+            };
+
+            savedHistory.push(localMsg);
+            BitStore.set('chat_history', savedHistory);
+            renderMessageDOM(localMsg, true);
+
+            messageInput.value = '';
+            document.getElementById('status-bar-options').classList.add('hidden');
+            activeDestruct = null; activeLocation = null; activeAttachment = null; isSOSActive = false;
+
+          } catch(err) {
+            showToast("Erreur d'envoi chiffré");
+          }
+        });
+
+        // Envoi Wiki Réseau
+        document.getElementById('btn-save-wiki').onclick = async () => {
+          const title = document.getElementById('wiki-title').value.trim();
+          const content = document.getElementById('wiki-content').value.trim();
+          if (title && content) {
+            const article = { id: 'wk-' + Date.now(), title, tags: document.getElementById('wiki-tags').value || '#general', content, timestamp: Date.now() };
+            savedWikis.push(article);
+            BitStore.set('saved_wikis', savedWikis);
+            renderWikiUI();
+
+            try {
+              await addDoc(wikisCol, { article });
+            } catch(e) {}
+
+            document.getElementById('modal-wiki-editor').classList.add('hidden');
+            showToast("Article publié sur le réseau !");
+          }
+        };
+
+      });
+
+      // Rendu de l'Interface
+      function renderOnlinePeers() {
+        const list = document.getElementById('online-peers-list');
+        list.innerHTML = '';
+        if (onlinePeers.size === 0) {
+          list.innerHTML = `<div class="text-white/30 text-xs text-center py-2 font-mono">Recherche de membres actifs...</div>`;
+          return;
+        }
+        for (const [fp, data] of onlinePeers.entries()) {
+          const div = document.createElement('div');
+          div.className = "p-3 rounded-xl glass-panel flex items-center justify-between";
+          div.innerHTML = `
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span class="text-xs font-bold text-emerald-400">${escapeHTML(data.alias)}</span>
+              <span class="text-[9px] text-white/40 font-mono">FP: ${fp}</span>
+            </div>
+            <button class="btn-direct-dm text-xs font-bold px-2.5 py-1 bg-emerald-500 text-black rounded-lg active:scale-95" data-fp="${fp}" data-alias="${escapeHTML(data.alias)}" data-pub="${data.pubKey}">💬 DM</button>
+          `;
+          list.appendChild(div);
+        }
+
+        document.querySelectorAll('.btn-direct-dm').forEach(b => {
+          b.onclick = (e) => {
+            const fp = e.currentTarget.dataset.fp;
+            const alias = e.currentTarget.dataset.alias;
+            const pub = e.currentTarget.dataset.pub;
+
+            if (!savedContacts.some(c => c.fp === fp)) {
+              savedContacts.push({ fp, alias, pubKey: pub });
+              BitStore.set('saved_contacts', savedContacts);
+              renderContactsUI();
+            }
+
+            const dmChan = `dm-${fp}`;
+            if (!savedGroups.includes(dmChan)) {
+              savedGroups.push(dmChan);
+              BitStore.set('saved_groups', savedGroups);
+            }
+
+            switchChannel(dmChan);
+            document.querySelector('[data-tab="view-chats"]').click();
+          };
+        });
+      }
+
+      function switchChannel(channel) {
+        activeChannel = channel;
+        const isDM = channel.startsWith('dm-');
+        let label = isDM ? `DM: ${channel.substring(3, 8)}...` : `# ${channel.toUpperCase()}`;
+
+        if (isDM) {
+          const contact = savedContacts.find(c => `dm-${c.fp}` === channel);
+          if (contact) label = `DM: ${contact.alias}`;
+        }
+
+        document.getElementById('header-title').textContent = label;
+        messagesFeed.innerHTML = '';
+
+        savedHistory.forEach(m => {
+          if (isDM) {
+            const targetFp = channel.replace('dm-', '');
+            if ((m.isDM && m.senderFp === targetFp) || (m.isDM && m.targetFp === targetFp && m.senderFp === myFp)) {
+              renderMessageDOM(m, m.senderFp === myFp);
+            }
+          } else if (m.channel === channel) {
+            renderMessageDOM(m, m.senderFp === myFp);
+          }
+        });
+
+        renderGroupsUI();
+      }
+
+      function renderGroupsUI() {
+        const list = document.getElementById('groups-list');
+        list.innerHTML = '';
+        savedGroups.forEach(g => {
+          const btn = document.createElement('button');
+          const isDM = g.startsWith('dm-');
+          let label = isDM ? `DM: ${g.substring(3, 8)}...` : `# ${g}`;
+
+          if (isDM) {
+            const contact = savedContacts.find(c => `dm-${c.fp}` === g);
+            if (contact) label = `DM: ${contact.alias}`;
+          }
+
+          const isActive = (g === activeChannel);
+          btn.className = `p-3 rounded-2xl glass-panel text-left font-mono text-xs flex justify-between items-center transition-all ${isActive ? 'border-emerald-500/50 text-emerald-400 font-bold' : 'text-white/70'}`;
+          btn.innerHTML = `<span>${escapeHTML(label)}</span>`;
+          btn.onclick = () => {
+            switchChannel(g);
+            document.querySelector('[data-tab="view-chats"]').click();
+          };
+          list.appendChild(btn);
+        });
+      }
+
+      function renderContactsUI() {
+        const list = document.getElementById('contacts-list');
+        list.innerHTML = '';
+        if (savedContacts.length === 0) {
+          list.innerHTML = `<div class="text-white/30 text-xs text-center py-4">Aucun contact dans le carnet.</div>`;
+          return;
+        }
+        savedContacts.forEach(c => {
+          const div = document.createElement('div');
+          div.className = "p-3 rounded-xl glass-panel flex items-center justify-between";
+          div.innerHTML = `
+            <div>
+              <div class="text-emerald-400 font-bold text-xs">${escapeHTML(c.alias)}</div>
+              <div class="text-[9px] text-white/40 font-mono">FP: ${c.fp}</div>
+            </div>
+            <button class="btn-launch-dm text-cyan-400 bg-cyan-500/10 p-2 rounded-lg border border-cyan-500/20" data-fp="${c.fp}"><i data-lucide="message-circle" class="w-4 h-4"></i></button>
+          `;
+          list.appendChild(div);
+        });
+
+        document.querySelectorAll('.btn-launch-dm').forEach(b => {
+          b.onclick = (e) => {
+            const fp = e.currentTarget.dataset.fp;
+            const dmChan = `dm-${fp}`;
+            if (!savedGroups.includes(dmChan)) {
+              savedGroups.push(dmChan);
+              BitStore.set('saved_groups', savedGroups);
+            }
+            switchChannel(dmChan);
+            document.querySelector('[data-tab="view-chats"]').click();
+          };
+        });
+        lucide.createIcons();
+      }
+
+      function renderWikiUI() {
+        const list = document.getElementById('wiki-list');
+        list.innerHTML = '';
+        savedWikis.forEach(w => {
+          const div = document.createElement('div');
+          div.className = "p-4 bg-white/5 border border-white/10 rounded-2xl cursor-pointer hover:border-emerald-500/40 transition-colors";
+          div.innerHTML = `<h4 class="text-sm font-bold text-emerald-400 mb-1">${escapeHTML(w.title)}</h4><p class="text-[10px] text-white/40 font-mono">${escapeHTML(w.tags)}</p>`;
+          div.onclick = () => {
+            document.getElementById('reader-title-bar').textContent = w.title;
+            document.getElementById('reader-title').textContent = w.title;
+            document.getElementById('reader-meta').textContent = `${w.tags} • Synchro P2P OK`;
+            const cleanMD = typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(w.content) : w.content;
+            document.getElementById('reader-content').innerHTML = typeof marked !== 'undefined' ? marked.parse(cleanMD) : cleanMD;
+            document.getElementById('modal-wiki-reader').classList.remove('hidden');
+          };
+          list.appendChild(div);
+        });
+      }
+
+      function renderMessageDOM(msg, isSelf) {
+        const wrapper = document.createElement('div');
+        wrapper.className = `flex flex-col ${isSelf ? 'items-end' : 'items-start'} my-2 space-y-1`;
+
+        let bubbleClass = isSelf ? 'glass-bubble-self text-white' : 'glass-bubble-peer text-white/90';
+        if (msg.isSOS) bubbleClass = 'glass-bubble-sos text-white';
+
+        let extra = '';
+        if (msg.location) {
+          extra += `<div class="mt-2 p-2 rounded-xl bg-cyan-950/60 border border-cyan-500/40 text-[10px] text-cyan-300 flex items-center gap-1.5"><i data-lucide="map-pin" class="w-3.5 h-3.5"></i> Pos GPS: ${msg.location.lat.toFixed(3)}, ${msg.location.lng.toFixed(3)}</div>`;
+        }
+        if (msg.attachment && msg.attachment.data) {
+          extra += `<img src="${msg.attachment.data}" class="mt-2 max-w-[200px] rounded-xl border border-white/20 cursor-pointer img-expandable">`;
+        }
+
+        let destruct = msg.destruct ? `<span class="text-[9px] text-rose-400 font-mono ml-2">(Auto-destruction: <span class="timer-val">${msg.destruct}s</span>)</span>` : '';
+
+        wrapper.innerHTML = `
+          <div class="flex items-center gap-1.5 text-[9px] text-white/40 font-mono px-2">
+            <span class="${isSelf ? 'text-emerald-400' : 'text-cyan-400'} font-bold">${escapeHTML(msg.senderAlias || 'Pair')}</span>
+            <span>• ${msg.timestamp || ''}</span>
+            ${destruct}
+          </div>
+          <div class="max-w-[85%] p-3 rounded-2xl text-xs ${bubbleClass} leading-relaxed break-words shadow-lg">
+            ${msg.isSOS ? '<strong class="text-rose-400 flex items-center gap-1 mb-1"><i data-lucide="alert-octagon" class="w-4 h-4"></i> ALERTE S.O.S.</strong>' : ''}
+            ${escapeHTML(msg.text || '')}
+            ${extra}
+          </div>
+        `;
+
+        const imgEl = wrapper.querySelector('.img-expandable');
+        if (imgEl) {
+          imgEl.onclick = () => {
+            document.getElementById('img-preview-target').src = msg.attachment.data;
+            document.getElementById('modal-image-preview').classList.remove('hidden');
+          };
+        }
+
+        messagesFeed.appendChild(wrapper);
+        messagesFeed.scrollTop = messagesFeed.scrollHeight;
+        lucide.createIcons();
+
+        if (msg.destruct) {
+          let s = parseInt(msg.destruct);
+          const tSpan = wrapper.querySelector('.timer-val');
+          const inv = setInterval(() => {
+            s--;
+            if (tSpan) tSpan.textContent = `${s}s`;
+            if (s <= 0) { clearInterval(inv); wrapper.remove(); }
+          }, 1000);
+        }
+      }
+
+      // Carte Radar
+      function initMap() {
+        if (map) return;
+        map = L.map('map-container').setView([46.8182, 8.2275], 7);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+          maxZoom: 19,
+          attribution: '&copy; OpenStreetMap'
+        }).addTo(map);
+      }
+
+      function updateMapMarker(fp, alias, coords) {
+        initMap();
+        if (!map) return;
+        const latLng = [coords.lat, coords.lng];
+        if (mapMarkers.has(fp)) {
+          mapMarkers.get(fp).setLatLng(latLng);
+        } else {
+          const m = L.circleMarker(latLng, { color: '#00f0ff', fillColor: '#00f0ff', fillOpacity: 0.9, radius: 8 }).addTo(map).bindPopup(`<b>${escapeHTML(alias)}</b>`);
+          mapMarkers.set(fp, m);
+        }
+        map.setView(latLng, 12);
+        document.getElementById('radar-peers-count').textContent = `${mapMarkers.size} POSITIONS DÉTECTÉES`;
+      }
+
+      // Navigation Onglets
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('text-emerald-400'); b.classList.add('text-white/40'); });
+          btn.classList.add('text-emerald-400'); btn.classList.remove('text-white/40');
+          
+          document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'));
+          const target = document.getElementById(btn.dataset.tab);
+          if (target) target.classList.add('active');
+
+          if (btn.dataset.tab === 'view-radar') {
+            setTimeout(() => {
+              initMap();
+              if (map) map.invalidateSize();
+            }, 100);
+          }
+        });
+      });
+
+      // Modals Handlers
+      document.getElementById('btn-open-attach').onclick = () => document.getElementById('sheet-attach').classList.remove('translate-y-full');
+      document.querySelectorAll('.btn-close-sheet').forEach(b => b.onclick = () => document.getElementById('sheet-attach').classList.add('translate-y-full'));
+
+      document.getElementById('file-input-hidden').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        document.getElementById('sheet-attach').classList.add('translate-y-full');
+
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let w = img.width, h = img.height;
+            const max = 500;
+            if (w > max || h > max) {
+              if (w > h) { h = Math.round(h * max / w); w = max; }
+              else { w = Math.round(w * max / h); h = max; }
+            }
+            canvas.width = w; canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            activeAttachment = { name: file.name, type: 'image/jpeg', data: canvas.toDataURL('image/jpeg', 0.6) };
+            showOptionBar("Photo prête", "image");
+          };
+          img.src = evt.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+
+      document.getElementById('btn-option-location').onclick = () => {
+        document.getElementById('sheet-attach').classList.add('translate-y-full');
+        if ("geolocation" in navigator) {
+          navigator.geolocation.getCurrentPosition(pos => {
+            activeLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            showOptionBar("Position GPS jointe", "map-pin");
+          });
+        }
+      };
+
+      document.getElementById('btn-option-timer').onclick = () => {
+        document.getElementById('sheet-attach').classList.add('translate-y-full');
+        activeDestruct = 10;
+        showOptionBar("Auto-destruction: 10s", "timer");
+      };
+
+      document.getElementById('btn-trigger-sos').onclick = () => {
+        isSOSActive = true;
+        if ("geolocation" in navigator) {
+          navigator.geolocation.getCurrentPosition(pos => {
+            activeLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            showOptionBar("S.O.S. ALERTE DE TRESSE", "alert-triangle");
+          });
+        } else {
+          showOptionBar("S.O.S. ALERTE DE TRESSE", "alert-triangle");
+        }
+      };
+
+      function showOptionBar(text, icon) {
+        const bar = document.getElementById('status-bar-options');
+        bar.classList.remove('hidden');
+        document.getElementById('status-option-text').textContent = text;
+        document.getElementById('status-option-icon').setAttribute('data-lucide', icon);
+        lucide.createIcons();
+      }
+
+      document.getElementById('btn-clear-options').onclick = () => {
+        activeDestruct = null; activeLocation = null; activeAttachment = null; isSOSActive = false;
+        document.getElementById('status-bar-options').classList.add('hidden');
+      };
+
+      document.getElementById('btn-new-group').onclick = () => document.getElementById('modal-new-group').classList.remove('hidden');
+      document.getElementById('btn-close-new-group').onclick = () => document.getElementById('modal-new-group').classList.add('hidden');
+      document.getElementById('btn-confirm-new-group').onclick = () => {
+        const name = document.getElementById('input-group-name').value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
+        if (name && !savedGroups.includes(name)) {
+          savedGroups.push(name);
+          BitStore.set('saved_groups', savedGroups);
+          renderGroupsUI();
+          document.getElementById('modal-new-group').classList.add('hidden');
+          document.getElementById('input-group-name').value = '';
+        }
+      };
+
+      document.getElementById('btn-add-contact').onclick = () => document.getElementById('modal-add-contact').classList.remove('hidden');
+      document.getElementById('btn-close-add-contact').onclick = () => document.getElementById('modal-add-contact').classList.add('hidden');
+      document.getElementById('btn-confirm-add-contact').onclick = async () => {
+        const alias = document.getElementById('input-contact-alias').value.trim() || "Contact";
+        const pubKey = document.getElementById('input-contact-pubkey').value.trim();
+        if (pubKey) {
+          try {
+            const fp = pubKey.length === 8 ? pubKey : await BitCrypto.getFingerprint(pubKey);
+            if (!savedContacts.some(c => c.fp === fp)) {
+              savedContacts.push({ fp, alias, pubKey });
+              BitStore.set('saved_contacts', savedContacts);
+              renderContactsUI();
+              showToast("Contact ajouté !");
+            }
+            document.getElementById('modal-add-contact').classList.add('hidden');
+          } catch(e) {
+            showToast("Format de clé invalide");
+          }
+        }
+      };
+
+      document.getElementById('btn-scan-qr').onclick = () => {
+        const payload = { alias: myAlias, fp: myFp, pubKey: myPubKeyB64 };
+        document.getElementById('qrcode-canvas').innerHTML = '';
+        new QRCode(document.getElementById('qrcode-canvas'), { text: JSON.stringify(payload), width: 150, height: 150 });
+        document.getElementById('modal-qr').classList.remove('hidden');
+      };
+      document.getElementById('btn-close-qr').onclick = () => document.getElementById('modal-qr').classList.add('hidden');
+
+      document.getElementById('btn-open-gps-share').onclick = () => document.getElementById('modal-gps-share').classList.remove('hidden');
+      document.getElementById('btn-close-gps-share').onclick = () => document.getElementById('modal-gps-share').classList.add('hidden');
+      document.getElementById('btn-start-gps-share').onclick = () => {
+        if ("geolocation" in navigator) {
+          navigator.geolocation.getCurrentPosition(pos => {
+            const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            updateMapMarker(myFp, myAlias + " (Moi)", coords);
+            document.getElementById('modal-gps-share').classList.add('hidden');
+            showToast("Position transmise aux membres");
+          });
+        }
+      };
+
+      document.getElementById('btn-new-wiki').onclick = () => document.getElementById('modal-wiki-editor').classList.remove('hidden');
+      document.getElementById('btn-close-wiki').onclick = () => document.getElementById('modal-wiki-editor').classList.add('hidden');
+      document.getElementById('btn-close-wiki-reader').onclick = () => document.getElementById('modal-wiki-reader').classList.add('hidden');
+      document.getElementById('btn-close-img-preview').onclick = () => document.getElementById('modal-image-preview').classList.add('hidden');
+
+      document.getElementById('btn-copy-fp').onclick = () => {
+        navigator.clipboard.writeText(myFp);
+        showToast("Fingerprint copié !");
+      };
+
+      document.getElementById('btn-panic-purge').onclick = () => document.getElementById('modal-panic-confirm').classList.remove('hidden');
+      document.getElementById('btn-cancel-panic').onclick = () => document.getElementById('modal-panic-confirm').classList.add('hidden');
+      document.getElementById('btn-confirm-panic').onclick = () => BitStore.purge();
+
+      function showToast(txt) {
+        const toast = document.getElementById('toast');
+        document.getElementById('toast-text').textContent = txt;
+        toast.classList.remove('opacity-0', 'pointer-events-none');
+        setTimeout(() => toast.classList.add('opacity-0', 'pointer-events-none'), 2200);
+      }
+
+      function escapeHTML(str) {
+        return (str || '').replace(/[&<>'"]/g, t => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[t] || t));
+      }
+
+      // Initialisation globale
+      renderGroupsUI();
+      renderContactsUI();
+      renderWikiUI();
+      savedHistory.forEach(m => {
+        if (m.channel === activeChannel) renderMessageDOM(m, m.senderFp === myFp);
+      });
+
+    });
+  </script>
+</body>
+</html>
