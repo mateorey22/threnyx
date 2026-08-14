@@ -116,8 +116,8 @@
     .markdown-body p { margin-bottom: 0.75rem; font-size: 0.825rem; line-height: 1.6; color: #e2e8f0; }
     .markdown-body ul { list-style-type: disc; padding-left: 1.25rem; margin-bottom: 0.75rem; font-size: 0.825rem; }
     .markdown-body ol { list-style-type: decimal; padding-left: 1.25rem; margin-bottom: 0.75rem; font-size: 0.825rem; }
-    .markdown-body code { background: rgba(255,255,255,0.1); padding: 0.1rem 0.3rem; rounded: 0.25rem; font-family: monospace; font-size: 0.75rem; color: #34d399; }
-    .markdown-body pre { background: rgba(0,0,0,0.6); padding: 0.75rem; rounded: 0.75rem; overflow-x: auto; margin-bottom: 0.75rem; border: 1px solid rgba(255,255,255,0.1); }
+    .markdown-body code { background: rgba(255,255,255,0.1); padding: 0.1rem 0.3rem; border-radius: 0.25rem; font-family: monospace; font-size: 0.75rem; color: #34d399; }
+    .markdown-body pre { background: rgba(0,0,0,0.6); padding: 0.75rem; border-radius: 0.75rem; overflow-x: auto; margin-bottom: 0.75rem; border: 1px solid rgba(255,255,255,0.1); }
     .markdown-body pre code { background: transparent; padding: 0; }
     .markdown-body blockquote { border-left: 3px solid #10b981; padding-left: 0.75rem; font-style: italic; color: #94a3b8; margin-bottom: 0.75rem; }
     .markdown-body img { max-width: 100%; border-radius: 0.75rem; border: 1px solid rgba(255,255,255,0.15); margin: 0.5rem 0; }
@@ -376,6 +376,8 @@
         <span class="text-[9px] font-bold font-mono">PROFIL</span>
       </button>
     </nav>
+
+    <!-- MODALES DE L'APPLICATION -->
 
     <!-- MODALE : CRÉATION DE GROUPE PRIVE (SQUAD) -->
     <div id="modal-create-group" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 hidden">
@@ -743,7 +745,7 @@
     }
 
     /* ==========================================================================
-       3. TRANSPORT P2P & SYNCHRONISATION DU WIKI
+       3. TRANSPORT P2P & SYNCHRONISATION DU WIKI + DM ROUTING
        ========================================================================== */
     class SquadDiscoveryMesh {
       constructor(onMsg, onPeersChanged, onGPS, onWikiSync, onDirectDM) {
@@ -773,6 +775,7 @@
         this.client.on('connect', () => {
           document.getElementById('conn-status-dot').className = "w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse";
           this.subscribeChannel();
+          this.subscribeUserTopics();
           this.startHeartbeat();
           this.requestWikiSync();
         });
@@ -796,14 +799,12 @@
               this.peers.set(raw.senderId, { alias: raw.alias, lastSeen: Date.now() });
               this.onPeersChanged();
             } else if (raw.type === 'ENCRYPTED') {
-              const dec = await CryptoEngine.decrypt(this.roomKey, raw.cipher, raw.iv);
+              const targetKeyName = raw.targetChannel || this.channel;
+              const aesKey = await CryptoEngine.deriveRoomKey(targetKeyName);
+              const dec = await CryptoEngine.decrypt(aesKey, raw.cipher, raw.iv);
               
               if (dec.type === 'CHAT') {
-                if (dec.targetAlias && dec.targetAlias.toLowerCase() !== this.myAlias.toLowerCase()) {
-                  return; // Message non destiné à notre alias
-                }
-
-                const isDM = !!dec.targetAlias;
+                const isDM = !!dec.targetAlias || (dec.channel && dec.channel.startsWith('dm-'));
                 const msgData = {
                   senderId: raw.senderId,
                   senderAlias: raw.alias,
@@ -847,6 +848,20 @@
         }, 4000);
       }
 
+      async updateAlias(newAlias) {
+        if (this.client && this.client.connected) {
+          this.client.unsubscribe(`bitweb/v5/users/${this.myAlias.toLowerCase()}`);
+        }
+        this.myAlias = newAlias;
+        this.subscribeUserTopics();
+      }
+
+      subscribeUserTopics() {
+        if (!this.client || !this.client.connected) return;
+        this.client.subscribe(`bitweb/v5/users/${this.myAlias.toLowerCase()}`);
+        this.client.subscribe(`bitweb/v5/users/${this.myId}`);
+      }
+
       async switchChannel(newChannel) {
         if (this.client && this.client.connected) {
           this.client.unsubscribe(`bitweb/v5/channels/${this.channel}`);
@@ -878,9 +893,10 @@
       }
 
       async sendBroadcast(text, options = {}) {
+        const targetChan = options.channel || this.channel;
         const payload = {
           type: 'CHAT', text,
-          channel: options.channel || this.channel,
+          channel: targetChan,
           targetAlias: options.targetAlias || null,
           isSOS: options.isSOS || false,
           destruct: options.destruct || null,
@@ -894,7 +910,7 @@
           senderId: this.myId,
           senderAlias: this.myAlias,
           targetAlias: options.targetAlias || null,
-          text, channel: options.channel || this.channel,
+          text, channel: targetChan,
           isSOS: options.isSOS || false,
           destruct: options.destruct || null,
           location: options.location || null,
@@ -906,27 +922,40 @@
 
         this.onMsg(msgObj);
 
-        const key = options.channel ? await CryptoEngine.deriveRoomKey(options.channel) : this.roomKey;
-        const targetChan = options.channel || this.channel;
-
+        const key = await CryptoEngine.deriveRoomKey(targetChan);
         const enc = await CryptoEngine.encrypt(key, payload);
-        this.client.publish(`bitweb/v5/channels/${targetChan}`, JSON.stringify({
-          type: 'ENCRYPTED', senderId: this.myId, alias: this.myAlias, cipher: enc.cipher, iv: enc.iv
-        }));
+        const packet = JSON.stringify({
+          type: 'ENCRYPTED',
+          senderId: this.myId,
+          alias: this.myAlias,
+          targetChannel: targetChan,
+          cipher: enc.cipher,
+          iv: enc.iv
+        });
+
+        if (options.targetAlias) {
+          // Direct DM Routing: Publish to target user's personal inbox topic
+          this.client.publish(`bitweb/v5/users/${options.targetAlias.toLowerCase()}`, packet);
+          this.client.publish(`bitweb/v5/users/${this.myAlias.toLowerCase()}`, packet);
+          this.client.publish(`bitweb/v5/channels/${targetChan}`, packet);
+        } else {
+          // Channel Broadcast
+          this.client.publish(`bitweb/v5/channels/${targetChan}`, packet);
+        }
       }
 
       async sendGPS(coords) {
         if (!this.shareGPSGlobal) return;
         const enc = await CryptoEngine.encrypt(this.roomKey, { type: 'GPS', coords });
         this.client.publish(`bitweb/v5/channels/${this.channel}`, JSON.stringify({
-          type: 'ENCRYPTED', senderId: this.myId, alias: this.myAlias, cipher: enc.cipher, iv: enc.iv
+          type: 'ENCRYPTED', senderId: this.myId, alias: this.myAlias, targetChannel: this.channel, cipher: enc.cipher, iv: enc.iv
         }));
       }
 
       async broadcastWiki(article) {
         const enc = await CryptoEngine.encrypt(this.roomKey, { type: 'WIKI_UPSERT', article });
         this.client.publish(`bitweb/v5/channels/${this.channel}`, JSON.stringify({
-          type: 'ENCRYPTED', senderId: this.myId, alias: this.myAlias, cipher: enc.cipher, iv: enc.iv
+          type: 'ENCRYPTED', senderId: this.myId, alias: this.myAlias, targetChannel: this.channel, cipher: enc.cipher, iv: enc.iv
         }));
       }
 
@@ -934,7 +963,7 @@
         if (!this.client || !this.client.connected) return;
         const enc = await CryptoEngine.encrypt(this.roomKey, { type: 'WIKI_REQ' });
         this.client.publish(`bitweb/v5/channels/${this.channel}`, JSON.stringify({
-          type: 'ENCRYPTED', senderId: this.myId, alias: this.myAlias, cipher: enc.cipher, iv: enc.iv
+          type: 'ENCRYPTED', senderId: this.myId, alias: this.myAlias, targetChannel: this.channel, cipher: enc.cipher, iv: enc.iv
         }));
       }
     }
@@ -1126,6 +1155,35 @@
 
       checkURLInvite();
 
+      /* ---- Soumission du Formulaire Chat (Empêche le rechargement de page) ---- */
+      chatForm.addEventListener('submit', async (e) => {
+        e.preventDefault(); // EMPÊCHE LE RECHARGEMENT DE LA PAGE
+        const text = messageInput.value.trim();
+        if (!text && !activeLocation && !activeAttachment && !isSOSActive) return;
+
+        let options = {
+          isSOS: isSOSActive,
+          destruct: activeDestruct,
+          location: activeLocation,
+          attachment: activeAttachment
+        };
+
+        if (mesh.channel.startsWith('dm-')) {
+          const parts = mesh.channel.replace('dm-', '').split('-and-');
+          const otherAlias = parts.find(p => p.toLowerCase() !== mesh.myAlias.toLowerCase());
+          if (otherAlias) options.targetAlias = otherAlias;
+        }
+
+        await mesh.sendBroadcast(text || (isSOSActive ? "⚠️ DEMANDE D'ASSISTANCE S.O.S." : "Fichier partagé"), options);
+
+        messageInput.value = '';
+        activeDestruct = null;
+        activeLocation = null;
+        activeAttachment = null;
+        isSOSActive = false;
+        document.getElementById('status-bar-options').classList.add('hidden');
+      });
+
       /* ---- Réception de messages privés (DMs) ---- */
       function handleDirectDMReceived(msg) {
         const dmChan = msg.channel;
@@ -1135,15 +1193,16 @@
           renderGroupsUI();
         }
 
-        savedHistory.push(msg);
-        SecureStore.saveEncrypted('chat_history', savedHistory);
+        if (!msg.destruct) {
+          savedHistory.push(msg);
+          SecureStore.saveEncrypted('chat_history', savedHistory);
+        }
 
         if (mesh.channel === dmChan) {
           renderMessageDOM(msg);
         } else {
           showToast(`📩 NOUVEAU MESSAGE PRIVÉ de ${msg.senderAlias}`);
-          const groupCard = document.querySelector(`[data-group-id="${dmChan}"]`);
-          if (groupCard) groupCard.classList.add('border-amber-400', 'animate-pulse');
+          renderGroupsUI();
         }
       }
 
@@ -1205,7 +1264,7 @@
       function getContactDisplayName(alias) {
         const found = savedContacts.find(c => c.alias.toLowerCase() === alias.toLowerCase());
         if (found && found.nickname) {
-          return `${found.nickname} (${found.alias})`;
+          return `${found.nickname} (@${alias})`;
         }
         return alias;
       }
@@ -1803,7 +1862,7 @@
       document.getElementById('input-profile-alias').addEventListener('change', (e) => {
         const val = e.target.value.trim();
         if (val) {
-          mesh.myAlias = val;
+          mesh.updateAlias(val);
           document.getElementById('sec-my-id-full').textContent = `ID: ${mesh.myAlias} (${mesh.myId})`;
           showToast(`Alias mis à jour : ${mesh.myAlias}`);
         }
