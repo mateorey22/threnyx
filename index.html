@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob: mediastream:; connect-src wss: https: blob:; worker-src blob:; manifest-src blob:; font-src data:">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-xh0w8G0fQEm9/n6RmENuqdvf/kNFk3aOeAyqYA/I+pE='; style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob: mediastream:; connect-src wss: https: blob:; worker-src blob:; manifest-src blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
 <meta name="theme-color" content="#060606">
 <title>MESHCHAT // TERMINAL NOSTR-MESH</title>
 <style>
@@ -347,7 +347,7 @@ KEY STORAGE ...... LOCAL UNIQUEMENT (INDEXEDDB) — JAMAIS TRANSMIS</pre>
           <button class="icon-btn" id="btn-attach">[FILE]</button>
           <input type="file" id="file-input" class="hidden" multiple>
           <span class="prompt" id="prompt-char">&gt;</span>
-          <textarea id="msg-input" rows="1" placeholder="MESSAGE_ (*gras* _italique_ ~barre~)"></textarea>
+          <textarea id="msg-input" rows="1" maxlength="5000" placeholder="MESSAGE_ (*gras* _italique_ ~barre~)"></textarea>
           <button class="send-btn" id="btn-send">[REC]</button>
         </div>
       </div>
@@ -371,7 +371,7 @@ const enc8=s=>new TextEncoder().encode(s);
 const b64=b=>{const u=new Uint8Array(b);let s='';for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(s)};
 const ub64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0)).buffer;
 const Hex={to:b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''),
- from:h=>{const u=new Uint8Array(h.length/2);for(let i=0;i<u.length;i++)u[i]=parseInt(h.substr(i*2,2),16);return u}};
+ from:h=>{if(typeof h!=='string'||!/^[0-9a-f]+$/i.test(h)||h.length%2)throw Error('hex');const u=new Uint8Array(h.length/2);for(let i=0;i<u.length;i++)u[i]=parseInt(h.substr(i*2,2),16);return u}};
 const cat=(...as)=>{const r=new Uint8Array(as.reduce((s,a)=>s+a.length,0));let o=0;for(const a of as){r.set(a,o);o+=a.length}return r};
 const xor=(a,b)=>a.map((x,i)=>x^b[i]);
 const sha256=async d=>new Uint8Array(await crypto.subtle.digest('SHA-256',d));
@@ -380,9 +380,24 @@ const fmtTime=t=>new Date(t).toLocaleTimeString('fr',{hour:'2-digit',minute:'2-d
 const fmtDay=t=>{const d=new Date(t),td=new Date();if(d.toDateString()===td.toDateString())return"AUJOURD'HUI";td.setDate(td.getDate()-1);return d.toDateString()===td.toDateString()?'HIER':d.toLocaleDateString('fr')};
 const toast=m=>{const t=document.createElement('div');t.className='toast';t.textContent=m;$('#toasts').appendChild(t);setTimeout(()=>t.remove(),3500)};
 const richText=s=>esc(s).replace(/\*([^*]+)\*/g,'<b>$1</b>').replace(/_([^_]+)_/g,'<i>$1</i>').replace(/~([^~]+)~/g,'<s>$1</s>').replace(/`([^`]+)`/g,'<code style="background:#000;padding:0 4px">$1</code>');
-const fileToB64=f=>new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(f)});
+const fileToB64=f=>new Promise((res,rej)=>{const fr=new FileReader();fr.onerror=()=>rej(Error('lecture fichier'));fr.onload=()=>res(String(fr.result||''));fr.readAsDataURL(f)});
 const upName=x=>esc((x||'').toUpperCase());
+const Safe={
+  PUB:v=>typeof v==='string'&&/^[0-9a-f]{64}$/i.test(v),
+  ID:v=>typeof v==='string'&&/^[0-9a-f]{32}$/i.test(v),
+  text:(v,max=5000)=>typeof v==='string'&&v.length<=max?v:'',
+  image:v=>typeof v==='string'&&v.length<=1600000&&/^data:image\/(?:jpeg|png|webp|gif);base64,[A-Za-z0-9+/=]+$/i.test(v)?v:'',
+  media:m=>{
+    if(!m||typeof m!=='object'||!['image','video','audio','file'].includes(m.kind)||typeof m.data!=='string'||m.data.length>27000000)return null;
+    const types={image:'image\/(?:jpeg|png|webp|gif)',video:'video\/(?:mp4|webm)',audio:'audio\/(?:mpeg|mp4|ogg|webm)',file:'(?:application\/(?:pdf|zip|x-7z-compressed|octet-stream)|text\/plain)'};
+    const rx=new RegExp('^data:'+types[m.kind]+';base64,[A-Za-z0-9+/=]+$','i');
+    if(!rx.test(m.data))return null;
+    return {kind:m.kind,name:Safe.text(m.name,120)||'piece_jointe',size:Number.isSafeInteger(m.size)&&m.size>=0&&m.size<=26214400?m.size:0,data:m.data};
+  },
+  profile:p=>p&&typeof p==='object'?{name:Safe.text(p.name,30),bio:Safe.text(p.bio,80),avatar:Safe.image(p.avatar)}:null
+};
 async function compressImage(file,max=1280,q=.72){
+  if(!file||file.size>26214400)throw Error('fichier trop lourd');
   if(!file.type.startsWith('image')||file.type==='image/gif')return fileToB64(file);
   try{const url=URL.createObjectURL(file);
     const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=url});
@@ -438,7 +453,20 @@ return{
   const k0=mod(b2n(await tagHash('BIP0340/nonce',t,px,msg)),N);if(k0===0n)throw Error('k0');
   const R=mul(k0),k=(R[1]&1n)?N-k0:k0;
   const e=mod(b2n(await tagHash('BIP0340/challenge',cat(n2b(R[0]),px,msg))),N);
-  return Hex.to(cat(n2b(R[0]),n2b(mod(k+e*d,N))))}
+  return Hex.to(cat(n2b(R[0]),n2b(mod(k+e*d,N))))},
+  async verify(msg,sigHex,pubHex){
+    try{
+      if(!(msg instanceof Uint8Array)||msg.length!==32||typeof sigHex!=='string'||!(/^[0-9a-f]{128}$/i.test(sigHex))||typeof pubHex!=='string'||!(/^[0-9a-f]{64}$/i.test(pubHex)))return false;
+      const r=b2n(Hex.from(sigHex.slice(0,64))),s=b2n(Hex.from(sigHex.slice(64)));
+      if(r>=P||s>=N)return false;
+      const Q=liftX(BigInt('0x'+pubHex));if(!Q)return false;
+      const e=mod(b2n(await tagHash('BIP0340/challenge',cat(n2b(r),n2b(Q[0]),msg))),N);
+      const sG=mul(s),eQ=mul(e,Q);if(!sG||!eQ)return false;
+      const Rj=jAdd([sG[0],sG[1],1n],[eQ[0],mod(-eQ[1]),1n]);if(Rj[2]===0n)return false;
+      const zi=inv(Rj[2]),zi2=mod(zi*zi),Rx=mod(Rj[0]*zi2),Ry=mod(Rj[1]*zi2*zi);
+      return !(Ry&1n)&&Rx===r;
+    }catch(e){return false}
+  }
 };})();
 
 /* ---------------- CRYPTO SYMETRIQUE (ECDH → HKDF → AES-GCM) ---------------- */
@@ -465,29 +493,81 @@ const Crypto={
 /* ---------------- BASE DE DONNÉES ---------------- */
 const DB={db:null,
   open(){return new Promise((res,rej)=>{
-    const rq=indexedDB.open('meshchat2',1);
+    const rq=indexedDB.open('meshchat_secure_v3',1);
     rq.onupgradeneeded=e=>{const d=e.target.result;
       for(const s of['kv','contacts','groups','statuses','calls','shards','outbox'])
         if(!d.objectStoreNames.contains(s))d.createObjectStore(s,{keyPath:'id'});
       const m=d.createObjectStore('messages',{keyPath:'id'});m.createIndex('chat','chatId')};
     rq.onsuccess=()=>{DB.db=rq.result;res()};rq.onerror=()=>rej(rq.error)})},
   tx(s,m='readonly'){return DB.db.transaction(s,m).objectStore(s)},
-  put:(s,v)=>new Promise(r=>{DB.tx(s,'readwrite').put(v).onsuccess=()=>r()}),
-  get:(s,k)=>new Promise(r=>{const q=DB.tx(s).get(k);q.onsuccess=()=>r(q.result)}),
-  del:(s,k)=>new Promise(r=>{DB.tx(s,'readwrite').delete(k).onsuccess=()=>r()}),
-  all:s=>new Promise(r=>{const q=DB.tx(s).getAll();q.onsuccess=()=>r(q.result||[])}),
-  byIndex:(s,i,k)=>new Promise(r=>{const q=DB.tx(s).index(i).getAll(k);q.onsuccess=()=>r(q.result||[])}),
+  async seal(s,v){
+    if(s==='kv')return v;
+    if(!S.localKey)throw Error('coffre verrouille');
+    const box=await Crypto.encrypt(S.localKey,v);
+    return s==='messages'?{id:v.id,chatId:v.chatId,box}:{id:v.id,box};
+  },
+  async openRecord(s,v){
+    if(!v||s==='kv')return v;
+    if(!S.localKey||!v.box)return null;
+    return Crypto.decrypt(S.localKey,v.box);
+  },
+  async put(s,v){const rec=await DB.seal(s,v);return new Promise((res,rej)=>{const q=DB.tx(s,'readwrite').put(rec);q.onsuccess=()=>res();q.onerror=()=>rej(q.error)})},
+  async get(s,k){const raw=await new Promise((res,rej)=>{const q=DB.tx(s).get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)});return DB.openRecord(s,raw)},
+  del:(s,k)=>new Promise((res,rej)=>{const q=DB.tx(s,'readwrite').delete(k);q.onsuccess=()=>res();q.onerror=()=>rej(q.error)}),
+  async all(s){const raw=await new Promise((res,rej)=>{const q=DB.tx(s).getAll();q.onsuccess=()=>res(q.result||[]);q.onerror=()=>rej(q.error)});return (await Promise.all(raw.map(v=>DB.openRecord(s,v)))).filter(Boolean)},
+  async byIndex(s,i,k){const raw=await new Promise((res,rej)=>{const q=DB.tx(s).index(i).getAll(k);q.onsuccess=()=>res(q.result||[]);q.onerror=()=>rej(q.error)});return (await Promise.all(raw.map(v=>DB.openRecord(s,v)))).filter(Boolean)},
   kvSet:(k,v)=>DB.put('kv',{id:k,v}),
   kvGet:async k=>(await DB.get('kv',k))?.v,
-  async wipe(){DB.db.close();await new Promise(r=>{indexedDB.deleteDatabase('meshchat2').onsuccess=r})}
+  async wipe(){DB.db.close();await new Promise(r=>{indexedDB.deleteDatabase('meshchat_secure_v3').onsuccess=r})}
 };
 
 /* ---------------- ÉTAT GLOBAL ---------------- */
-const S={me:null,contacts:new Map(),groups:new Map(),peers:new Map(),seen:new Set(),
+const S={me:null,localKey:null,contacts:new Map(),groups:new Map(),peers:new Map(),seen:new Set(),
  typing:new Map(),activeChat:null,replyTo:null,editing:null,call:null,mediaRec:null,
- lastSync:0,bootTs:now()};
-const MYPROFILE=()=>({name:S.me.name,bio:S.me.bio,avatar:S.me.avatar});
-const onlineState=id=>S.peers.has(id)?2:(now()-(S.contacts.get(id)?.relaySeen||0)<75000?1:0);
+ lastSync:0,allowP2P:false,bootTs:now()};
+const Vault={
+  key:null,salt:null,timer:null,armed:false,ITER:310000,
+  async derive(password,salt){
+    const base=await crypto.subtle.importKey('raw',enc8(password),'PBKDF2',false,['deriveKey']);
+    return crypto.subtle.deriveKey({name:'PBKDF2',hash:'SHA-256',salt,iterations:Vault.ITER},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+  },
+  async create(me,password){
+    if(typeof password!=='string'||password.length<12)throw Error('phrase secrète trop courte');
+    const salt=crypto.getRandomValues(new Uint8Array(16));
+    Vault.key=await Vault.derive(password,salt);Vault.salt=salt;S.localKey=Vault.key;
+    await Vault.save(me);Vault.arm();
+  },
+  async save(me=S.me){
+    if(!Vault.key||!Vault.salt)throw Error('coffre verrouille');
+    const box=await Crypto.encrypt(Vault.key,me);
+    await DB.kvSet('vault',{v:3,kdf:'PBKDF2-SHA-256',iter:Vault.ITER,salt:b64(Vault.salt),box});
+  },
+  async unlock(){
+    const vault=await DB.kvGet('vault');if(!vault||vault.v!==3||vault.kdf!=='PBKDF2-SHA-256'||!vault.salt||!vault.box)throw Error('coffre invalide');
+    const pass=prompt('Déverrouillez votre identité avec votre phrase secrète :');if(!pass)throw Error('déverrouillage annulé');
+    const salt=new Uint8Array(ub64(vault.salt));const key=await Vault.derive(pass,salt);const me=await Crypto.decrypt(key,vault.box);
+    if(!me||!Safe.PUB(me.pub)||!(/^[0-9a-f]{64}$/i.test(me.priv))||Secp.getPub(me.priv)!==me.pub)throw Error('phrase secrète ou coffre invalide');
+    Vault.key=key;Vault.salt=salt;S.localKey=key;Vault.arm();return me;
+  },
+  async encryptBackup(bundle){
+    const pass=prompt('Définissez une phrase secrète d’au moins 12 caractères pour le fichier de sauvegarde :');if(!pass||pass.length<12){toast('!! SAUVEGARDE ANNULEE — PHRASE SECRETE TROP COURTE');return null}
+    const confirmPass=prompt('Confirmez la phrase secrète de sauvegarde :');if(pass!==confirmPass){toast('!! SAUVEGARDE ANNULEE — PHRASES DIFFERENTES');return null}
+    const salt=crypto.getRandomValues(new Uint8Array(16)),key=await Vault.derive(pass,salt),box=await Crypto.encrypt(key,bundle);
+    return {v:3,type:'meshchat-encrypted-backup',kdf:'PBKDF2-SHA-256',iter:Vault.ITER,salt:b64(salt),box};
+  },
+  async decryptBackup(text){
+    const wrapped=JSON.parse(text);
+    if(!wrapped||wrapped.v!==3||wrapped.type!=='meshchat-encrypted-backup'||wrapped.kdf!=='PBKDF2-SHA-256'||!wrapped.salt||!wrapped.box)throw Error('sauvegarde chiffrée v3 requise');
+    const pass=prompt('Phrase secrète de la sauvegarde :');if(!pass)throw Error('import annulé');
+    const key=await Vault.derive(pass,new Uint8Array(ub64(wrapped.salt))),bundle=await Crypto.decrypt(key,wrapped.box);
+    if(!bundle||!bundle.me||!Safe.PUB(bundle.me.pub)||!(/^[0-9a-f]{64}$/i.test(bundle.me.priv))||Secp.getPub(bundle.me.priv)!==bundle.me.pub)throw Error('sauvegarde invalide');
+    return {bundle,password:pass};
+  },
+  touch(){clearTimeout(Vault.timer);Vault.timer=setTimeout(()=>{Vault.key=null;Vault.salt=null;S.localKey=null;S.me=null;location.reload()},10*60e3)},
+  arm(){if(!Vault.armed){Vault.armed=true;['pointerdown','keydown','touchstart'].forEach(e=>document.addEventListener(e,()=>Vault.touch(),{passive:true}));}Vault.touch()}
+};
+const MYPROFILE=()=>({name:S.me.name,bio:S.me.bio,avatar:Safe.image(S.me.avatar)});
+const onlineState=id=>S.allowP2P&&S.peers.has(id)?2:(now()-(S.contacts.get(id)?.relaySeen||0)<75000?1:0);
 
 /* ================================================================
    NOSTR : POOL DE RELAIS + GIFT WRAP NIP-59-LITE
@@ -515,7 +595,7 @@ const Nostr={
   subscribe(ws){
     const since=Math.max(0,Math.floor((S.lastSync-2*3600e3)/1000));
     ws.send(JSON.stringify(['REQ','box',{kinds:[1059],'#p':[S.me.pub],since}]));
-    ws.send(JSON.stringify(['REQ','live',{kinds:[20059],'#p':[S.me.pub],since:Math.floor(now()/1000)-30}]));
+    ws.send(JSON.stringify(['REQ','live',{kinds:[21059],'#p':[S.me.pub],since:Math.floor(now()/1000)-30}]));
   },
   okCount(){let n=0;for(const r of Nostr.relays.values())if(r.ws?.readyState===1)n++;return n},
   publish(ev){let n=0;const s=JSON.stringify(['EVENT',ev]);
@@ -534,22 +614,27 @@ const Nostr={
     const ep=Secp.genPriv(),epub=Secp.getPub(ep);
     const outer=await Crypto.encrypt(await pairKey(ep,toPub),{from:S.me.pub,box:inner});
     const ts=Math.floor(now()/1000)-(eph?0:(Math.random()*1800|0));
-    const ev=await Nostr.event(eph?20059:1059,[['p',toPub]],JSON.stringify(outer),ep,epub,ts);
+    const ev=await Nostr.event(eph?21059:1059,[['p',toPub]],JSON.stringify(outer),ep,epub,ts);
     return Nostr.publish(ev);
   },
   async onEvent(ev){
     try{
-      if(!ev||S.seen.has(ev.id))return;S.seen.add(ev.id);
-      if(ev.kind!==1059&&ev.kind!==20059)return;
+      if(!ev||typeof ev!=='object'||S.seen.has(ev.id)||!Safe.PUB(ev.pubkey)||typeof ev.id!=='string'||!/^[0-9a-f]{64}$/i.test(ev.id)||typeof ev.sig!=='string'||!/^[0-9a-f]{128}$/i.test(ev.sig)||!Number.isSafeInteger(ev.created_at)||typeof ev.content!=='string'||ev.content.length>1800000||!Array.isArray(ev.tags))return;
+      if(ev.kind!==1059&&ev.kind!==21059)return;
+      if(!ev.tags.some(t=>Array.isArray(t)&&t[0]==='p'&&t[1]===S.me.pub))return;
+      const issued=ev.created_at*1000;if(issued>now()+300000||issued<now()-30*86400000)return;
+      const serial=JSON.stringify([0,ev.pubkey,ev.created_at,ev.kind,ev.tags,ev.content]),expected=Hex.to(await sha256(enc8(serial)));
+      if(ev.id!==expected||!(await Secp.verify(Hex.from(expected),ev.sig,ev.pubkey)))return;
+      S.seen.add(ev.id);
       const outer=await Crypto.decrypt(await pairKey(S.me.priv,ev.pubkey),JSON.parse(ev.content));
-      if(!outer||!outer.from||!/^[0-9a-f]{64}$/.test(outer.from))return;
+      if(!outer||!Safe.PUB(outer.from)||outer.from===S.me.pub||!outer.box||!S.contacts.has(outer.from))return;
       const payload=await Crypto.decrypt(await pairKey(S.me.priv,outer.from),outer.box);
-      if(!payload)return;
+      if(!payload||typeof payload!=='object'||Array.isArray(payload))return;
       if(ev.kind===1059){
-        S.lastSync=Math.max(S.lastSync,ev.created_at*1000);DB.kvSet('lastSync',S.lastSync);
-        DB.put('shards',{id:ev.id,ts:now()});
+        S.lastSync=Math.max(S.lastSync,Math.min(now(),issued));await DB.kvSet('lastSync',S.lastSync);
+        await DB.put('shards',{id:ev.id,ts:now()});
       }
-      ROUTE.payload(outer.from,payload,'relay');
+      await ROUTE.payload(outer.from,payload,'relay');
     }catch(e){}
   }
 };
@@ -559,17 +644,18 @@ const Nostr={
    ================================================================ */
 async function sendPayload(to,payload,{eph=false,p2pOnly=false}={}){
   try{
+    if(!Safe.PUB(to)||!payload||typeof payload!=='object')return null;
+    const str=JSON.stringify(payload);if(str.length>26214400)return null;
     const peer=S.peers.get(to);
-    if(peer&&peer.dc.readyState==='open'){
+    if(S.allowP2P&&peer&&peer.dc.readyState==='open'){
       const box=await Crypto.encrypt(await pairKey(S.me.priv,to),payload);
       NET._send(peer.dc,JSON.stringify({t:'pay',from:S.me.pub,box}));
       return 'p2p';
     }
-    if(p2pOnly)return null;
-    const str=JSON.stringify(payload);
-    if(str.length>900000)return null;                      // trop lourd → attendra le P2P (outbox)
-    if(str.length>45000){                                  // chunking sur relais
+    if(p2pOnly||str.length>900000)return null;
+    if(str.length>45000){
       const cid=uid().slice(0,10),n=Math.ceil(str.length/45000);let ok=0;
+      if(n>20)return null;
       for(let i=0;i<n;i++)ok=Math.max(ok,await Nostr.wrapSend(to,{t:'chunk',cid,i,n,part:str.slice(i*45000,(i+1)*45000)},eph));
       return ok?'relay':null;
     }
@@ -635,11 +721,15 @@ const NET={
   async onData(pid,raw){
     if(typeof raw!=='string')return;
     if(raw.startsWith('#C|')){
+      if(raw.length>NET.CHUNK+96)return;
       const p1=raw.indexOf('|',3),p2=raw.indexOf('|',p1+1),p3=raw.indexOf('|',p2+1);
-      const id=raw.slice(3,p1),idx=+raw.slice(p1+1,p2),total=+raw.slice(p2+1,p3);
-      let b=NET.frag.get(id);if(!b){b={parts:new Array(total),got:0,ts:now()};NET.frag.set(id,b)}
+      if(p1<4||p2<0||p3<0)return;
+      const id=raw.slice(3,p1),idx=Number(raw.slice(p1+1,p2)),total=Number(raw.slice(p2+1,p3));
+      if(!/^[0-9a-f]{10}$/i.test(id)||!Number.isInteger(idx)||!Number.isInteger(total)||total<1||total>1748||idx<0||idx>=total)return;
+      let b=NET.frag.get(id);if(!b){if(NET.frag.size>=32)return;b={parts:new Array(total),got:0,ts:now()};NET.frag.set(id,b)}
+      if(b.parts.length!==total)return;
       if(b.parts[idx]===undefined){b.parts[idx]=raw.slice(p3+1);b.got++}
-      if(b.got<total)return;NET.frag.delete(id);raw=b.parts.join('');
+      if(b.got<total)return;NET.frag.delete(id);raw=b.parts.join('');if(raw.length>26214400)return;
     }
     let m;try{m=JSON.parse(raw)}catch(e){return}
     const pp=S.peers.get(pid);if(pp)pp.lastPong=now();
@@ -664,7 +754,7 @@ const NET={
 const LINK={
   pending:new Map(),
   async ensure(pub){
-    if(!S.contacts.has(pub)||S.peers.has(pub)||LINK.pending.has(pub))return;
+    if(!S.allowP2P||!Safe.PUB(pub)||!S.contacts.has(pub)||S.peers.has(pub)||LINK.pending.has(pub))return;
     if(S.me.pub>=pub)return;               // seul le plus petit ID initie (anti-glare)
     const pc=new RTCPeerConnection(NET.ICE);
     const entry={pc,ice:[],ts:now()};LINK.pending.set(pub,entry);
@@ -704,7 +794,7 @@ const LINK={
 
 /* --- Découverte : balises de présence chiffrées --- */
 const Discovery={
-  async tick(){for(const[id]of S.contacts){if(S.peers.has(id))continue;sendPayload(id,{t:'presence'},{eph:true})}},
+  async tick(){if(!S.allowP2P)return;for(const[id]of S.contacts){if(S.peers.has(id))continue;sendPayload(id,{t:'presence'},{eph:true})}},
   burst(){setTimeout(()=>Discovery.tick(),1500)},
   start(){setInterval(()=>Discovery.tick(),25000)}
 };
@@ -715,49 +805,42 @@ const Discovery={
 const ROUTE={
   chunks:new Map(),
   async payload(from,p,via){
-    if(!p||typeof p!=='object'||from===S.me.pub)return;
-    if(!S.contacts.has(from)){
-      const c={id:from,name:'NODE_'+from.slice(0,8).toUpperCase(),localName:'',bio:'',avatar:'',
-        lastSeen:0,relaySeen:0,unread:0,lastMsg:'',lastTs:0,pin:false,expire:0};
-      S.contacts.set(from,c);await DB.put('contacts',c);
-      if(p.t!=='hello')toast('>> PAIR INCONNU DETECTE: '+from.slice(0,10).toUpperCase());
-      UI.renderChatList();
-    }
-    const c=S.contacts.get(from);c.relaySeen=now();
+    if(!Safe.PUB(from)||!p||typeof p!=='object'||Array.isArray(p)||from===S.me.pub||!S.contacts.has(from)||typeof p.t!=='string')return;
+    const c=S.contacts.get(from);c.relaySeen=now();await DB.put('contacts',c);
     switch(p.t){
       case 'chunk':{
-        let b=ROUTE.chunks.get(p.cid);
-        if(!b){b={parts:new Array(p.n),got:0,ts:now()};ROUTE.chunks.set(p.cid,b)}
-        if(p.i>=0&&p.i<p.n&&b.parts[p.i]===undefined){b.parts[p.i]=p.part;b.got++}
-        if(b.got===p.n){ROUTE.chunks.delete(p.cid);
-          try{ROUTE.payload(from,JSON.parse(b.parts.join('')),via)}catch(e){}}
+        if(!/^[0-9a-f]{10}$/i.test(p.cid)||!Number.isInteger(p.i)||!Number.isInteger(p.n)||p.n<1||p.n>20||p.i<0||p.i>=p.n||typeof p.part!=='string'||p.part.length>45000)return;
+        let b=ROUTE.chunks.get(p.cid);if(!b){if(ROUTE.chunks.size>=32)return;b={parts:new Array(p.n),got:0,ts:now()};ROUTE.chunks.set(p.cid,b)}
+        if(b.parts.length!==p.n)return;
+        if(b.parts[p.i]===undefined){b.parts[p.i]=p.part;b.got++}
+        if(b.got===p.n){ROUTE.chunks.delete(p.cid);try{const joined=b.parts.join('');if(joined.length<=900000)await ROUTE.payload(from,JSON.parse(joined),via)}catch(e){}}
         break}
       case 'hello':{
-        Object.assign(c,{name:p.profile?.name||c.name,bio:p.profile?.bio||c.bio,avatar:p.profile?.avatar||c.avatar});
+        const profile=Safe.profile(p.profile);if(!profile)return;
+        Object.assign(c,{name:profile.name||c.name,bio:profile.bio,avatar:profile.avatar});
         await DB.put('contacts',c);UI.renderChatList();UI.refreshChatHead();
-        if(!p.ack){sendPayload(from,{t:'hello',ack:true,profile:MYPROFILE()});
-          toast('>> NOUVEAU PAIR: '+String(c.name).toUpperCase())}
+        if(!p.ack){sendPayload(from,{t:'hello',ack:true,profile:MYPROFILE()});toast('>> PAIR VERIFIE: '+String(c.name).toUpperCase())}
         LINK.ensure(from);break}
-      case 'presence':LINK.ensure(from);UI.refreshChatHead();break;
-      case 'typing':S.typing.set(from,p.on?now():0);UI.refreshChatHead();break;
-      case 'profile':Object.assign(c,{name:p.name||c.name,bio:p.bio??c.bio,avatar:p.avatar??c.avatar});
-        await DB.put('contacts',c);UI.renderChatList();UI.refreshChatHead();break;
-      case 'msg':await MSG.receive(from,from,p);break;
+      case 'presence':if(S.allowP2P)LINK.ensure(from);UI.refreshChatHead();break;
+      case 'typing':if(S.allowP2P)S.typing.set(from,p.on===true?now():0);UI.refreshChatHead();break;
+      case 'profile':{const profile=Safe.profile(p);if(!profile)return;Object.assign(c,{name:profile.name||c.name,bio:profile.bio,avatar:profile.avatar});
+        await DB.put('contacts',c);UI.renderChatList();UI.refreshChatHead();break}
+      case 'msg':if(Safe.ID(p.mid)&&Safe.text(p.text,5000)===p.text&&(!p.media||Safe.media(p.media)))await MSG.receive(from,from,p);break;
       case 'gmsg':{const g=S.groups.get(p.gid);if(!g||!g.members.includes(from))return;
         await MSG.receive(p.gid,from,p);break}
       case 'rcpt':{const m=await DB.get('messages',p.mid);
         if(m&&m.from===S.me.pub){const rank={sent:0,delivered:1,read:2};
           if((rank[p.status]??0)>(rank[m.status]??0)){m.status=p.status;await DB.put('messages',m);
             if(S.activeChat===m.chatId)UI.updateTicks(m)}}break}
-      case 'react':{const m=await DB.get('messages',p.mid);if(!m)return;
+      case 'react':{if(!Safe.ID(p.mid)||!EMOJIS.includes(p.emoji)||typeof p.on!=='boolean')return;const m=await DB.get('messages',p.mid);if(!m)return;
         m.reacts=m.reacts||{};const a=m.reacts[p.emoji]||[];
         m.reacts[p.emoji]=p.on?[...new Set([...a,from])]:a.filter(x=>x!==from);
         await DB.put('messages',m);
         if(S.activeChat===m.chatId)UI.updateReacts(m);break}
-      case 'edit':{const m=await DB.get('messages',p.mid);
-        if(m&&m.from===from&&!m.deleted){m.text=String(p.text||'');m.edited=true;await DB.put('messages',m);
+      case 'edit':{if(!Safe.ID(p.mid)||typeof p.text!=='string'||p.text.length>5000)return;const m=await DB.get('messages',p.mid);
+        if(m&&m.from===from&&!m.deleted){m.text=p.text;m.edited=true;await DB.put('messages',m);
           if(S.activeChat===m.chatId)UI.openChat(m.chatId,true);UI.bumpChat(m.chatId,m.text,m.ts)}break}
-      case 'del':{const m=await DB.get('messages',p.mid);
+      case 'del':{if(!Safe.ID(p.mid))return;const m=await DB.get('messages',p.mid);
         if(m&&m.from===from){m.deleted=true;m.text='';m.media=null;await DB.put('messages',m);
           if(S.activeChat===m.chatId)UI.openChat(m.chatId,true)}break}
       case 'expire':{c.expire=p.ms||0;await DB.put('contacts',c);
@@ -777,6 +860,8 @@ const ROUTE={
    ================================================================ */
 const MSG={
   async sendText(chatId,text,media){
+    if(typeof text!=='string'||text.length>5000)return toast('!! MESSAGE TROP LONG');
+    if(media&&!Safe.media(media))return toast('!! PIECE JOINTE NON AUTORISEE');
     if(S.editing){const mid=S.editing;S.editing=null;$('#prompt-char').textContent='>';
       return MSG.editMsg(mid,text)}
     const isG=chatId.startsWith('g_');
@@ -793,9 +878,13 @@ const MSG={
     if(!r&&!isG)toast('>> HORS LIGNE — MESSAGE MIS EN FILE D\'ATTENTE');
   },
   async receive(chatId,from,p){
-    if(await DB.get('messages',p.mid))return;
-    const rec={id:p.mid,chatId,from,ts:p.ts||now(),text:p.text,media:p.media,quote:p.quote,
-      status:'delivered',deleted:false,expiresAt:p.expire?(p.ts||now())+p.expire:0,reacts:{},edited:false};
+    if(!Safe.ID(p.mid)||!Safe.PUB(from)||typeof p.text!=='string'||p.text.length>5000||!S.contacts.has(from)||await DB.get('messages',p.mid))return;
+    const media=p.media?Safe.media(p.media):null;if(p.media&&!media)return;
+    const remoteTs=Number.isSafeInteger(p.ts)&&p.ts>0&&p.ts<=now()+300000?p.ts:now();
+    const expire=Number.isSafeInteger(p.expire)&&[0,3600000,86400000,604800000].includes(p.expire)?p.expire:0;
+    const quote=p.quote&&Safe.ID(p.quote.mid)?{mid:p.quote.mid,text:Safe.text(p.quote.text,90)}:null;
+    const rec={id:p.mid,chatId,from,ts:remoteTs,text:p.text,media,quote,
+      status:'delivered',deleted:false,expiresAt:expire?remoteTs+expire:0,reacts:{},edited:false};
     await DB.put('messages',rec);
     const isActive=S.activeChat===chatId&&document.hasFocus();
     if(isActive){UI.appendMsg(rec);MSG.markRead(chatId)}
@@ -911,6 +1000,7 @@ const CALL={
   pc:null,stream:null,pendingIce:[],
   sig(pid,obj){sendPayload(pid,{t:'rtc',scope:'call',...obj},{eph:true})},
   async start(peerId,video){
+    if(!S.allowP2P)return toast('!! APPELS DIRECTS DESACTIVES — ACTIVEZ-LES EXPLICITEMENT DANS CFG');
     if(S.call)return toast('!! APPEL DEJA EN COURS');
     if(!onlineState(peerId))return toast('!! PAIR HORS LIGNE — IL SONNERA A SA RECONNEXION? NON: APPEL IMPOSSIBLE');
     S.call={peerId,video,dir:'out'};
@@ -933,6 +1023,7 @@ const CALL={
   },
   async flushIce(){for(const c of CALL.pendingIce){try{await CALL.pc.addIceCandidate(c)}catch(e){}}CALL.pendingIce=[]},
   async onSignal(pid,m){
+    if(!S.allowP2P){if(m?.a==='offer')CALL.sig(pid,{a:'end'});return}
     if(m.a==='offer'){
       if(S.call){CALL.sig(pid,{a:'busy'});return}
       S.call={peerId:pid,video:m.video,dir:'in',sdp:m.sdp};CALL.pendingIce=[];
@@ -1038,8 +1129,8 @@ const EMOJIS=['👍','❤️','😂','😮','😢','🔥'];
 const UI={
   expireLabel:ms=>({0:'DESACTIVE',3600000:'1 HEURE',86400000:'24 HEURES',604800000:'7 JOURS'})[ms]||'—',
   dotHtml(id){const st=onlineState(id);return st?`<span class="online-dot ${st===2?'p2p':'relay'}"></span>`:''},
-  avatarHtml(x,extra=''){const src=x?.avatar,n=(x?.localName||x?.name||'?');
-    return `<div class="avatar ${extra}">${src?`<img src="${src}">`:esc(n[0].toUpperCase())}${x?.id?UI.dotHtml(x.id):''}</div>`},
+  avatarHtml(x,extra=''){const src=Safe.image(x?.avatar),n=(x?.localName||x?.name||'?');
+    return `<div class="avatar ${esc(extra)}">${src?`<img src="${esc(src)}" alt="">`:esc(String(n)[0].toUpperCase())}${x?.id?UI.dotHtml(x.id):''}</div>`},
   updateNetBadge(){$('#tb-peers').textContent=S.peers.size;
     $('#tb-relays').textContent=Nostr.okCount()+'/'+[...Nostr.relays.values()].filter(r=>!r.removed).length},
   renderChatList(){
@@ -1085,7 +1176,7 @@ const UI={
     const id=S.activeChat;if(!id)return;
     const isG=id.startsWith('g_'),c=isG?S.groups.get(id):S.contacts.get(id);if(!c)return;
     $('#ch-name').textContent=(c.localName||c.name).toUpperCase()+(c.expire?' ⏱':'');
-    $('#ch-avatar').innerHTML=c.avatar?`<img src="${c.avatar}">`:esc((c.localName||c.name)[0].toUpperCase());
+    {const avatar=Safe.image(c.avatar);$('#ch-avatar').innerHTML=avatar?`<img src="${esc(avatar)}" alt="">`:esc((c.localName||c.name)[0].toUpperCase());}
     const p=$('#ch-presence');p.className='presence';
     if(isG)p.textContent=c.members.length+' MEMBRES // ETAT REPLIQUE LAMPORT#'+c.lamport;
     else if(S.typing.get(id)&&now()-S.typing.get(id)<4000){p.textContent='TRANSMISSION EN COURS…█';p.classList.add('typing')}
@@ -1105,11 +1196,12 @@ const UI={
   updateReacts(m){const el=$(`[data-reacts="${m.id}"]`);
     if(el){el.outerHTML=UI.reactsHtml(m);
       $(`[data-reacts="${m.id}"]`)?.querySelectorAll('[data-re]').forEach(s=>s.onclick=()=>MSG.react(m.id,s.dataset.re))}},
-  mediaHtml(md){if(!md)return'';
-    if(md.kind==='image')return `<img src="${md.data}" loading="lazy">`;
-    if(md.kind==='video')return `<video src="${md.data}" controls></video>`;
-    if(md.kind==='audio')return `<audio src="${md.data}" controls style="max-width:230px"></audio>`;
-    return `<a class="file-chip" href="${md.data}" download="${esc(md.name)}" style="color:var(--bright)">◈ <span>${esc(md.name)}<br><small class="dim">${((md.size||0)/1024).toFixed(1)} KO</small></span></a>`},
+  mediaHtml(md){const safe=Safe.media(md);if(!safe)return md?'<span class="file-chip">◈ PIECE JOINTE BLOQUEE</span>':'';
+    const src=esc(safe.data);
+    if(safe.kind==='image')return `<img src="${src}" loading="lazy" alt="image jointe">`;
+    if(safe.kind==='video')return `<video src="${src}" controls></video>`;
+    if(safe.kind==='audio')return `<audio src="${src}" controls style="max-width:230px"></audio>`;
+    return `<a class="file-chip" href="${src}" download="${esc(safe.name)}" style="color:var(--bright)">◈ <span>${esc(safe.name)}<br><small class="dim">${(safe.size/1024).toFixed(1)} KO</small></span></a>`},
   appendMsg(m,silent){
     if(S.activeChat!==m.chatId)return;
     const out=m.from===S.me.pub,isG=m.chatId.startsWith('g_');
@@ -1159,13 +1251,13 @@ const UI={
     const mine=all.filter(s=>s.owner===S.me.pub),byOwner=new Map();
     for(const s of all)if(s.owner!==S.me.pub){if(!byOwner.has(s.owner))byOwner.set(s.owner,[]);byOwner.get(s.owner).push(s)}
     let html=`<div class="row" id="my-status-row">
-      <div class="avatar ${mine.length?'status-ring':''}">${S.me.avatar?`<img src="${S.me.avatar}">`:esc(S.me.name[0])}</div>
+      <div class="avatar ${mine.length?'status-ring':''}">${Safe.image(S.me.avatar)?`<img src="${esc(Safe.image(S.me.avatar))}" alt="">`:esc(S.me.name[0])}</div>
       <div class="info"><div class="name">MON SIGNAL</div>
       <div class="sub">${mine.length?mine.length+' PUBLICATION(S) · '+mine.reduce((s,x)=>s+x.views.length,0)+' VUE(S)':'[+STATUT] POUR EMETTRE'}</div></div></div>`;
     for(const[owner,sts]of byOwner){
       const c=S.contacts.get(owner),unseen=sts.some(s=>!s.seenByMe);
       html+=`<div class="row" data-sowner="${owner}">
-        <div class="avatar status-ring ${unseen?'':'seen'}">${c?.avatar?`<img src="${c.avatar}">`:esc((c?.name||'?')[0])}</div>
+        <div class="avatar status-ring ${unseen?'':'seen'}">${Safe.image(c?.avatar)?`<img src="${esc(Safe.image(c.avatar))}" alt="">`:esc((c?.name||'?')[0])}</div>
         <div class="info"><div class="name">${upName(c?.localName||c?.name||owner.slice(0,8))}</div>
         <div class="sub">${fmtTime(sts[0].ts)} · ${sts.length} SIGNAL(AUX)</div></div></div>`}
     $('#list-status').innerHTML=html;
@@ -1185,8 +1277,8 @@ const UI={
         el.style.transition='none';el.style.width=j<i?'100%':'0';
         if(j===i){requestAnimationFrame(()=>{el.style.transition='width 5s linear';el.style.width='100%'})}});
       const c=st.content;
-      $('#sv-content').innerHTML=c.kind==='text'?`<div id="sv-text">${richText(c.data.text)}</div>`:
-        c.kind==='image'?`<img src="${c.data.src}">`:`<video src="${c.data.src}" autoplay muted playsinline></video>`;
+      const statSrc=Safe.image(c?.data?.src);$('#sv-content').innerHTML=c.kind==='text'?`<div id="sv-text">${richText(Safe.text(c?.data?.text,300))}</div>`:
+        c.kind==='image'&&statSrc?`<img src="${esc(statSrc)}" alt="statut">`:`<div class="dim">STATUT MEDIA BLOQUE</div>`;
       $('#sv-foot').textContent=(mine?'VUES: '+st.views.length+' // ':'')+fmtTime(st.ts)+' // TAP GAUCHE/DROIT POUR NAVIGUER';
       clearTimeout(timer);timer=setTimeout(()=>show(i+1),5000);
     };
@@ -1254,7 +1346,7 @@ const Modal={
   open(title,bodyHtml){
     Modal.close();
     const bg=document.createElement('div');bg.className='modal-bg';bg.id='modal';
-    bg.innerHTML=`<div class="modal"><div class="modal-head"><h3>${title}</h3>
+    bg.innerHTML=`<div class="modal"><div class="modal-head"><h3>${esc(title)}</h3>
       <button class="icon-btn" id="modal-x">[X]</button></div>
       <div class="modal-body">${bodyHtml}</div></div>`;
     document.body.appendChild(bg);
@@ -1450,6 +1542,7 @@ const Modal={
         <p class="dim" style="font-size:.64rem">>> CONTIENT VOTRE CLE PRIVEE SECP256K1 + CONTACTS + GROUPES. A PROTEGER.</p></details>
       <details><summary>⚙ PREFERENCES</summary>
         <label class="check-row"><input type="checkbox" id="set-notif" ${Notif.enabled?'checked':''}>NOTIFICATIONS SONORES &amp; SYSTEME</label>
+        <label class="check-row"><input type="checkbox" id="set-p2p" ${S.allowP2P?'checked':''}>AUTORISER LE P2P / APPELS DIRECTS (VOTRE IP PEUT ETRE VISIBLE PAR LE PAIR)</label>
         <button class="btn-sm" id="ask-notif" style="width:100%">[AUTORISER LES NOTIFICATIONS SYSTEME]</button></details>
       <details><summary style="color:var(--red)">⚠ ZONE DE DESTRUCTION</summary>
         <button class="btn-sm btn-danger" style="width:100%" id="nuke">[ DETRUIRE L'IDENTITE &amp; TOUTES LES DONNEES ]</button></details>`);
@@ -1457,7 +1550,7 @@ const Modal={
       S.me.name=($('#set-name').value||S.me.name).trim();S.me.bio=($('#set-bio').value||'').trim();
       const f=$('#set-avatar').files[0];
       if(f)S.me.avatar=await compressImage(f,140,.7);
-      await DB.kvSet('me',S.me);renderMe();
+      await Vault.save(S.me);renderMe();
       for(const[cid]of S.contacts){const r=await sendPayload(cid,{t:'profile',...MYPROFILE()});
         if(!r)Outbox.add(cid,{t:'profile',...MYPROFILE()})}
       toast('>> PROFIL PROPAGE');Modal.close()};
@@ -1473,13 +1566,15 @@ const Modal={
       await DB.kvSet('relays',[...Nostr.relays.values()].filter(x=>!x.removed).map(x=>x.url));
       toast('>> RELAIS AJOUTE');Modal.settings()};
     $('#exp-keys').onclick=async()=>{
-      const bundle={v:2,me:S.me,contacts:[...S.contacts.values()],groups:[...S.groups.values()],
+      const bundle={v:3,me:S.me,contacts:[...S.contacts.values()],groups:[...S.groups.values()],
         relays:[...Nostr.relays.values()].filter(x=>!x.removed).map(x=>x.url)};
+      const encrypted=await Vault.encryptBackup(bundle);if(!encrypted)return;
       const a=document.createElement('a');
-      a.href=URL.createObjectURL(new Blob([JSON.stringify(bundle)],{type:'application/json'}));
-      a.download='meshchat_keys_'+S.me.pub.slice(0,8)+'.json';a.click();
-      toast('>> CLES EXPORTEES — STOCKAGE SECURISE REQUIS')};
+      a.href=URL.createObjectURL(new Blob([JSON.stringify(encrypted)],{type:'application/json'}));
+      a.download='meshchat_backup_chiffree_'+S.me.pub.slice(0,8)+'.json';a.click();URL.revokeObjectURL(a.href);
+      toast('>> SAUVEGARDE CHIFFREE GENEREE')};
     $('#set-notif').onchange=e=>{Notif.enabled=e.target.checked;DB.kvSet('notif',Notif.enabled)};
+    $('#set-p2p').onchange=e=>{S.allowP2P=e.target.checked;DB.kvSet('allowP2P',S.allowP2P);if(!S.allowP2P){for(const[,p]of S.peers)try{p.pc.close()}catch(err){};toast('>> P2P DESACTIVE — RELAIS UNIQUEMENT')}};
     $('#ask-notif').onclick=()=>Notif.ask();
     $('#nuke').onclick=async()=>{
       if(!confirm('DESTRUCTION IRREVERSIBLE DE L\'IDENTITE ET DE TOUTES LES DONNEES LOCALES. CONFIRMER ?'))return;
@@ -1504,7 +1599,7 @@ async function addPeer(pub,name,alias){
   UI.openChat(pub);
 }
 function renderMe(){
-  $('#my-avatar').innerHTML=S.me.avatar?`<img src="${S.me.avatar}">`:esc(S.me.name[0].toUpperCase());
+  {const avatar=Safe.image(S.me.avatar);$('#my-avatar').innerHTML=avatar?`<img src="${esc(avatar)}" alt="">`:esc(S.me.name[0].toUpperCase());}
   $('#my-name').textContent=S.me.name.toUpperCase();
   $('#tb-agent').textContent=S.me.name.toUpperCase();
   $('#tb-node').textContent=S.me.pub.slice(0,10).toUpperCase();
@@ -1549,28 +1644,29 @@ function initOnboard(){
   $('#ob-avatar').onchange=async e=>{
     const f=e.target.files[0];if(!f)return;
     obAvatar=await compressImage(f,140,.7);
-    $('#ob-ascii').innerHTML=`<img src="${obAvatar}">`;
+    {const avatar=Safe.image(obAvatar);$('#ob-ascii').innerHTML=avatar?`<img src="${esc(avatar)}" alt="">`:'▓▒░';}
   };
   $('#ob-create').onclick=async()=>{
-    const name=($('#ob-name').value||'').trim();
+    const name=Safe.text(($('#ob-name').value||'').trim(),30);
     if(!name)return toast('!! CODENAME REQUIS');
+    const pass=prompt('Choisissez une phrase secrète locale (12 caractères minimum) :');
+    const confirmPass=prompt('Confirmez la phrase secrète :');
+    if(!pass||pass.length<12||pass!==confirmPass)return toast('!! IDENTITE NON CREEE — PHRASE SECRETE INVALIDE');
     const priv=Secp.genPriv();
-    S.me={priv,pub:Secp.getPub(priv),name,bio:($('#ob-bio').value||'').trim(),avatar:obAvatar};
-    await DB.kvSet('me',S.me);
-    enterApp();
+    S.me={priv,pub:Secp.getPub(priv),name,bio:Safe.text(($('#ob-bio').value||'').trim(),80),avatar:Safe.image(obAvatar)};
+    try{await Vault.create(S.me,pass);enterApp()}catch(e){toast('!! ECHEC DE CREATION DU COFFRE')}
   };
   $('#ob-import').onclick=()=>{
     const inp=document.createElement('input');inp.type='file';inp.accept='.json,application/json';
     inp.onchange=async e=>{
       try{
-        const b=JSON.parse(await e.target.files[0].text());
-        if(!b.me?.priv||!b.me?.pub)throw 0;
-        S.me=b.me;await DB.kvSet('me',S.me);
-        for(const c of b.contacts||[])await DB.put('contacts',c);
-        for(const g of b.groups||[])await DB.put('groups',g);
-        if(b.relays)await DB.kvSet('relays',b.relays);
-        toast('>> IDENTITE IMPORTEE');enterApp();
-      }catch(err){toast('!! FICHIER DE CLES INVALIDE')}
+        const imported=await Vault.decryptBackup(await e.target.files[0].text()),b=imported.bundle;
+        S.me=b.me;await Vault.create(S.me,imported.password);
+        for(const c of (Array.isArray(b.contacts)?b.contacts:[]))if(Safe.PUB(c?.id))await DB.put('contacts',{...c,id:c.id,name:Safe.text(c.name,30),bio:Safe.text(c.bio,80),avatar:Safe.image(c.avatar)});
+        for(const g of (Array.isArray(b.groups)?b.groups:[]))if(typeof g?.id==='string'&&g.id.length<=64)await DB.put('groups',g);
+        if(Array.isArray(b.relays))await DB.kvSet('relays',b.relays.filter(u=>typeof u==='string'&&/^wss:\/\/.{1,180}$/.test(u)).slice(0,12));
+        toast('>> IDENTITE IMPORTEE DANS LE COFFRE CHIFFRE');enterApp();
+      }catch(err){toast('!! SAUVEGARDE CHIFFREE INVALIDE OU PHRASE INCORRECTE')}
     };
     inp.click();
   };
@@ -1587,6 +1683,7 @@ async function enterApp(){
   for(const g of await DB.all('groups'))S.groups.set(g.id,g);
   for(const s of await DB.all('shards'))S.seen.add(s.id);
   S.lastSync=(await DB.kvGet('lastSync'))||0;
+  S.allowP2P=(await DB.kvGet('allowP2P'))??false;
   Notif.enabled=(await DB.kvGet('notif'))??true;
   UI.renderChatList();UI.renderCommList();UI.renderCallList();UI.renderStatusList();
   startMesh($('#mesh-canvas'),()=>S.peers.size);
@@ -1594,8 +1691,7 @@ async function enterApp(){
   Nostr.init();
   NET.startHeartbeat();
   Discovery.start();
-  Notif.ask();
-  PWA.init();
+  // Les notifications et le P2P exigent une action explicite de l’utilisateur.
   setInterval(()=>MSG.purgeExpired(),60000);
   setInterval(()=>Outbox.flush(),20000);
   setInterval(()=>{ // purge du cache anti-doublons (>48h)
@@ -1720,9 +1816,10 @@ function bindEvents(){
 (async()=>{
   await DB.open();
   bindEvents();
-  const me=await DB.kvGet('me');
-  if(me){S.me=me;enterApp()}
-  else initOnboard();
+  const vault=await DB.kvGet('vault');
+  if(vault){
+    try{S.me=await Vault.unlock();await enterApp()}catch(e){alert('Impossible de déverrouiller cette identité. Rechargez la page pour réessayer.');}
+  }else initOnboard();
 })();
 </script>
 </body>
