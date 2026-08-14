@@ -365,12 +365,12 @@
   <!-- LOGIQUE APPLICATIVE -->
   <script>
     /* ==========================================================================
-       1. MANIFEST PWA & SERVICE WORKER
+       1. MANIFEST PWA
        ========================================================================== */
     const pwaManifest = {
       name: "BitWeb Mesh - Squad",
       short_name: "BitWeb",
-      start_url: "./",
+      start_url: window.location.href,
       display: "standalone",
       background_color: "#000000",
       theme_color: "#000000",
@@ -380,16 +380,9 @@
         type: "image/svg+xml"
       }]
     };
-    document.getElementById('manifest-link').setAttribute('href', URL.createObjectURL(new Blob([JSON.stringify(pwaManifest)], { type: 'application/manifest+json' })));
-
-    if ('serviceWorker' in navigator) {
-      const swScript = `
-        self.addEventListener('install', e => self.skipWaiting());
-        self.addEventListener('activate', e => self.clients.claim());
-        self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => new Response('Offline'))));
-      `;
-      navigator.serviceWorker.register(URL.createObjectURL(new Blob([swScript], { type: 'application/javascript' }))).catch(err => console.warn(err));
-    }
+    try {
+      document.getElementById('manifest-link').setAttribute('href', URL.createObjectURL(new Blob([JSON.stringify(pwaManifest)], { type: 'application/manifest+json' })));
+    } catch(e) {}
 
     let deferredPrompt = null;
     window.addEventListener('beforeinstallprompt', (e) => {
@@ -705,15 +698,16 @@
 
       lucide.createIcons();
 
-      // Rendre les groupes sauvegardés
-      renderGroupsList();
-      renderContactsList();
-
+      // Initialiser le réseau AVANT le rendu des listes pour éviter la ReferenceError
       const mesh = new SquadDiscoveryMesh(
         msg => handleNewMessage(msg),
         () => updatePeersUI(),
         (id, alias, coords) => updatePeerGPS(id, alias, coords)
       );
+
+      // Rendre les groupes et contacts sauvegardés
+      renderGroupsList();
+      renderContactsList();
 
       await mesh.init();
 
@@ -919,8 +913,8 @@
       /* ---- Génération & Scan de Code QR ---- */
       document.getElementById('btn-open-qr').addEventListener('click', () => {
         const invitePayload = {
-          alias: mesh.myAlias,
-          channel: mesh.channel
+          alias: (typeof mesh !== 'undefined' && mesh) ? mesh.myAlias : "Squad",
+          channel: (typeof mesh !== 'undefined' && mesh) ? mesh.channel : "global"
         };
         const b64 = btoa(JSON.stringify(invitePayload));
         const baseURL = window.location.origin + window.location.pathname;
@@ -928,14 +922,30 @@
 
         const qrContainer = document.getElementById('qrcode-canvas');
         qrContainer.innerHTML = '';
-        new QRCode(qrContainer, {
-          text: fullInviteURL,
-          width: 180,
-          height: 180,
-          colorDark: "#000000",
-          colorLight: "#ffffff",
-          correctLevel: QRCode.CorrectLevel.H
-        });
+
+        try {
+          if (typeof QRCode !== 'undefined') {
+            new QRCode(qrContainer, {
+              text: fullInviteURL,
+              width: 180,
+              height: 180,
+              colorDark: "#000000",
+              colorLight: "#ffffff",
+              correctLevel: QRCode.CorrectLevel.H
+            });
+          } else {
+            // Fallback API Image si la bibliothèque JS n'a pas pu être chargée
+            const img = document.createElement('img');
+            img.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(fullInviteURL)}`;
+            img.className = "w-[180px] h-[180px] mx-auto rounded-lg";
+            qrContainer.appendChild(img);
+          }
+        } catch(e) {
+          const img = document.createElement('img');
+          img.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(fullInviteURL)}`;
+          img.className = "w-[180px] h-[180px] mx-auto rounded-lg";
+          qrContainer.appendChild(img);
+        }
 
         modalQR.classList.remove('hidden');
 
@@ -989,14 +999,16 @@
 
       function renderGroupsList() {
         const container = document.getElementById('groups-container');
+        if (!container) return;
         container.innerHTML = '';
+        const currentChan = (typeof mesh !== 'undefined' && mesh && mesh.channel) ? mesh.channel : 'global';
         savedGroups.forEach(g => {
           const btn = document.createElement('button');
           btn.dataset.channel = g;
-          btn.className = `btn-channel ${g === mesh.channel ? 'active border-emerald-500/40 text-emerald-400' : 'text-white/70'} p-3 rounded-2xl glass-panel text-xs font-mono flex items-center justify-between active:scale-95 transition-all`;
+          btn.className = `btn-channel ${g === currentChan ? 'active border-emerald-500/40 text-emerald-400' : 'text-white/70'} p-3 rounded-2xl glass-panel text-xs font-mono flex items-center justify-between active:scale-95 transition-all`;
           btn.innerHTML = `<span># ${g}</span> <span class="badge-count text-[9px] bg-white/10 px-1.5 py-0.5 rounded-full">0</span>`;
           btn.addEventListener('click', () => {
-            mesh.switchChannel(g);
+            if (typeof mesh !== 'undefined' && mesh) mesh.switchChannel(g);
             headerRoomTitle.textContent = `# ${g.toUpperCase()}`;
             messagesFeed.innerHTML = '';
             savedHistory.forEach(m => { if (m.channel === g) renderMessageDOM(m); });
