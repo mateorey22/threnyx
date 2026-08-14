@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark h-full bg-black text-white selection:bg-emerald-500 selection:text-black">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>BitWeb Mesh - Squad Auto-Discovery</title>
+  
+  <!-- Configuration PWA -->
+  <meta name="theme-color" content="#000000">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link id="manifest-link" rel="manifest">
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- MQTT.js pour la découverte automatique instantanée 5G / Wi-Fi -->
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Leaflet Carte Sombre Tactique -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            mono: ['Space Mono', 'monospace'],
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Space+Mono:wght@400;700&display=swap');
+    
+    * { -webkit-tap-highlight-color: transparent; }
+
+    /* Glassmorphism sombre OLED */
+    .glass-panel {
+      background: rgba(15, 15, 22, 0.75);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .glass-bubble-self {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.3) 0%, rgba(5, 150, 105, 0.15) 100%);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(0, 255, 157, 0.4);
+      box-shadow: 0 4px 15px -3px rgba(0, 255, 157, 0.2);
+    }
+    .glass-bubble-peer {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.6) 100%);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.5);
+    }
+    .glass-bubble-sos {
+      background: linear-gradient(135deg, rgba(255, 0, 85, 0.35) 0%, rgba(153, 27, 27, 0.25) 100%);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 0, 85, 0.6);
+      box-shadow: 0 0 25px rgba(255, 0, 85, 0.4);
+    }
+    .glass-input {
+      background: rgba(10, 10, 15, 0.85);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    /* Thème sombre pour la carte Leaflet */
+    .leaflet-tile { filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3); }
+    .leaflet-container { background: #050508 !important; }
+    
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    
+    .sheet-enter { transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
+    .sheet-show { transform: translateY(0%); }
+  </style>
+</head>
+<body class="h-full w-full bg-black text-white font-sans overflow-hidden flex flex-col justify-between">
+
+  <!-- Lumières d'ambiance -->
+  <div class="fixed top-[-10%] left-[-10%] w-[60vw] h-[60vw] bg-emerald-600/15 rounded-full blur-[80px] pointer-events-none z-0"></div>
+  <div class="fixed bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] bg-cyan-600/10 rounded-full blur-[80px] pointer-events-none z-0"></div>
+
+  <!-- APPLICATION PRINCIPALE MOBILE -->
+  <div class="relative z-10 h-full w-full max-w-md mx-auto flex flex-col justify-between overflow-hidden sm:border-x sm:border-white/10 sm:shadow-2xl">
+
+    <!-- EN-TÊTE -->
+    <header class="p-3.5 flex items-center justify-between glass-panel sticky top-0 z-30 rounded-b-3xl mt-1">
+      <button id="btn-toggle-channels" class="flex items-center gap-2.5 px-3 py-1.5 rounded-2xl glass-panel hover:border-emerald-500/50 transition-all active:scale-95">
+        <span id="conn-status-dot" class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+        <div class="text-left">
+          <span id="header-room-title" class="font-bold text-xs tracking-wider text-white block"># GLOBAL SQUAD</span>
+          <span id="header-peers-count" class="text-[9px] text-emerald-400 font-mono">RECHERCHE DE POTES...</span>
+        </div>
+        <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-white/60 ml-1"></i>
+      </button>
+
+      <div class="flex items-center gap-1.5">
+        <!-- Bouton d'installation PWA -->
+        <button id="btn-install-pwa" class="hidden p-2 rounded-2xl glass-panel text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/20 transition-all active:scale-90" title="Installer PWA">
+          <i data-lucide="download" class="w-4 h-4 animate-bounce"></i>
+        </button>
+
+        <!-- Bouton S.O.S. -->
+        <button id="btn-trigger-sos" class="p-2 rounded-2xl glass-panel text-rose-500 hover:bg-rose-500/10 transition-all active:scale-90" title="Envoyer S.O.S.">
+          <i data-lucide="alert-triangle" class="w-4 h-4 animate-bounce"></i>
+        </button>
+
+        <!-- Radar GPS -->
+        <button id="btn-toggle-radar" class="p-2 rounded-2xl glass-panel text-cyan-400 transition-all active:scale-90 relative" title="Radar Squad">
+          <i data-lucide="radar" class="w-4 h-4"></i>
+          <span id="radar-active-dot" class="hidden absolute top-1 right-1 w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+        </button>
+
+        <!-- Sécurité / Profil -->
+        <button id="btn-toggle-menu" class="p-2 rounded-2xl glass-panel text-white/80 transition-all active:scale-90">
+          <i data-lucide="shield" class="w-4 h-4 text-emerald-400"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- FLUX DE MESSAGES -->
+    <main id="messages-feed" class="flex-1 overflow-y-auto px-4 py-3 space-y-3 no-scrollbar">
+      <div class="my-4 p-4 rounded-3xl glass-panel border border-white/10 text-center space-y-2 relative">
+        <div class="inline-flex p-2 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          <i data-lucide="radio" class="w-5 h-5"></i>
+        </div>
+        <h2 class="text-xs font-bold tracking-wider text-white uppercase">Mesh Auto-Discovery 5G/Wi-Fi</h2>
+        <p class="text-[11px] text-white/60 leading-relaxed font-light">
+          Détection automatique instantanée de tous les appareils sur le même salon. Chiffrement E2EE AES-GCM 256.
+        </p>
+      </div>
+    </main>
+
+    <!-- BARRE DE SAISIE FLOTTANTE -->
+    <footer class="p-3 z-30">
+      <!-- Indicateur d'option active (Annulation facile) -->
+      <div id="status-bar-options" class="hidden mb-2 px-3 py-2 rounded-2xl glass-panel flex items-center justify-between text-[11px] font-mono border border-emerald-500/30">
+        <div class="flex items-center gap-2 text-emerald-400 truncate mr-2">
+          <i id="status-option-icon" data-lucide="paperclip" class="w-4 h-4 shrink-0"></i>
+          <span id="status-option-text" class="truncate">Option active</span>
+        </div>
+        <button id="btn-clear-options" class="p-1 rounded-lg bg-white/10 text-white/70 hover:text-rose-400 transition-colors shrink-0">
+          <i data-lucide="x" class="w-3.5 h-3.5"></i>
+        </button>
+      </div>
+
+      <form id="chat-form" class="flex items-center gap-2">
+        <div class="flex-1 flex items-center gap-2 px-3 py-1 rounded-3xl glass-input border border-white/15 focus-within:border-emerald-500/60 transition-all">
+          <button type="button" id="btn-open-attach" class="p-2 text-white/50 hover:text-emerald-400 transition-colors">
+            <i data-lucide="plus" class="w-5 h-5"></i>
+          </button>
+          <input type="text" id="message-input" placeholder="Message chiffré..." autocomplete="off" class="w-full bg-transparent border-none text-xs text-white placeholder-white/30 focus:outline-none py-2 font-sans">
+        </div>
+
+        <button type="submit" class="p-3 rounded-full bg-emerald-500 text-black font-bold shadow-[0_0_15px_rgba(0,255,157,0.4)] hover:bg-emerald-400 active:scale-90 transition-all shrink-0">
+          <i data-lucide="arrow-up" class="w-4 h-4"></i>
+        </button>
+      </form>
+    </footer>
+
+    <!-- MENU COULISSANT : SALONS -->
+    <div id="sheet-channels" class="sheet-enter fixed inset-x-0 bottom-0 max-w-md mx-auto z-50">
+      <div class="glass-panel rounded-t-3xl border-t border-white/20 p-5 space-y-4 bg-black/95 backdrop-blur-2xl">
+        <div class="w-10 h-1 bg-white/20 rounded-full mx-auto"></div>
+        <div class="flex items-center justify-between">
+          <h3 class="text-xs font-bold tracking-wider uppercase text-white flex items-center gap-2">
+            <i data-lucide="users" class="w-4 h-4 text-emerald-400"></i> Salons de Détection
+          </h3>
+          <button class="btn-close-sheet text-white/50 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <button data-channel="global" class="btn-channel active p-3 rounded-2xl glass-panel text-xs font-mono text-emerald-400 border-emerald-500/40 flex items-center justify-between">
+            <span># global</span> <span class="badge-count text-[9px] bg-emerald-500/20 px-1.5 py-0.5 rounded-full">0</span>
+          </button>
+          <button data-channel="squad-alpha" class="btn-channel p-3 rounded-2xl glass-panel text-xs font-mono text-white/70 flex items-center justify-between">
+            <span># squad-alpha</span> <span class="badge-count text-[9px] bg-white/10 px-1.5 py-0.5 rounded-full">0</span>
+          </button>
+          <button data-channel="outdoor-survie" class="btn-channel p-3 rounded-2xl glass-panel text-xs font-mono text-white/70 flex items-center justify-between">
+            <span># outdoor</span> <span class="badge-count text-[9px] bg-white/10 px-1.5 py-0.5 rounded-full">0</span>
+          </button>
+          <button data-channel="secret-zone" class="btn-channel p-3 rounded-2xl glass-panel text-xs font-mono text-white/70 flex items-center justify-between">
+            <span># secret</span> <span class="badge-count text-[9px] bg-white/10 px-1.5 py-0.5 rounded-full">0</span>
+          </button>
+        </div>
+
+        <div class="space-y-1.5 pt-2 border-t border-white/10">
+          <label class="text-[10px] text-white/40 uppercase font-mono tracking-widest">Potes Détectés en Direct</label>
+          <div id="drawer-peers-list" class="space-y-1 max-h-32 overflow-y-auto font-mono text-xs">
+            <div class="text-white/30 text-center py-2">Recherche d'autres téléphones...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MENU COULISSANT : OUTILS ET FICHIERS -->
+    <div id="sheet-attach" class="sheet-enter fixed inset-x-0 bottom-0 max-w-md mx-auto z-50">
+      <div class="glass-panel rounded-t-3xl border-t border-white/20 p-5 space-y-4 bg-black/95 backdrop-blur-2xl">
+        <div class="w-10 h-1 bg-white/20 rounded-full mx-auto"></div>
+        <div class="flex items-center justify-between">
+          <h3 class="text-xs font-bold tracking-wider uppercase text-white">Options & Pièces Jointes</h3>
+          <button class="btn-close-sheet text-white/50 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2.5">
+          <label class="p-3.5 rounded-2xl glass-panel hover:border-emerald-500/50 text-left space-y-1 cursor-pointer block">
+            <i data-lucide="file-text" class="w-5 h-5 text-emerald-400"></i>
+            <div class="text-xs font-bold text-white">Fichier / Photo</div>
+            <div class="text-[9px] text-white/50">Envoi chiffré direct</div>
+            <input type="file" id="file-input-hidden" class="hidden" accept="image/*,.pdf,.txt">
+          </label>
+
+          <button id="btn-option-location" class="p-3.5 rounded-2xl glass-panel hover:border-cyan-500/50 text-left space-y-1">
+            <i data-lucide="map-pin" class="w-5 h-5 text-cyan-400"></i>
+            <div class="text-xs font-bold text-white">Partager GPS</div>
+            <div class="text-[9px] text-white/50">Position chiffrée</div>
+          </button>
+
+          <button id="btn-option-timer" class="p-3.5 rounded-2xl glass-panel hover:border-rose-500/50 text-left space-y-1">
+            <i data-lucide="timer" class="w-5 h-5 text-rose-400"></i>
+            <div class="text-xs font-bold text-white">Auto-Destruction</div>
+            <div class="text-[9px] text-white/50">Effacement 10s</div>
+          </button>
+
+          <button id="btn-option-sim" class="p-3.5 rounded-2xl glass-panel hover:border-purple-500/50 text-left space-y-1">
+            <i data-lucide="bot" class="w-5 h-5 text-purple-400"></i>
+            <div class="text-xs font-bold text-white">Test Pote Virtuel</div>
+            <div class="text-[9px] text-white/50">Simuler une réponse</div>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MENU COULISSANT : SÉCURITÉ -->
+    <div id="sheet-security" class="sheet-enter fixed inset-x-0 bottom-0 max-w-md mx-auto z-50">
+      <div class="glass-panel rounded-t-3xl border-t border-white/20 p-5 space-y-4 bg-black/95 backdrop-blur-2xl">
+        <div class="w-10 h-1 bg-white/20 rounded-full mx-auto"></div>
+        <div class="flex items-center justify-between">
+          <h3 class="text-xs font-bold tracking-wider uppercase text-white flex items-center gap-2">
+            <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i> Mon Profil Sécurisé
+          </h3>
+          <button class="btn-close-sheet text-white/50 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+        </div>
+
+        <div class="space-y-2 font-mono text-xs">
+          <div class="p-3 rounded-2xl glass-panel space-y-1">
+            <div class="text-white/40 text-[9px]">Mon Alias & ID :</div>
+            <div id="sec-my-id" class="text-emerald-400 font-bold truncate">Génération...</div>
+          </div>
+          <div class="p-3 rounded-2xl glass-panel space-y-1">
+            <div class="text-white/40 text-[9px]">Clé E2EE Dérivée (SHA-256) :</div>
+            <div id="sec-fingerprint" class="text-white font-bold tracking-widest">----</div>
+          </div>
+        </div>
+
+        <button id="btn-install-pwa-sheet" class="hidden w-full py-3 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-bold text-xs uppercase tracking-wider active:scale-95 transition-all flex items-center justify-center gap-2">
+          <i data-lucide="download" class="w-4 h-4"></i> Installer sur l'écran d'accueil
+        </button>
+
+        <button id="btn-panic-purge" class="w-full py-3 rounded-2xl bg-gradient-to-r from-rose-600 to-red-800 text-white font-bold text-xs uppercase tracking-wider shadow-lg active:scale-95 transition-all">
+          <i data-lucide="zap" class="w-3.5 h-3.5 inline mr-1"></i> Réinitialiser la session
+        </button>
+      </div>
+    </div>
+
+    <!-- MODALE RADAR GPS LEAFLET -->
+    <div id="modal-radar" class="fixed inset-0 z-50 bg-black flex flex-col hidden">
+      <div class="p-3.5 glass-panel flex items-center justify-between z-10 border-b border-white/10">
+        <div class="flex items-center gap-2">
+          <i data-lucide="radar" class="w-5 h-5 text-cyan-400 animate-spin" style="animation-duration: 10s;"></i>
+          <h3 class="text-xs font-bold text-white tracking-wider uppercase">Radar GPS de la Squad</h3>
+        </div>
+        <button id="btn-close-radar" class="p-1.5 text-white/60 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <div id="map-container" class="flex-1 w-full h-full"></div>
+    </div>
+
+    <!-- NOTIFICATION TOAST -->
+    <div id="toast" class="fixed top-16 left-1/2 transform -translate-x-1/2 z-50 glass-panel px-4 py-2 rounded-2xl text-xs font-mono text-emerald-400 border-emerald-500/40 transition-all opacity-0 pointer-events-none shadow-lg flex items-center gap-2">
+      <i data-lucide="check-circle" class="w-4 h-4"></i>
+      <span id="toast-text">Action effectuée</span>
+    </div>
+
+  </div>
+
+  <script>
+    /* ==========================================================================
+       1. MANIFEST PWA ET SERVICE WORKER INLINE
+       ========================================================================== */
+    const pwaManifest = {
+      name: "BitWeb Mesh - Squad",
+      short_name: "BitWeb",
+      start_url: "./",
+      display: "standalone",
+      background_color: "#000000",
+      theme_color: "#000000",
+      icons: [{
+        src: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' fill='%2300ff9d'><circle cx='256' cy='256' r='240' fill='%230b0f19'/><path d='M256 120v272M120 256h272' stroke='%2300ff9d' stroke-width='32' stroke-linecap='round'/></svg>",
+        sizes: "512x512",
+        type: "image/svg+xml",
+        purpose: "any maskable"
+      }]
+    };
+    document.getElementById('manifest-link').setAttribute('href', URL.createObjectURL(new Blob([JSON.stringify(pwaManifest)], { type: 'application/manifest+json' })));
+
+    if ('serviceWorker' in navigator) {
+      const swScript = `
+        self.addEventListener('install', e => self.skipWaiting());
+        self.addEventListener('activate', e => self.clients.claim());
+        self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => new Response('Offline'))));
+      `;
+      navigator.serviceWorker.register(URL.createObjectURL(new Blob([swScript], { type: 'application/javascript' }))).catch(err => console.warn(err));
+    }
+
+    let deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      document.getElementById('btn-install-pwa').classList.remove('hidden');
+      document.getElementById('btn-install-pwa-sheet').classList.remove('hidden');
+    });
+
+    async function installPWA() {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        document.getElementById('btn-install-pwa').classList.add('hidden');
+        document.getElementById('btn-install-pwa-sheet').classList.add('hidden');
+      }
+      deferredPrompt = null;
+    }
+    document.getElementById('btn-install-pwa').addEventListener('click', installPWA);
+    document.getElementById('btn-install-pwa-sheet').addEventListener('click', installPWA);
+
+    /* ==========================================================================
+       2. MOTEUR CRYPTOGRAPHIQUE E2EE (AES-GCM 256)
+       ========================================================================== */
+    class CryptoEngine {
+      static async deriveRoomKey(channelName) {
+        const enc = new TextEncoder();
+        const baseKey = await window.crypto.subtle.importKey(
+          "raw", enc.encode("bitweb-salt-" + channelName), "PBKDF2", false, ["deriveKey"]
+        );
+        return await window.crypto.subtle.deriveKey(
+          {
+            name: "PBKDF2",
+            salt: enc.encode("bitweb-mesh-v3-fixed-salt"),
+            iterations: 100000,
+            hash: "SHA-256"
+          },
+          baseKey,
+          { name: "AES-GCM", length: 256 },
+          false,
+          ["encrypt", "decrypt"]
+        );
+      }
+
+      static async encrypt(aesKey, payload) {
+        const enc = new TextEncoder();
+        const iv = window.crypto.getRandomValues(new Uint8Array(12));
+        const ciphertext = await window.crypto.subtle.encrypt(
+          { name: "AES-GCM", iv: iv }, aesKey, enc.encode(JSON.stringify(payload))
+        );
+        return {
+          cipher: btoa(String.fromCharCode(...new Uint8Array(ciphertext))),
+          iv: btoa(String.fromCharCode(...new Uint8Array(iv)))
+        };
+      }
+
+      static async decrypt(aesKey, cipherB64, ivB64) {
+        const dec = new TextDecoder();
+        const cipherBuf = Uint8Array.from(atob(cipherB64), c => c.charCodeAt(0)).buffer;
+        const ivBuf = Uint8Array.from(atob(ivB64), c => c.charCodeAt(0)).buffer;
+        const decrypted = await window.crypto.subtle.decrypt(
+          { name: "AES-GCM", iv: ivBuf }, aesKey, cipherBuf
+        );
+        return JSON.parse(dec.decode(decrypted));
+      }
+
+      static async getFingerprint(channelName) {
+        const enc = new TextEncoder();
+        const hash = await window.crypto.subtle.digest('SHA-256', enc.encode(channelName));
+        return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 8).toUpperCase();
+      }
+    }
+
+    /* ==========================================================================
+       3. MOTEUR DE DÉCOUVERTES AUTO P2P / WSS
+       ========================================================================== */
+    class SquadDiscoveryMesh {
+      constructor(onMsg, onPeersChanged, onGPS) {
+        this.myId = "usr-" + Math.random().toString(36).substring(2, 8);
+        this.myAlias = "Squad-" + Math.floor(1000 + Math.random() * 9000);
+        this.channel = "global";
+        this.roomKey = null;
+        this.fingerprint = "";
+        this.peers = new Map();
+        this.client = null;
+
+        this.onMsg = onMsg;
+        this.onPeersChanged = onPeersChanged;
+        this.onGPS = onGPS;
+      }
+
+      async init() {
+        this.roomKey = await CryptoEngine.deriveRoomKey(this.channel);
+        this.fingerprint = await CryptoEngine.getFingerprint(this.channel);
+
+        const brokers = ['wss://broker.emqx.io:8084/mqtt', 'wss://broker.hivemq.com:8884/mqtt'];
+        this.client = mqtt.connect(brokers[0], {
+          clientId: this.myId,
+          clean: true,
+          reconnectPeriod: 2000
+        });
+
+        this.client.on('connect', () => {
+          document.getElementById('conn-status-dot').className = "w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse";
+          this.subscribeChannel();
+          this.startHeartbeat();
+        });
+
+        this.client.on('error', () => {
+          document.getElementById('conn-status-dot').className = "w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping";
+        });
+
+        this.client.on('message', async (topic, message) => {
+          try {
+            const raw = JSON.parse(message.toString());
+            if (raw.senderId === this.myId) return;
+
+            if (raw.type === 'PING') {
+              this.peers.set(raw.senderId, { alias: raw.alias, lastSeen: Date.now() });
+              this.onPeersChanged();
+              this.client.publish(`bitweb/v3/channels/${this.channel}`, JSON.stringify({
+                type: 'PONG',
+                senderId: this.myId,
+                alias: this.myAlias
+              }));
+            } else if (raw.type === 'PONG') {
+              this.peers.set(raw.senderId, { alias: raw.alias, lastSeen: Date.now() });
+              this.onPeersChanged();
+            } else if (raw.type === 'ENCRYPTED') {
+              const dec = await CryptoEngine.decrypt(this.roomKey, raw.cipher, raw.iv);
+              if (dec.type === 'CHAT') {
+                this.onMsg({
+                  senderAlias: raw.alias,
+                  text: dec.text,
+                  channel: this.channel,
+                  isSOS: dec.isSOS || false,
+                  destruct: dec.destruct || null,
+                  location: dec.location || null,
+                  attachment: dec.attachment || null,
+                  timestamp: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+                  fingerprint: this.fingerprint
+                });
+              } else if (dec.type === 'GPS') {
+                this.onGPS(raw.senderId, raw.alias, dec.coords);
+              }
+            }
+          } catch(e) { console.error(e); }
+        });
+
+        setInterval(() => {
+          const now = Date.now();
+          let changed = false;
+          for (const [id, data] of this.peers.entries()) {
+            if (now - data.lastSeen > 15000) {
+              this.peers.delete(id);
+              changed = true;
+            }
+          }
+          if (changed) this.onPeersChanged();
+        }, 4000);
+      }
+
+      async switchChannel(newChannel) {
+        if (this.client && this.client.connected) {
+          this.client.unsubscribe(`bitweb/v3/channels/${this.channel}`);
+        }
+        this.channel = newChannel;
+        this.peers.clear();
+        this.roomKey = await CryptoEngine.deriveRoomKey(this.channel);
+        this.fingerprint = await CryptoEngine.getFingerprint(this.channel);
+        this.subscribeChannel();
+        this.onPeersChanged();
+      }
+
+      subscribeChannel() {
+        if (!this.client || !this.client.connected) return;
+        const topic = `bitweb/v3/channels/${this.channel}`;
+        this.client.subscribe(topic);
+        this.client.publish(topic, JSON.stringify({
+          type: 'PING',
+          senderId: this.myId,
+          alias: this.myAlias
+        }));
+      }
+
+      startHeartbeat() {
+        setInterval(() => {
+          if (this.client && this.client.connected) {
+            this.client.publish(`bitweb/v3/channels/${this.channel}`, JSON.stringify({
+              type: 'PING',
+              senderId: this.myId,
+              alias: this.myAlias
+            }));
+          }
+        }, 5000);
+      }
+
+      async sendBroadcast(text, options = {}) {
+        const payload = {
+          type: 'CHAT',
+          text,
+          isSOS: options.isSOS || false,
+          destruct: options.destruct || null,
+          location: options.location || null,
+          attachment: options.attachment || null
+        };
+
+        const timeStr = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+
+        this.onMsg({
+          senderAlias: this.myAlias,
+          text,
+          channel: this.channel,
+          isSOS: options.isSOS || false,
+          destruct: options.destruct || null,
+          location: options.location || null,
+          attachment: options.attachment || null,
+          timestamp: timeStr,
+          fingerprint: this.fingerprint,
+          isSelf: true
+        });
+
+        const enc = await CryptoEngine.encrypt(this.roomKey, payload);
+        this.client.publish(`bitweb/v3/channels/${this.channel}`, JSON.stringify({
+          type: 'ENCRYPTED',
+          senderId: this.myId,
+          alias: this.myAlias,
+          cipher: enc.cipher,
+          iv: enc.iv
+        }));
+      }
+
+      async sendGPS(coords) {
+        const enc = await CryptoEngine.encrypt(this.roomKey, { type: 'GPS', coords });
+        this.client.publish(`bitweb/v3/channels/${this.channel}`, JSON.stringify({
+          type: 'ENCRYPTED',
+          senderId: this.myId,
+          alias: this.myAlias,
+          cipher: enc.cipher,
+          iv: enc.iv
+        }));
+      }
+    }
+
+    /* ==========================================================================
+       4. LOGIQUE D'INTERFACE UTILISATEUR
+       ========================================================================== */
+    document.addEventListener('DOMContentLoaded', async () => {
+      const messagesFeed = document.getElementById('messages-feed');
+      const chatForm = document.getElementById('chat-form');
+      const messageInput = document.getElementById('message-input');
+      const headerRoomTitle = document.getElementById('header-room-title');
+      const headerPeersCount = document.getElementById('header-peers-count');
+
+      let activeDestruct = null;
+      let activeLocation = null;
+      let activeAttachment = null;
+      let isSOSActive = false;
+
+      let map = null, myMarker = null;
+      const peerMarkers = new Map();
+
+      const sheetChannels = document.getElementById('sheet-channels');
+      const sheetAttach = document.getElementById('sheet-attach');
+      const sheetSecurity = document.getElementById('sheet-security');
+
+      lucide.createIcons();
+
+      const mesh = new SquadDiscoveryMesh(
+        msg => renderMessage(msg),
+        () => updatePeersUI(),
+        (id, alias, coords) => updatePeerGPS(id, alias, coords)
+      );
+
+      await mesh.init();
+
+      document.getElementById('sec-my-id').textContent = `${mesh.myAlias} (${mesh.myId})`;
+      document.getElementById('sec-fingerprint').textContent = mesh.fingerprint;
+
+      function renderMessage(msg) {
+        const isSelf = msg.isSelf;
+        const wrapper = document.createElement('div');
+        wrapper.className = `flex flex-col ${isSelf ? 'items-end' : 'items-start'} my-2 space-y-1 transition-all duration-300`;
+
+        let bubbleClass = isSelf ? 'glass-bubble-self text-white' : 'glass-bubble-peer text-white/90';
+        if (msg.isSOS) bubbleClass = 'glass-bubble-sos text-white';
+
+        let extra = '';
+        if (msg.location) {
+          extra += `<div class="mt-2 p-2 rounded-xl bg-cyan-950/60 border border-cyan-500/40 text-[10px] text-cyan-300 flex items-center gap-1"><i data-lucide="map-pin" class="w-3 h-3"></i> GPS: ${msg.location.lat.toFixed(4)}, ${msg.location.lng.toFixed(4)}</div>`;
+        }
+        if (msg.attachment && msg.attachment.type.startsWith('image/')) {
+          extra += `<img src="${msg.attachment.data}" class="mt-2 max-w-[180px] rounded-xl border border-white/20">`;
+        }
+
+        let destruct = msg.destruct ? `<span class="text-[9px] text-rose-400 font-mono flex items-center gap-0.5"><i data-lucide="timer" class="w-3 h-3"></i> <span class="timer-val">${msg.destruct}s</span></span>` : '';
+
+        wrapper.innerHTML = `
+          <div class="flex items-center gap-1.5 text-[9px] text-white/40 font-mono px-2">
+            <span class="${isSelf ? 'text-emerald-400' : 'text-cyan-400'} font-bold">${escapeHTML(msg.senderAlias)}</span>
+            <span>• ${msg.timestamp}</span>
+            ${destruct}
+          </div>
+          <div class="max-w-[85%] p-3 rounded-2xl text-xs ${bubbleClass} leading-relaxed break-words shadow-lg">
+            ${msg.isSOS ? '<strong class="text-rose-400 flex items-center gap-1 mb-1"><i data-lucide="alert-octagon" class="w-4 h-4"></i> ALERTE S.O.S. SQUAD</strong>' : ''}
+            ${escapeHTML(msg.text)}
+            ${extra}
+          </div>
+        `;
+
+        messagesFeed.appendChild(wrapper);
+        messagesFeed.scrollTop = messagesFeed.scrollHeight;
+        lucide.createIcons();
+
+        if (msg.destruct) {
+          let s = parseInt(msg.destruct);
+          const tSpan = wrapper.querySelector('.timer-val');
+          const inv = setInterval(() => {
+            s--;
+            if (tSpan) tSpan.textContent = `${s}s`;
+            if (s <= 0) {
+              clearInterval(inv);
+              wrapper.style.opacity = '0';
+              setTimeout(() => wrapper.remove(), 300);
+            }
+          }, 1000);
+        }
+      }
+
+      chatForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const text = messageInput.value.trim();
+        if (!text && !activeLocation && !activeAttachment && !isSOSActive) return;
+
+        await mesh.sendBroadcast(text || (isSOSActive ? "DEMANDE D'ASSISTANCE S.O.S." : "Fichier partagé"), {
+          isSOS: isSOSActive,
+          destruct: activeDestruct,
+          location: activeLocation,
+          attachment: activeAttachment
+        });
+
+        messageInput.value = '';
+        clearOptionsBar();
+      });
+
+      function setOptionBar(text, icon) {
+        document.getElementById('status-bar-options').classList.remove('hidden');
+        document.getElementById('status-option-text').textContent = text;
+        document.getElementById('status-option-icon').setAttribute('data-lucide', icon);
+        lucide.createIcons();
+      }
+
+      function clearOptionsBar() {
+        activeDestruct = null;
+        activeLocation = null;
+        activeAttachment = null;
+        isSOSActive = false;
+        document.getElementById('status-bar-options').classList.add('hidden');
+      }
+
+      document.getElementById('btn-clear-options').addEventListener('click', clearOptionsBar);
+
+      document.getElementById('file-input-hidden').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          activeAttachment = { name: file.name, type: file.type, data: evt.target.result };
+          closeSheets();
+          setOptionBar(`Fichier: ${file.name}`, "file-text");
+          showToast("Fichier prêt");
+        };
+        reader.readAsDataURL(file);
+      });
+
+      document.getElementById('btn-option-location').addEventListener('click', () => {
+        if ("geolocation" in navigator) {
+          navigator.geolocation.getCurrentPosition(pos => {
+            activeLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            closeSheets();
+            setOptionBar("GPS prêt", "map-pin");
+            showToast("Position GPS capturée");
+            mesh.sendGPS(activeLocation);
+          });
+        }
+      });
+
+      document.getElementById('btn-option-timer').addEventListener('click', () => {
+        activeDestruct = 10;
+        closeSheets();
+        setOptionBar("Auto-destruction: 10s", "timer");
+        showToast("Minuteur activé");
+      });
+
+      document.getElementById('btn-option-sim').addEventListener('click', () => {
+        closeSheets();
+        setTimeout(() => {
+          renderMessage({
+            senderAlias: "Pote-Virtuel",
+            text: "Hello ! Je suis sur le salon en 5G, message reçu 5/5.",
+            timestamp: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+            fingerprint: mesh.fingerprint
+          });
+        }, 1000);
+      });
+
+      document.getElementById('btn-trigger-sos').addEventListener('click', () => {
+        isSOSActive = true;
+        if ("geolocation" in navigator) {
+          navigator.geolocation.getCurrentPosition(pos => {
+            activeLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            setOptionBar("S.O.S. ALERTE", "alert-triangle");
+            showToast("S.O.S. prêt ! Clique sur Envoyer");
+          });
+        }
+      });
+
+      function openSheet(s) {
+        closeSheets();
+        s.classList.add('sheet-show');
+      }
+      function closeSheets() {
+        [sheetChannels, sheetAttach, sheetSecurity].forEach(s => s.classList.remove('sheet-show'));
+      }
+
+      document.getElementById('btn-toggle-channels').addEventListener('click', () => openSheet(sheetChannels));
+      document.getElementById('btn-open-attach').addEventListener('click', () => openSheet(sheetAttach));
+      document.getElementById('btn-toggle-menu').addEventListener('click', () => openSheet(sheetSecurity));
+      document.querySelectorAll('.btn-close-sheet').forEach(b => b.addEventListener('click', closeSheets));
+
+      document.querySelectorAll('.btn-channel').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.btn-channel').forEach(b => b.className = "btn-channel p-3 rounded-2xl glass-panel text-xs font-mono text-white/70 flex items-center justify-between");
+          btn.className = "btn-channel active p-3 rounded-2xl glass-panel text-xs font-mono text-emerald-400 border-emerald-500/40 flex items-center justify-between";
+          
+          const newChan = btn.dataset.channel;
+          mesh.switchChannel(newChan);
+          headerRoomTitle.textContent = `# ${newChan.toUpperCase()}`;
+          messagesFeed.innerHTML = '';
+          closeSheets();
+          showToast(`Salon #${newChan}`);
+        });
+      });
+
+      function updatePeersUI() {
+        const count = mesh.peers.size;
+        headerPeersCount.textContent = count === 0 ? "RECHERCHE DE POTES..." : `${count} POTE${count > 1 ? 'S' : ''} EN LIGNE`;
+
+        const list = document.getElementById('drawer-peers-list');
+        if (count === 0) {
+          list.innerHTML = `<div class="text-white/30 text-center py-2">Recherche d'autres téléphones...</div>`;
+          return;
+        }
+        let html = '';
+        mesh.peers.forEach((p, id) => {
+          html += `<div class="p-2 rounded-xl glass-panel flex items-center justify-between"><span class="text-emerald-400 font-bold flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>${escapeHTML(p.alias)}</span><span class="text-[9px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full">5G/Wi-Fi E2EE</span></div>`;
+        });
+        list.innerHTML = html;
+      }
+
+      document.getElementById('btn-toggle-radar').addEventListener('click', () => {
+        document.getElementById('modal-radar').classList.remove('hidden');
+        if (!map) {
+          map = L.map('map-container').setView([46.8182, 8.2275], 4);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
+        }
+        if ("geolocation" in navigator) {
+          navigator.geolocation.getCurrentPosition(pos => {
+            const coords = [pos.coords.latitude, pos.coords.longitude];
+            map.setView(coords, 13);
+            if (!myMarker) {
+              myMarker = L.circleMarker(coords, { color: '#00f0ff', fillColor: '#00f0ff', fillOpacity: 0.9, radius: 8 }).addTo(map).bindPopup("Vous").openPopup();
+            } else { myMarker.setLatLng(coords); }
+          });
+        }
+      });
+
+      document.getElementById('btn-close-radar').addEventListener('click', () => {
+        document.getElementById('modal-radar').classList.add('hidden');
+      });
+
+      function updatePeerGPS(id, alias, coords) {
+        document.getElementById('radar-active-dot').classList.remove('hidden');
+        showToast(`GPS reçu de ${alias}`);
+        if (!map) return;
+        const latLng = [coords.lat, coords.lng];
+        if (peerMarkers.has(id)) {
+          peerMarkers.get(id).setLatLng(latLng);
+        } else {
+          const m = L.circleMarker(latLng, { color: '#00ff9d', fillColor: '#00ff9d', fillOpacity: 0.9, radius: 8 }).addTo(map).bindPopup(`${alias} (Squad)`);
+          peerMarkers.set(id, m);
+        }
+      }
+
+      document.getElementById('btn-panic-purge').addEventListener('click', () => {
+        window.location.reload();
+      });
+
+      function showToast(txt) {
+        const toast = document.getElementById('toast');
+        document.getElementById('toast-text').textContent = txt;
+        toast.classList.remove('opacity-0', 'pointer-events-none');
+        setTimeout(() => toast.classList.add('opacity-0', 'pointer-events-none'), 2200);
+      }
+
+      function escapeHTML(str) {
+        return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
+      }
+    });
+  </script>
+</body>
+</html>
