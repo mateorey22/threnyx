@@ -1,1457 +1,1854 @@
 <!DOCTYPE html>
-<html lang="fr" class="dark">
+<html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UNCLASSIFIED P2P MESH TERMINAL v1.2</title>
-    
-    <!-- Dynamic PWA Manifest Injection (Guarded for file:// and iframe compatibility) -->
-    <script>
-        if (window.location.protocol.startsWith('http') && window.isSecureContext) {
-            try {
-                const manifest = {
-                    name: "Terminal Mesh P2P",
-                    short_name: "MeshTerm",
-                    start_url: window.location.href,
-                    display: "standalone",
-                    background_color: "#0a0a0c",
-                    theme_color: "#ffb000",
-                    icons: [{
-                        src: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 24 24' fill='none' stroke='%23ffb000' stroke-width='2'><circle cx='12' cy='12' r='10'/><path d='M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20'/><path d='M2 12h20'/></svg>",
-                        sizes: "192x192",
-                        type: "image/svg+xml"
-                    }]
-                };
-                const blob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
-                const manifestUrl = URL.createObjectURL(blob);
-                const link = document.createElement('link');
-                link.rel = 'manifest';
-                link.href = manifestUrl;
-                document.head.appendChild(link);
-            } catch (err) {
-                console.warn("[PWA Manifest ignored in current origin context]", err);
-            }
-        }
-    </script>
-
-    <style>
-        :root {
-            --bg-primary: #0a0a0c;
-            --bg-secondary: #121216;
-            --bg-tertiary: #1a1a22;
-            --text-main: #e2e8f0;
-            --text-muted: #64748b;
-            --accent-amber: #ffb000;
-            --accent-green: #00ff66;
-            --accent-red: #ff3366;
-            --accent-cyan: #00e5ff;
-            --border-color: #27272a;
-            --font-mono: 'Courier New', Courier, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-            --dot-pattern: radial-gradient(rgba(255, 176, 0, 0.15) 1px, transparent 1px);
-        }
-
-        .theme-parchment {
-            --bg-primary: #e8e3d5;
-            --bg-secondary: #dfd9c8;
-            --bg-tertiary: #d4ccb8;
-            --text-main: #121212;
-            --text-muted: #555544;
-            --accent-amber: #994400;
-            --accent-green: #116622;
-            --accent-red: #aa1122;
-            --accent-cyan: #005577;
-            --border-color: #b5ac98;
-            --dot-pattern: radial-gradient(rgba(18, 18, 18, 0.12) 1px, transparent 1px);
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: var(--font-mono);
-            user-select: none;
-        }
-
-        body {
-            background-color: var(--bg-primary);
-            color: var(--text-main);
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            background-image: var(--dot-pattern);
-            background-size: 16px 16px;
-            transition: background-color 0.3s, color 0.3s;
-        }
-
-        header.terminal-header {
-            background-color: var(--bg-secondary);
-            border-bottom: 2px solid var(--border-color);
-            padding: 8px 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.75rem;
-            letter-spacing: 1px;
-            z-index: 50;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 6px;
-            background-color: var(--accent-red);
-        }
-        .status-dot.online { background-color: var(--accent-green); }
-
-        .app-container {
-            flex: 1;
-            display: flex;
-            overflow: hidden;
-            position: relative;
-        }
-
-        /* Sidebar Navigation */
-        nav.nav-sidebar {
-            width: 70px;
-            background-color: var(--bg-secondary);
-            border-right: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 12px 0;
-            gap: 20px;
-            z-index: 40;
-        }
-
-        .nav-btn {
-            background: transparent;
-            border: 1px solid var(--border-color);
-            color: var(--text-muted);
-            width: 48px;
-            height: 48px;
-            border-radius: 4px;
-            cursor: pointer;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.65rem;
-            gap: 2px;
-            transition: all 0.2s;
-        }
-        .nav-btn.active, .nav-btn:hover {
-            color: var(--accent-amber);
-            border-color: var(--accent-amber);
-            background-color: var(--bg-tertiary);
-            box-shadow: 0 0 8px rgba(255, 176, 0, 0.2);
-        }
-
-        /* Main Workspace Panels */
-        .panel {
-            flex: 1;
-            display: none;
-            height: 100%;
-            overflow: hidden;
-            position: relative;
-        }
-        .panel.active { display: flex; }
-
-        .onboarding-container {
-            width: 100%;
-            max-width: 900px;
-            margin: auto;
-            padding: 24px;
-            overflow-y: auto;
-            max-height: 100%;
-        }
-
-        .brutalist-card {
-            border: 2px solid var(--text-main);
-            background-color: var(--bg-secondary);
-            padding: 20px;
-            margin-bottom: 20px;
-            position: relative;
-            box-shadow: 4px 4px 0px var(--text-main);
-        }
-
-        .led-number {
-            font-size: 2rem;
-            font-weight: bold;
-            color: var(--accent-amber);
-            border: 1px solid var(--accent-amber);
-            padding: 2px 10px;
-            display: inline-block;
-            margin-right: 12px;
-        }
-
-        .key-seed-block {
-            background-color: var(--bg-primary);
-            border: 1px dashed var(--accent-amber);
-            padding: 12px;
-            font-size: 0.7rem;
-            word-break: break-all;
-            color: var(--accent-amber);
-            margin: 12px 0;
-            max-height: 100px;
-            overflow-y: auto;
-        }
-
-        .cmd-btn {
-            background-color: var(--accent-amber);
-            color: #000;
-            border: none;
-            padding: 10px 16px;
-            font-weight: bold;
-            cursor: pointer;
-            text-transform: uppercase;
-            font-size: 0.8rem;
-            letter-spacing: 1px;
-            box-shadow: 3px 3px 0px var(--text-main);
-            transition: transform 0.1s;
-        }
-        .cmd-btn:active {
-            transform: translate(2px, 2px);
-            box-shadow: 1px 1px 0px var(--text-main);
-        }
-        .cmd-btn.danger {
-            background-color: var(--accent-red);
-            color: #fff;
-        }
-
-        .chat-sidebar {
-            width: 320px;
-            border-right: 1px solid var(--border-color);
-            background-color: var(--bg-secondary);
-            display: flex;
-            flex-direction: column;
-        }
-
-        .chat-viewport {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            background-color: var(--bg-primary);
-        }
-
-        .chat-list {
-            flex: 1;
-            overflow-y: auto;
-        }
-
-        .chat-item {
-            padding: 12px 16px;
-            border-bottom: 1px solid var(--border-color);
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .chat-item.active, .chat-item:hover {
-            background-color: var(--bg-tertiary);
-            border-left: 4px solid var(--accent-amber);
-        }
-
-        .message-feed {
-            flex: 1;
-            padding: 16px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .msg-bubble {
-            max-width: 75%;
-            padding: 10px 14px;
-            border: 1px solid var(--border-color);
-            background-color: var(--bg-secondary);
-            position: relative;
-            font-size: 0.85rem;
-            line-height: 1.4;
-            word-break: break-word;
-        }
-        .msg-bubble.sent {
-            align-self: flex-end;
-            border-color: var(--accent-amber);
-            background-color: var(--bg-tertiary);
-        }
-        .msg-bubble.received {
-            align-self: flex-start;
-            border-color: var(--accent-cyan);
-        }
-
-        .msg-meta {
-            font-size: 0.65rem;
-            color: var(--text-muted);
-            margin-top: 4px;
-            display: flex;
-            justify-content: space-between;
-            gap: 10px;
-        }
-
-        .receipt-check {
-            color: var(--text-muted);
-            font-weight: bold;
-        }
-        .receipt-check.routed { color: var(--accent-amber); }
-        .receipt-check.read { color: var(--accent-cyan); }
-
-        .input-bar {
-            padding: 12px;
-            border-top: 1px solid var(--border-color);
-            background-color: var(--bg-secondary);
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .input-bar input[type="text"] {
-            flex: 1;
-            background-color: var(--bg-primary);
-            border: 1px solid var(--border-color);
-            color: var(--text-main);
-            padding: 10px;
-            font-size: 0.85rem;
-            outline: none;
-        }
-        .input-bar input[type="text"]:focus {
-            border-color: var(--accent-amber);
-        }
-
-        canvas#meshCanvas {
-            width: 100%;
-            height: 100%;
-            display: block;
-        }
-
-        .ascii-frame {
-            border: 1px solid var(--border-color);
-            position: relative;
-            padding: 10px;
-            background: rgba(10, 10, 12, 0.85);
-        }
-        .ascii-frame::before {
-            content: '+---+';
-            position: absolute;
-            top: -10px;
-            left: 10px;
-            background: var(--bg-primary);
-            padding: 0 4px;
-            font-size: 0.6rem;
-            color: var(--text-muted);
-        }
-
-        .modal-overlay {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.85);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-        }
-        .modal-overlay.active { display: flex; }
-
-        .modal-body {
-            background-color: var(--bg-secondary);
-            border: 2px solid var(--accent-amber);
-            padding: 20px;
-            max-width: 500px;
-            width: 90%;
-            max-height: 90vh;
-            overflow-y: auto;
-            box-shadow: 0 0 20px rgba(255,176,0,0.2);
-        }
-
-        textarea {
-            width: 100%;
-            height: 100px;
-            background-color: var(--bg-primary);
-            border: 1px solid var(--border-color);
-            color: var(--accent-amber);
-            padding: 8px;
-            font-size: 0.7rem;
-            resize: none;
-        }
-
-        .call-container {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            width: 100%;
-            background: #000;
-            position: relative;
-        }
-        video {
-            width: 100%;
-            height: 50%;
-            object-fit: cover;
-            background: #111;
-            border: 1px solid var(--border-color);
-        }
-
-        #toastContainer {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 200;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            pointer-events: none;
-        }
-
-        .toast-msg {
-            background-color: var(--bg-secondary);
-            border: 1px solid var(--accent-amber);
-            color: var(--text-main);
-            padding: 12px 18px;
-            font-size: 0.8rem;
-            box-shadow: 4px 4px 0px var(--accent-amber);
-            pointer-events: auto;
-            animation: fadeIn 0.2s ease-in-out;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Responsive UI adjust */
-        @media (max-width: 768px) {
-            .app-container { flex-direction: column; }
-            nav.nav-sidebar {
-                width: 100%;
-                height: 50px;
-                flex-direction: row;
-                justify-content: space-around;
-                padding: 0;
-            }
-            .chat-sidebar { width: 100%; height: 40%; }
-            .chat-viewport { height: 60%; }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#060606">
+<title>MESHCHAT // CHAT DECENTRALISE</title>
+<style>
+/* ================= RESET & THEME TERMINAL ================= */
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --radius: 8px;
+  --paper:#e8dfc6;--paper2:#ded4b6;--ink:#16130e;
+  --black:#060606;--panel:#0b0b09;--panel2:#111009;
+  --beige:#d8cfae;--bright:#f4eeda;--dim:#6b6552;--dim2:#3a362b;
+  --red:#ff5540;--border:1px solid #3a362b;
+}
+html,body{height:100%;font-family:ui-monospace,'Cascadia Mono','JetBrains Mono','Courier New',monospace;background:var(--black);color:var(--bright)}
+body{overflow:hidden}
+button{font:inherit;cursor:pointer;border:var(--border);background:transparent;color:var(--beige);text-transform:uppercase;letter-spacing:1px;padding:8px 14px;transition:.12s;border-radius:var(--radius)}
+button:hover{background:var(--beige);color:var(--black)}
+input,textarea,select{font:inherit;color:var(--bright);background:#000;border:var(--border);outline:none;padding:9px 12px;width:100%;border-radius:var(--radius)}
+input:focus,textarea:focus{border-color:var(--beige)}
+textarea{resize:none}
+::-webkit-scrollbar{width:8px}::-webkit-scrollbar-thumb{background:var(--dim2);border-radius:4px}::-webkit-scrollbar-track{background:#000}
+.hidden{display:none!important}
+pre{white-space:pre-wrap;word-break:break-word}
+.dim{color:var(--dim)}
+/* ================= ONBOARDING (PARCHEMIN) ================= */
+#onboard{position:fixed;inset:0;z-index:200;overflow-y:auto;background:var(--paper);color:var(--ink);
+  background-image:radial-gradient(rgba(0,0,0,.14) 1px,transparent 1px);background-size:14px 14px}
+#onboard input,#onboard textarea{background:var(--paper2);color:var(--ink);border:1px solid var(--ink);border-radius:var(--radius)}
+#onboard button{border:2px solid var(--ink);color:var(--ink);border-radius:var(--radius)}
+#onboard button:hover{background:var(--ink);color:var(--paper)}
+.ob-wrap{max-width:720px;margin:0 auto;padding:36px 20px 90px}
+.ob-banner{border:2px solid var(--ink);padding:18px;text-align:center;margin-bottom:8px;border-radius:var(--radius)}
+.ob-banner h1{font-size:clamp(1rem,4vw,1.55rem);letter-spacing:3px}
+.ob-banner .sub{font-size:.7rem;letter-spacing:2px;margin-top:6px;opacity:.7}
+.ob-hint{text-align:center;font-size:.72rem;letter-spacing:3px;margin:22px 0 40px;animation:blink 1.6s infinite}
+@keyframes blink{50%{opacity:.25}}
+.ob-sec{margin:70px 0;opacity:0;transform:translateY(34px);transition:opacity .7s,transform .7s}
+.ob-sec.vis{opacity:1;transform:none}
+.led{display:inline-block;font-size:clamp(2.6rem,8vw,4.2rem);font-weight:700;letter-spacing:8px;
+  border:3px solid var(--ink);padding:2px 18px 2px 26px;background:var(--paper2);
+  text-shadow:2px 2px 0 rgba(0,0,0,.15);font-variant-numeric:tabular-nums;border-radius:var(--radius)}
+.ob-sec h2{margin:16px 0 12px;font-size:1rem;letter-spacing:2px;border-bottom:2px solid var(--ink);padding-bottom:6px}
+.ob-sec p,.ob-sec li{font-size:.85rem;line-height:1.7}
+.ob-sec pre{font-size:.78rem;line-height:1.9;border-left:3px solid var(--ink);padding-left:14px}
+.gibber{border:2px solid var(--ink);background:var(--paper2);padding:14px;font-size:.66rem;line-height:1.7;
+  letter-spacing:1px;word-break:break-all;user-select:none;overflow:hidden;max-height:170px;border-radius:var(--radius)}
+.ob-demo{border:2px solid var(--ink);background:#0a0a08;color:var(--bright);padding:14px;font-size:.78rem;border-radius:var(--radius)}
+.ob-demo .l{margin:7px 0;line-height:1.5}
+.ob-demo .in2{color:var(--beige)}.ob-demo .out2{text-align:right;color:var(--bright)}
+.ob-demo .meta2{font-size:.62rem;color:var(--dim)}
+#ob-mesh{width:100%;height:220px;border:2px solid var(--ink);background:#060606;display:block;border-radius:var(--radius)}
+.ob-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+@media(max-width:560px){.ob-grid{grid-template-columns:1fr}}
+.ob-grid div{border:1px solid var(--ink);padding:10px;font-size:.74rem;line-height:1.55;border-radius:var(--radius)}
+.ob-grid b{display:block;letter-spacing:1px;margin-bottom:4px}
+.field{margin:14px 0}
+.field label{display:block;font-size:.68rem;letter-spacing:2px;margin-bottom:5px;text-transform:uppercase}
+.ob-profile{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.ob-profile .form{flex:1;min-width:240px}
+#ob-ascii{border:2px solid var(--ink);width:120px;height:120px;display:flex;align-items:center;justify-content:center;
+  font-size:2.6rem;background:var(--paper2);overflow:hidden;image-rendering:pixelated;border-radius:var(--radius)}
+#ob-ascii img{width:100%;height:100%;object-fit:cover;image-rendering:pixelated;filter:grayscale(.5) contrast(1.3)}
+/* ================= APP (NOIR PROFOND) ================= */
+#app{display:flex;flex-direction:column;height:100%}
+#topbar{background:#000;border-bottom:var(--border);padding:7px 12px;font-size:.66rem;letter-spacing:1px;
+  color:var(--beige);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0;border-radius:0 0 var(--radius) var(--radius)}
+#topbar b{color:var(--bright)}
+#cols{flex:1;display:flex;min-height:0}
+#sidebar{width:400px;min-width:300px;background:var(--panel);border-right:var(--border);display:flex;flex-direction:column;position:relative;border-radius:0 var(--radius) var(--radius) 0}
+#main{flex:1;display:flex;flex-direction:column;background:var(--black);position:relative;min-width:0;border-radius:var(--radius) 0 0 var(--radius)}
+#main-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--dim);gap:14px;text-align:center;padding:20px}
+#main-empty pre{font-size:.72rem;color:var(--beige)}
+@media(max-width:760px){
+  #sidebar{width:100%;border-right:none;border-radius:0}
+  #main{position:fixed;inset:0;top:30px;z-index:50;transform:translateX(100%);transition:transform .2s;border-radius:var(--radius) 0 0 var(--radius)}
+  #main.open{transform:translateX(0)}
+}
+.sb-head{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:var(--border);background:#000;border-radius:0 0 var(--radius) var(--radius)}
+.avatar{width:38px;height:38px;border:var(--border);display:flex;align-items:center;justify-content:center;
+  font-weight:700;color:var(--beige);overflow:hidden;flex-shrink:0;position:relative;background:#000;border-radius:50%}
+.avatar img{width:100%;height:100%;object-fit:cover;image-rendering:pixelated;filter:grayscale(.35) contrast(1.15)}
+.avatar.lg{width:84px;height:84px;font-size:1.9rem}
+.icon-btn{border:none;padding:6px 8px;font-size:.7rem;letter-spacing:0;border-radius:var(--radius)}
+.online-dot{position:absolute;bottom:0;right:0;width:9px;height:9px;background:var(--bright);border:1px solid #000;border-radius:50%}
+.tabs{display:flex;border-bottom:var(--border);background:#000;border-radius:0 0 var(--radius) var(--radius)}
+.tab{flex:1;padding:10px 0;text-align:center;font-size:.68rem;letter-spacing:1px;color:var(--dim);cursor:pointer;border-right:var(--border)}
+.tab:last-child{border-right:none}
+.tab.active{color:var(--black);background:var(--beige);font-weight:700}
+.tab .cnt{color:var(--red);margin-left:4px}
+.tab.active .cnt{color:var(--red)}
+.search-bar{padding:8px 10px;border-bottom:var(--border)}
+.search-bar input{padding:7px 10px;font-size:.78rem;border-radius:var(--radius)}
+.list{flex:1;overflow-y:auto}
+.row{display:flex;align-items:center;gap:11px;padding:11px 12px;cursor:pointer;border-bottom:var(--border)}
+.row:hover{background:var(--panel2)}
+.row .info{flex:1;min-width:0}
+.row .name{font-size:.82rem;letter-spacing:1px;display:flex;justify-content:space-between;gap:8px;color:var(--bright)}
+.row .name .time{font-size:.62rem;color:var(--dim);flex-shrink:0}
+.row .sub{font-size:.68rem;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;justify-content:space-between;gap:6px;margin-top:3px}
+.badge{color:var(--black);background:var(--beige);min-width:18px;height:16px;display:inline-flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:700;padding:0 5px;border-radius:8px}
+.status-ring{box-shadow:0 0 0 2px var(--beige)}
+.status-ring.seen{box-shadow:0 0 0 2px var(--dim2)}
+.fab{position:absolute;bottom:150px;right:16px;padding:12px 16px;background:var(--beige);color:var(--black);border:2px solid var(--beige);font-weight:700;z-index:5;border-radius:50%}
+.empty-hint{padding:34px 22px;text-align:center;color:var(--dim);font-size:.74rem;line-height:1.8}
+/* PANNEAU RESEAU (nuage de particules) */
+#net-panel{border-top:var(--border);background:#000;flex-shrink:0;position:relative;border-radius:var(--radius) var(--radius) 0 0}
+#mesh-canvas{width:100%;height:118px;display:block;border-radius:var(--radius) var(--radius) 0 0}
+#net-panel .corner{position:absolute;bottom:6px;right:6px;width:18px;height:18px;border-right:2px solid var(--beige);border-bottom:2px solid var(--beige);pointer-events:none}
+#sync-line,#repl-line{font-size:.6rem;color:var(--dim);padding:2px 10px;letter-spacing:1px;white-space:nowrap;overflow:hidden}
+#sync-line{color:var(--beige)}
+#repl-line{padding-bottom:7px}
+/* ================= ZONE DE CHAT ================= */
+.chat-head{display:flex;align-items:center;gap:11px;padding:8px 12px;border-bottom:var(--border);background:#000;z-index:2;border-radius:0 0 var(--radius) var(--radius)}
+.chat-head .info{flex:1;min-width:0;cursor:pointer}
+.chat-head .name{font-size:.85rem;letter-spacing:1px}
+.chat-head .presence{font-size:.62rem;color:var(--dim);margin-top:2px}
+.chat-head .presence.typing{color:var(--beige)}
+#back-btn{display:none}
+@media(max-width:760px){#back-btn{display:inline-block}}
+#msgs{flex:1;overflow-y:auto;padding:16px 5%;display:flex;flex-direction:column;gap:8px;
+  background-image:radial-gradient(rgba(216,207,174,.05) 1px,transparent 1px);background-size:20px 20px}
+.day-sep{align-self:center;color:var(--dim);font-size:.62rem;letter-spacing:2px;margin:12px 0}
+.bubble{max-width:76%;padding:9px 12px;font-size:.8rem;line-height:1.55;position:relative;word-wrap:break-word;
+  border:1px solid var(--dim2);background:var(--panel);animation:pop .12s ease;border-radius:var(--radius)}
+@keyframes pop{from{opacity:0;transform:translateY(4px)}}
+.bubble.in{align-self:flex-start;color:var(--beige)}
+.bubble.in::before{content:'';position:absolute;top:-1px;left:-1px;width:10px;height:10px;border-top:2px solid var(--dim);border-left:2px solid var(--dim)}
+.bubble.out{align-self:flex-end;border-color:#8a815f;color:var(--bright);background:#12100a}
+.bubble.out::before{content:'';position:absolute;top:-1px;right:-1px;width:10px;height:10px;border-top:2px solid var(--beige);border-right:2px solid var(--beige)}
+.bubble .meta{display:flex;gap:6px;justify-content:flex-end;font-size:.58rem;color:var(--dim);margin-top:5px;letter-spacing:1px}
+.bubble .ticks.read{color:var(--bright)}
+.bubble .quote{border-left:2px solid var(--beige);padding:4px 8px;font-size:.68rem;color:var(--dim);margin-bottom:6px;background:#000;border-radius:4px}
+.bubble .sender{font-size:.62rem;color:var(--beige);letter-spacing:1px;margin-bottom:4px}
+.bubble img,.bubble video{max-width:100%;margin-bottom:5px;display:block;max-height:320px;border:1px solid var(--dim2);border-radius:var(--radius)}
+.bubble .file-chip{display:flex;align-items:center;gap:8px;border:1px dashed var(--dim);padding:8px 10px;margin-bottom:4px;font-size:.72rem;border-radius:var(--radius)}
+.bubble.deleted{font-style:italic;color:var(--dim)}
+.bubble .actions{position:absolute;top:1px;right:4px;opacity:0;transition:.15s;font-size:.7rem;color:var(--dim);cursor:pointer}
+.bubble:hover .actions{opacity:1}
+.msg-menu{position:fixed;background:#000;border:var(--border);z-index:100;min-width:200px;border-radius:var(--radius)}
+.msg-menu button{display:block;width:100%;text-align:left;padding:10px 14px;font-size:.7rem;border:none;border-bottom:var(--border)}
+#reply-bar{display:flex;align-items:center;gap:8px;border-top:var(--border);background:#000;padding:7px 12px;font-size:.68rem;color:var(--dim);border-radius:var(--radius) var(--radius) 0 0}
+#reply-bar .quote{flex:1;border-left:2px solid var(--beige);padding-left:8px}
+.compose{display:flex;align-items:flex-end;gap:8px;padding:9px 10px;border-top:var(--border);background:#000;border-radius:0 0 var(--radius) var(--radius)}
+.compose .prompt{color:var(--beige);padding-bottom:11px;font-weight:700}
+.compose textarea{flex:1;max-height:110px;font-size:.82rem;padding:9px 12px;border-radius:var(--radius)}
+.send-btn{flex-shrink:0;font-weight:700;padding:10px 14px;border-radius:var(--radius)}
+.send-btn.rec{background:var(--red);border-color:var(--red);color:#fff;animation:blink 1s infinite}
+/* ================= MODALES ================= */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:120;display:flex;align-items:center;justify-content:center;padding:14px;overflow-y:auto}
+.modal{background:var(--panel);border:2px solid var(--beige);width:100%;max-width:500px;max-height:90vh;overflow-y:auto;border-radius:var(--radius)}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:var(--border);position:sticky;top:0;background:var(--panel);z-index:2;border-radius:var(--radius) var(--radius) 0 0}
+.modal-head h3{font-size:.85rem;letter-spacing:1px}
+.modal-body{padding:16px}
+.modal-body h4{font-size:.75rem;letter-spacing:1px;margin:12px 0 8px;color:var(--beige)}
+.code-box{border:1px dashed var(--dim);padding:12px;font-size:.6rem;word-break:break-all;max-height:130px;overflow-y:auto;user-select:all;cursor:copy;background:#000;color:var(--beige);border-radius:var(--radius)}
+.qr-grid{display:grid;margin:14px auto;image-rendering:pixelated;background:var(--paper);padding:8px;width:fit-content;border-radius:var(--radius)}
+.qr-grid div{width:5px;height:5px}
+.qr-grid .b{background:#000}
+.step-tag{display:inline-block;background:var(--beige);color:var(--black);font-weight:700;font-size:.62rem;padding:2px 9px;margin:8px 0 6px;letter-spacing:1px;border-radius:var(--radius)}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+.stat-card{border:var(--border);padding:12px;text-align:center;border-radius:var(--radius)}
+.stat-card b{display:block;font-size:1.3rem;color:var(--beige)}
+.stat-card span{font-size:.6rem;color:var(--dim);letter-spacing:1px}
+.member-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:var(--border)}
+.member-row .info{flex:1;font-size:.78rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tag-admin{font-size:.58rem;border:1px solid var(--beige);color:var(--beige);padding:2px 6px;letter-spacing:1px;border-radius:var(--radius)}
+.check-row{display:flex;align-items:center;gap:10px;padding:8px;cursor:pointer;font-size:.8rem;border-radius:var(--radius)}
+.check-row:hover{background:var(--panel2)}
+.check-row input{width:auto}
+details{margin:12px 0;border:var(--border);padding:10px 12px;border-radius:var(--radius)}
+summary{cursor:pointer;font-size:.75rem;color:var(--beige);letter-spacing:1px;text-transform:uppercase}
+details > *:not(summary){margin-top:10px}
+.btn-danger{border-color:var(--red);color:var(--red);border-radius:var(--radius)}
+.btn-danger:hover{background:var(--red);color:#fff}
+.btn-sm{padding:6px 10px;font-size:.68rem;border-radius:var(--radius)}
+/* ================= STATUTS VIEWER ================= */
+#status-viewer{position:fixed;inset:0;background:#000;z-index:150;display:flex;flex-direction:column;border-radius:var(--radius)}
+#sv-progress{display:flex;gap:4px;padding:10px}
+#sv-progress div{flex:1;height:3px;background:var(--dim2);overflow:hidden;border-radius:2px}
+#sv-progress div i{display:block;height:100%;background:var(--bright);width:0}
+#sv-content{flex:1;display:flex;align-items:center;justify-content:center;padding:20px;text-align:center}
+#sv-content img,#sv-content video{max-width:100%;max-height:100%;border:1px solid var(--dim);border-radius:var(--radius)}
+#sv-text{font-size:1.3rem;padding:40px;border:2px solid var(--beige);line-height:1.6;max-width:600px;border-radius:var(--radius)}
+#sv-foot{padding:14px;text-align:center;color:var(--dim);font-size:.7rem}
+/* ================= APPELS ================= */
+#call-ui{position:fixed;inset:0;background:#000;z-index:160;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;border-radius:var(--radius)}
+#remote-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000;border-radius:var(--radius)}
+#local-video{position:absolute;bottom:110px;right:16px;width:110px;border:1px solid var(--beige);z-index:2;background:#111;border-radius:var(--radius)}
+#call-info{z-index:2;text-align:center}
+#call-info h2{font-size:1.1rem;letter-spacing:2px}
+#call-info p{color:var(--dim);font-size:.72rem;margin-top:6px;letter-spacing:1px}
+#call-controls{position:absolute;bottom:28px;display:flex;gap:14px;z-index:3}
+.call-btn{padding:14px 20px;font-size:.8rem;font-weight:700;border-radius:var(--radius)}
+.call-btn.end{border-color:var(--red);color:var(--red)}
+.call-btn.end:hover{background:var(--red);color:#fff}
+.call-btn.answer{background:var(--beige);color:var(--black)}
+/* ================= TOASTS ================= */
+#toasts{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:300;display:flex;flex-direction:column;gap:6px;align-items:center;width:min(92%,520px)}
+.toast{background:#000;color:var(--beige);border:1px solid var(--beige);padding:9px 16px;font-size:.7rem;letter-spacing:1px;animation:pop .2s;text-align:center;border-radius:var(--radius)}
+</style>
 </head>
 <body>
-    <header class="terminal-header">
-        <div>
-            <span id="p2pStatusDot" class="status-dot"></span>
-            <span id="p2pStatusText">NODE_STANDBY</span>
-            <span style="margin: 0 8px; color: var(--border-color);">|</span>
-            <span id="nodeIdDisplay">ID: UNINITIALIZED</span>
-            <span style="margin: 0 8px; color: var(--border-color);">|</span>
-            <span id="envProtocolBadge" style="color: var(--accent-amber); font-size: 0.65rem;">[PROTOCOL_CHECK]</span>
-        </div>
-        <div>
-            <span>NODES: <strong id="connectedCount" style="color:var(--accent-amber)">0</strong></span>
-            <span style="margin: 0 8px; color: var(--border-color);">|</span>
-            <button onclick="toggleTheme()" class="cmd-btn" style="padding:2px 6px; font-size:0.6rem;">TOGGLE THEME</button>
-        </div>
+
+<!-- ==================== ONBOARDING : GUIDE ==================== -->
+<div id="onboard">
+  <div class="ob-wrap">
+    <header class="ob-banner">
+      <div style="font-size:.62rem;letter-spacing:2px">┌──────────────────────────────────────────┐</div>
+      <h1>CHAT DECENTRALISE SANS SERVEUR</h1>
+      <div class="sub">DOC-REF: MC-2077 // PROTOCOLE: P2P-GOSSIP-V1.2</div>
+      <div style="font-size:.62rem;letter-spacing:2px">└──────────────────────────────────────────┘</div>
     </header>
+    <p class="ob-hint">▼ ▼ ▼ FAITES DEFILER POUR PARCOURIR LE PROTOCOLE ▼ ▼ ▼</p>
 
-    <div class="app-container">
-        <nav class="nav-sidebar">
-            <button class="nav-btn active" onclick="switchTab('dispatchTab', this)">
-                <span>💬</span>
-                <span>DISPATCH</span>
-            </button>
-            <button class="nav-btn" onclick="switchTab('broadcastTab', this)">
-                <span>📡</span>
-                <span>STORIES</span>
-            </button>
-            <button class="nav-btn" onclick="switchTab('mediaCallTab', this)">
-                <span>📞</span>
-                <span>CALLS</span>
-            </button>
-            <button class="nav-btn" onclick="switchTab('meshMapTab', this)">
-                <span>🕸️</span>
-                <span>MESH</span>
-            </button>
-            <button class="nav-btn" onclick="switchTab('onboardingTab', this)">
-                <span>🔑</span>
-                <span>KEYS</span>
-            </button>
-        </nav>
+    <section class="ob-sec vis">
+      <span class="led">01</span>
+      <h2>// ETAPES D'INTEGRATION AU RESEAU</h2>
+      <pre>[1] INSTALLATION PWA ........ APPLICATION 100% HORS-LIGNE
+[2] LIAISON P2P ............. CONNEXION WEBRTC DIRECTE (0 SERVEUR)
+[3] ECHANGE DE CLES ......... POIGNEE DE MAIN ECDH P-256
+[4] REPLICATION MAILLEE ..... GOSSIP + STOCKAGE DISTRIBUE CHIFFRE</pre>
+      <p>Il n'existe <b>aucun serveur central</b>. Chaque appareil devient un nœud
+      du réseau. Les messages se propagent d'appareil en appareil par protocole
+      épidémique (gossip), chiffrés avant de quitter votre machine.</p>
+    </section>
 
-        <div id="onboardingTab" class="panel">
-            <div class="onboarding-container">
-                <div class="brutalist-card">
-                    <h2><span class="led-number">[1]</span>UNCLASSIFIED MESH NETWORK GUIDE</h2>
-                    <p style="margin-top:10px; font-size: 0.8rem; color: var(--text-muted);">
-                        Fully decentralized Web3 messaging protocol running entirely on client-side browsers. No servers. No telemetry. Fully encrypted AES-256-GCM mesh routing.
-                    </p>
-                </div>
+    <section class="ob-sec">
+      <span class="led">02</span>
+      <h2>// MESSAGERIE — APERCU</h2>
+      <div class="ob-demo">
+        <div class="l meta2">── AUJOURD'HUI ──</div>
+        <div class="l in2">┌ ALICE<br>| LE PAQUET EST ARRIVE VIA 3 NŒUDS RELAIS.<br>| <span class="meta2">14:02 · CHIFFRE AES-256</span></div>
+        <div class="l out2">CONFIRMATION RECUE. LIEN P2P STABLE. |<br><span class="meta2">14:03 · [VU] ─┘</span></div>
+        <div class="l in2">┌ BOB<br>| ◈ IMAGE_0417.JPG — 214 KO — TRANSFERT CHUNKE OK<br>| <span class="meta2">14:05</span></div>
+        <div class="l meta2">ALICE ECRIT…█</div>
+      </div>
+      <p style="margin-top:12px">Texte enrichi (*gras* _italique_ ~barré~), réponses citées, notes vocales,
+      images compressées et transférées par fragments, accusés distribués
+      <b>[--] envoyé → [OK] distribué → [VU] lu</b>.</p>
+    </section>
 
-                <div class="brutalist-card">
-                    <h2><span class="led-number">[2]</span>CRYPTOGRAPHIC IDENTITY SEED</h2>
-                    <p style="font-size:0.75rem; margin-top:6px;">Your local keypair derived using WebCrypto API (ECDH P-256):</p>
-                    <div id="publicSeedDisplay" class="key-seed-block">GENERATING CRYPTO KEYS...</div>
-                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                        <button class="cmd-btn" onclick="exportAccountKeys()">Export Keys</button>
-                        <button class="cmd-btn" onclick="importAccountKeys()">Import Keys</button>
-                        <button class="cmd-btn danger" onclick="confirmNukeLocalData()">TOTAL WIPE (NUKE)</button>
-                    </div>
-                </div>
+    <section class="ob-sec">
+      <span class="led">03</span>
+      <h2>// CLES DE CHIFFREMENT SECURISEES</h2>
+      <div class="gibber" id="ob-gibber"></div>
+      <pre style="margin-top:12px">CIPHER SUITE ..... ECDH P-256 + AES-GCM 256 BIT
+KNOWLEDGE ........ ZERO — LES RELAIS NE VOIENT QUE DES FRAGMENTS
+KEY STORAGE ...... LOCAL UNIQUEMENT (INDEXEDDB) — JAMAIS TRANSMIS
+GROUP CONSENSUS .. OPERATIONS ADMIN SIGNEES + HORLOGE DE LAMPORT</pre>
+      <p>Votre identité est une paire de clés générée <b>sur votre appareil</b>.
+      Le bouton <b>[ EXPORT ACCOUNT KEYS ]</b> permet la migration vers un autre terminal.</p>
+    </section>
 
-                <div class="brutalist-card">
-                    <h2><span class="led-number">[3]</span>LOCAL PROFILE CONFIG</h2>
-                    <div style="display:flex; gap:12px; align-items:center; margin-top:10px;">
-                        <div id="profileAvatarPreview" style="width:48px; height:48px; border:1px solid var(--accent-amber); display:flex; align-items:center; justify-content:center; font-weight:bold; background:var(--bg-tertiary);">P1</div>
-                        <div style="flex:1;">
-                            <input type="text" id="profileNameInput" placeholder="Agent Handle (e.g. AGENT_ALPHA)" style="width:100%; padding:8px; background:var(--bg-primary); border:1px solid var(--border-color); color:var(--text-main);" onchange="saveProfile()">
-                            <input type="text" id="profileBioInput" placeholder="Bio / Status telemetry" style="width:100%; padding:8px; margin-top:4px; background:var(--bg-primary); border:1px solid var(--border-color); color:var(--text-main);" onchange="saveProfile()">
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <section class="ob-sec">
+      <span class="led">04</span>
+      <h2>// TOPOLOGIE DU RESEAU — TEMPS REEL</h2>
+      <canvas id="ob-mesh"></canvas>
+      <div class="ob-grid">
+        <div><b>[APPELS]</b>Audio & vidéo en liaison directe chiffrée.</div>
+        <div><b>[STATUTS]</b>Publications éphémères 24h chiffrées.</div>
+        <div><b>[GROUPES]</b>Clé AES distribuée membre par membre.</div>
+        <div><b>[SYNC]</b>Heartbeat 10s, re-synchronisation automatique.</div>
+      </div>
+    </section>
+
+    <section class="ob-sec" id="ob-final">
+      <span class="led">05</span>
+      <h2>// CREATION DE VOTRE IDENTITE</h2>
+      <div class="ob-profile">
+        <div id="ob-ascii">▓▒░</div>
+        <div class="form">
+          <div class="field"><label>NOM D'UTILISATEUR</label><input id="ob-name" maxlength="30" placeholder="EX: ALICE"></div>
+          <div class="field"><label>BIO / DESCRIPTION</label><input id="ob-bio" maxlength="80" placeholder="VOTRE PHRASE D'ACCROCHE"></div>
+          <div class="field"><label>PHOTO DE PROFIL (OPTIONNEL)</label><input type="file" id="ob-avatar" accept="image/*"></div>
         </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
+        <button id="ob-create">[ CREER MON COMPTE & REJOINDRE ]</button>
+        <button id="ob-import">[ IMPORTER UN COMPTE ]</button>
+      </div>
+      <p style="font-size:.68rem;margin-top:12px;opacity:.7">>> VOTRE CLE PRIVEE NE QUITTERA JAMAIS CET APPAREIL.</p>
+    </section>
+  </div>
+</div>
 
-        <div id="dispatchTab" class="panel active">
-            <div class="chat-sidebar">
-                <div style="padding:10px; border-bottom:1px solid var(--border-color); display:flex; gap:6px;">
-                    <button class="cmd-btn" style="flex:1;" onclick="openHandshakeModal()">+ ADD PEER / QR</button>
-                    <button class="cmd-btn" onclick="openGroupModal()">+ GROUP</button>
-                </div>
-                <div class="chat-list" id="chatListContainer">
-                    <!-- Dynamic peer & group items -->
-                </div>
-            </div>
-            <div class="chat-viewport">
-                <div id="chatHeader" style="padding:12px; border-bottom:1px solid var(--border-color); background:var(--bg-secondary); font-size:0.8rem; display:flex; justify-content:space-between; align-items:center;">
-                    <span id="activeChatTitle">SELECT A CHANNEL OR PEER</span>
-                    <span id="activeChatStatus" style="color:var(--text-muted);">OFFLINE</span>
-                </div>
-                <div class="message-feed" id="messageFeed">
-                    <div style="text-align:center; color:var(--text-muted); margin-top:40px; font-size:0.8rem;">
-                        [SYSTEM]: Select a contact or scan QR code to initiate direct encrypted mesh link.
-                    </div>
-                </div>
-                <div class="input-bar">
-                    <button class="cmd-btn" style="padding:8px;" onclick="triggerFileInput()">📎</button>
-                    <input type="file" id="fileInput" style="display:none;" onchange="sendFileChunked(this.files[0])">
-                    <button class="cmd-btn" id="voiceNoteBtn" style="padding:8px;" onclick="toggleVoiceRecording()">🎤</button>
-                    <input type="text" id="msgInput" placeholder="Type encrypted message... (Enter to send)" onkeypress="handleKeyPress(event)">
-                    <button class="cmd-btn" onclick="sendChatMessage()">SEND</button>
-                </div>
-            </div>
+<!-- ==================== APPLICATION ==================== -->
+<div id="app" class="hidden">
+  <div id="topbar">SESSION <b id="tb-time">00:00:00</b> | UTILISATEUR: <b id="tb-agent">—</b> | NŒUD: <b id="tb-node">—</b> | RESEAU MAILLE V1.2 | CONTACTS: <b id="tb-peers">0</b></div>
+  <div id="cols">
+    <div id="sidebar">
+      <div class="sb-head">
+        <div style="display:flex;align-items:center;gap:10px;cursor:pointer;flex:1;min-width:0" id="open-profile">
+          <div class="avatar" id="my-avatar">?</div>
+          <div style="font-size:.72rem;letter-spacing:1px;overflow:hidden;text-overflow:ellipsis" id="my-name"></div>
         </div>
-
-        <div id="broadcastTab" class="panel">
-            <div style="padding:20px; width:100%; overflow-y:auto;">
-                <div class="brutalist-card">
-                    <h2>📡 EPHEMERAL MESH BROADCASTS (24H STORIES)</h2>
-                    <p style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Broadcast encrypted ephemeral messages to all peers on the gossip network.</p>
-                    <div style="margin-top:12px; display:flex; gap:10px;">
-                        <input type="text" id="storyTextInput" placeholder="Write broadcast text..." style="flex:1; padding:8px; background:var(--bg-primary); border:1px solid var(--border-color); color:var(--text-main);">
-                        <button class="cmd-btn" onclick="publishStory()">BROADCAST</button>
-                    </div>
-                </div>
-                <div id="storiesContainer" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap:16px;">
-                    <!-- Dynamic Stories -->
-                </div>
-            </div>
-        </div>
-
-        <div id="mediaCallTab" class="panel">
-            <div class="call-container">
-                <div style="position:absolute; top:10px; left:10px; z-index:10; background:rgba(0,0,0,0.7); padding:8px; border:1px solid var(--accent-amber);">
-                    <span id="callStatusText">DIRECT WEBRTC AV CHANNEL</span>
-                </div>
-                <video id="remoteVideo" autoplay playsinline></video>
-                <video id="localVideo" autoplay playsinline muted></video>
-                <div style="padding:12px; display:flex; justify-content:center; gap:12px; background:var(--bg-secondary);">
-                    <button class="cmd-btn" onclick="startCall(true)">START VIDEO CALL</button>
-                    <button class="cmd-btn" onclick="startCall(false)">START AUDIO CALL</button>
-                    <button class="cmd-btn danger" onclick="endCall()">HANG UP</button>
-                </div>
-            </div>
-        </div>
-
-        <div id="meshMapTab" class="panel">
-            <div style="position:absolute; top:10px; left:10px; z-index:10;" class="ascii-frame">
-                <h3>3D ORBITAL PEER MESH TELEMETRY</h3>
-                <p style="font-size:0.7rem; color:var(--accent-amber);">ACTIVE PEERS: <span id="visualizerPeerCount">0</span></p>
-                <p style="font-size:0.7rem; color:var(--text-muted);">GOSSIP ROUTING: ACTIVE</p>
-                <p style="font-size:0.7rem; color:var(--text-muted);">STORAGE SHARDS: <span id="storageShardCount">0</span></p>
-            </div>
-            <canvas id="meshCanvas"></canvas>
-        </div>
+        <button class="icon-btn" id="btn-add-contact" title="Ajouter un contact">[+CONTACT]</button>
+        <button class="icon-btn" id="btn-new-group" title="Nouveau groupe">[+GROUPE]</button>
+        <button class="icon-btn" id="btn-settings" title="Paramètres">[REGLAGES]</button>
+      </div>
+      <div class="tabs">
+        <div class="tab active" data-tab="chats">MESSAGES<span class="cnt hidden" id="cnt-chats"></span></div>
+        <div class="tab" data-tab="status">STATUTS</div>
+        <div class="tab" data-tab="calls">APPELS</div>
+        <div class="tab" data-tab="comm">GROUPES</div>
+      </div>
+      <div class="search-bar"><input id="search" placeholder="> RECHERCHER_"></div>
+      <div class="list" id="list-chats"></div>
+      <div class="list hidden" id="list-status"></div>
+      <div class="list hidden" id="list-calls"></div>
+      <div class="list hidden" id="list-comm"></div>
+      <button class="fab hidden" id="fab-status">[+STATUT]</button>
+      <div id="net-panel">
+        <canvas id="mesh-canvas"></canvas>
+        <div class="corner"></div>
+        <div id="sync-line">NODE SYNC [........................] 0.0%</div>
+        <div id="repl-line">STANDBY // AWAITING PEER LINK</div>
+      </div>
     </div>
 
-    <!-- Handshake SDP Modal -->
-    <div id="handshakeModal" class="modal-overlay">
-        <div class="modal-body">
-            <h3>P2P MESH HANDSHAKE PROTOCOL</h3>
-            <p style="font-size:0.7rem; color:var(--text-muted); margin-top:4px;">Scan QR Code or exchange WebRTC SDP handshake string to establish peer link:</p>
-            
-            <div style="text-align:center; margin:12px 0; background:#fff; padding:10px; display:inline-block;" id="qrContainer">
-                <svg id="qrSvg" width="180" height="180" viewBox="0 0 33 33" shape-rendering="crispEdges"></svg>
-            </div>
-            
-            <div>
-                <label style="font-size:0.7rem;">YOUR HANDSHAKE OFFER PACKET:</label>
-                <textarea id="myOfferSdp" readonly onclick="this.select()"></textarea>
-                <button class="cmd-btn" style="width:100%; margin-top:4px;" onclick="copyOfferSdp()">COPY OFFER</button>
-            </div>
-
-            <div style="margin-top:12px;">
-                <label style="font-size:0.7rem;">PASTE PEER OFFER / ANSWER PACKET:</label>
-                <textarea id="remoteAnswerSdp" placeholder="Paste peer SDP packet here..."></textarea>
-                <button class="cmd-btn" style="width:100%; margin-top:4px;" onclick="acceptRemoteHandshake()">CONNECT TO PEER</button>
-            </div>
-
-            <button class="cmd-btn danger" style="width:100%; margin-top:12px;" onclick="closeHandshakeModal()">CLOSE</button>
+    <div id="main">
+      <div id="main-empty">
+        <pre>
+   ┌───────────────────────────┐
+   │  MESHCHAT // TERMINAL     │
+   │  DECENTRALIZED MESH V1.2  │
+   └───────────────────────────┘</pre>
+        <p style="max-width:420px;font-size:.72rem;line-height:1.8">MESSAGES CHIFFRES DE BOUT EN BOUT.<br>REPLIQUES SUR LE MAILLAGE DE VOS PAIRS.<br>AUCUN SERVEUR. AUCUNE SURVEILLANCE.</p>
+        <p class="dim" style="font-size:.62rem">AES-GCM 256 · ECDH P-256 · GOSSIP PROTOCOL</p>
+      </div>
+      <div id="chat-view" class="hidden" style="display:flex;flex-direction:column;flex:1;min-height:0">
+        <div class="chat-head">
+          <button class="icon-btn" id="back-btn">[&lt;]</button>
+          <div class="avatar" id="ch-avatar">?</div>
+          <div class="info" id="ch-info"><div class="name" id="ch-name"></div><div class="presence" id="ch-presence"></div></div>
+          <button class="icon-btn" id="btn-call-audio" title="Appel audio">[TEL]</button>
+          <button class="icon-btn" id="btn-call-video" title="Appel vidéo">[VID]</button>
         </div>
-    </div>
-
-    <!-- Create Group Modal -->
-    <div id="groupModal" class="modal-overlay">
-        <div class="modal-body">
-            <h3>CREATE DECENTRALIZED GROUP</h3>
-            <p style="font-size:0.7rem; color:var(--text-muted); margin-top:4px;">Enter group details. Consensus rights generated on initialization.</p>
-            <input type="text" id="groupNameInput" placeholder="Group Channel Name" style="width:100%; padding:10px; margin-top:12px; background:var(--bg-primary); border:1px solid var(--border-color); color:var(--text-main);">
-            <div style="display:flex; gap:10px; margin-top:16px;">
-                <button class="cmd-btn" style="flex:1;" onclick="createNewGroup()">CREATE</button>
-                <button class="cmd-btn danger" style="flex:1;" onclick="closeGroupModal()">CANCEL</button>
-            </div>
+        <div id="msgs"></div>
+        <div id="reply-bar" class="hidden"><div class="quote" id="reply-quote"></div><button class="icon-btn" id="reply-cancel">[X]</button></div>
+        <div class="compose">
+          <button class="icon-btn" id="btn-attach" title="Joindre">[FICHIER]</button>
+          <input type="file" id="file-input" class="hidden" multiple>
+          <span class="prompt">&gt;</span>
+          <textarea id="msg-input" rows="1" placeholder="MESSAGE_ (*gras* _italique_)"></textarea>
+          <button class="send-btn" id="btn-send">[ENVOYER]</button>
         </div>
+      </div>
     </div>
+  </div>
+</div>
 
-    <!-- Confirm Dialog Modal (Replaces native confirm) -->
-    <div id="confirmModal" class="modal-overlay">
-        <div class="modal-body">
-            <h3 id="confirmTitle">CONFIRM ACTION</h3>
-            <p id="confirmMessage" style="font-size:0.75rem; margin-top:8px; color:var(--text-main);"></p>
-            <div style="display:flex; gap:10px; margin-top:16px;">
-                <button class="cmd-btn danger" style="flex:1;" id="confirmBtnYes">PROCEED</button>
-                <button class="cmd-btn" style="flex:1;" onclick="closeConfirmModal()">CANCEL</button>
-            </div>
+<div id="toasts"></div>
+
+<script>
+'use strict';
+/* ================================================================
+   MESHCHAT TERMINAL — P2P décentralisé en un seul fichier
+   FIX: b64 chunké · transport DataChannel fragmenté · heartbeat ·
+        appels réécrits (queue ICE) · compression images · notifs
+   AJOUT: découverte en ligne via broker MQTT public
+   ================================================================ */
+
+/* ---------------- UTILITAIRES ---------------- */
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const uid=()=>crypto.getRandomValues(new Uint8Array(16)).reduce((s,b)=>s+b.toString(16).padStart(2,'0'),'');
+const now=()=>Date.now();
+
+/* FIX #1 : conversion base64 par blocs (plus de "Maximum call stack size exceeded") */
+const b64=b=>{const u=new Uint8Array(b);let s='';const CH=0x8000;
+  for(let i=0;i<u.length;i+=CH)s+=String.fromCharCode.apply(null,u.subarray(i,i+CH));
+  return btoa(s)};
+const ub64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0)).buffer;
+const enc8=s=>new TextEncoder().encode(s);
+const dec8=b=>new TextDecoder().decode(b);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtTime=t=>new Date(t).toLocaleTimeString('fr',{hour:'2-digit',minute:'2-digit'});
+const fmtDay=t=>{const d=new Date(t),td=new Date();if(d.toDateString()===td.toDateString())return"AUJOURD'HUI";td.setDate(td.getDate()-1);return d.toDateString()===td.toDateString()?'HIER':d.toLocaleDateString('fr')};
+const toast=m=>{const t=document.createElement('div');t.className='toast';t.textContent=m;$('#toasts').appendChild(t);setTimeout(()=>t.remove(),3500)};
+const richText=s=>esc(s).replace(/\*([^*]+)\*/g,'<b>$1</b>').replace(/_([^_]+)_/g,'<i>$1</i>').replace(/~([^~]+)~/g,'<s>$1</s>');
+const fileToB64=f=>new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(f)});
+const upName=x=>esc((x||'').toUpperCase());
+
+/* FIX #2 : compression des images avant envoi (canvas → JPEG) */
+async function compressImage(file,max=1280,q=.72){
+  if(!file.type.startsWith('image')||file.type==='image/gif')return fileToB64(file);
+  try{
+    const url=URL.createObjectURL(file);
+    const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=url});
+    const sc=Math.min(1,max/Math.max(img.width,img.height));
+    const cv=document.createElement('canvas');
+    cv.width=Math.max(1,img.width*sc|0);cv.height=Math.max(1,img.height*sc|0);
+    cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+    URL.revokeObjectURL(url);
+    return cv.toDataURL('image/jpeg',q);
+  }catch(e){return fileToB64(file)}
+}
+
+/* ---------------- BASE DE DONNÉES (IndexedDB) ---------------- */
+const DB={db:null,
+  async open(){return new Promise((res,rej)=>{
+    const rq=indexedDB.open('meshchat',3);
+    rq.onupgradeneeded=e=>{const d=e.target.result;
+      for(const s of ['kv','contacts','groups','statuses','shards','calls'])
+        if(!d.objectStoreNames.contains(s)) d.createObjectStore(s,{keyPath:'id'});
+      if(!d.objectStoreNames.contains('messages')){
+        const m=d.createObjectStore('messages',{keyPath:'id'});
+        m.createIndex('chat','chatId');
+      }};
+    rq.onsuccess=()=>{DB.db=rq.result;res()};rq.onerror=()=>rej(rq.error);
+  })},
+  tx(s,m='readonly'){return DB.db.transaction(s,m).objectStore(s)},
+  put:(s,v)=>new Promise(r=>{DB.tx(s,'readwrite').put(v).onsuccess=()=>r()}),
+  get:(s,k)=>new Promise(r=>{const q=DB.tx(s).get(k);q.onsuccess=()=>r(q.result)}),
+  del:(s,k)=>new Promise(r=>{DB.tx(s,'readwrite').delete(k).onsuccess=()=>r()}),
+  all:s=>new Promise(r=>{const q=DB.tx(s).getAll();q.onsuccess=()=>r(q.result||[])}),
+  byIndex:(s,i,k)=>new Promise(r=>{const q=DB.tx(s).index(i).getAll(k);q.onsuccess=()=>r(q.result||[])}),
+  kvSet:(k,v)=>DB.put('kv',{id:k,v}),
+  kvGet:async k=>(await DB.get('kv',k))?.v,
+  async wipe(){DB.db.close();await new Promise(r=>{indexedDB.deleteDatabase('meshchat').onsuccess=r})}
+};
+
+/* ---------------- CRYPTOGRAPHIE (WebCrypto) ---------------- */
+const Crypto={
+  async genIdentity(){
+    const kp=await crypto.subtle.generateKey({name:'ECDH',namedCurve:'P-256'},true,['deriveKey']);
+    const pub=await crypto.subtle.exportKey('jwk',kp.publicKey);
+    const priv=await crypto.subtle.exportKey('jwk',kp.privateKey);
+    const idBuf=await crypto.subtle.digest('SHA-256',enc8(pub.x+pub.y));
+    return {id:b64(idBuf).slice(0,24).replace(/[+/=]/g,'x'),pub,priv};
+  },
+  async pairKey(myPrivJwk,theirPubJwk){
+    const priv=await crypto.subtle.importKey('jwk',myPrivJwk,{name:'ECDH',namedCurve:'P-256'},false,['deriveKey']);
+    const pub=await crypto.subtle.importKey('jwk',theirPubJwk,{name:'ECDH',namedCurve:'P-256'},false,[]);
+    return crypto.subtle.deriveKey({name:'ECDH',public:pub},priv,{name:'AES-GCM',length:256},true,['encrypt','decrypt']);
+  },
+  async genGroupKey(){
+    const k=await crypto.subtle.generateKey({name:'AES-GCM',length:256},true,['encrypt','decrypt']);
+    return crypto.subtle.exportKey('jwk',k);
+  },
+  importAes:jwk=>crypto.subtle.importKey('jwk',jwk,{name:'AES-GCM'},true,['encrypt','decrypt']),
+  async encrypt(key,obj){
+    const iv=crypto.getRandomValues(new Uint8Array(12));
+    const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,enc8(JSON.stringify(obj)));
+    return {iv:b64(iv),ct:b64(ct)};
+  },
+  async decrypt(key,box){
+    try{const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:new Uint8Array(ub64(box.iv))},key,ub64(box.ct));
+      return JSON.parse(dec8(pt));}catch(e){return null}
+  }
+};
+
+/* ---------------- ÉTAT GLOBAL ---------------- */
+const S={
+  me:null, peers:new Map(), contacts:new Map(), groups:new Map(),
+  keys:new Map(), gkeys:new Map(), seen:new Set(), typing:new Map(),
+  chunks:new Map(),      // réassemblage des trames fragmentées
+  activeChat:null, replyTo:null, pendingOffer:null, call:null, mediaRec:null,
+  bootTs:now()
+};
+
+/* ================================================================
+   COUCHE RÉSEAU : WebRTC MESH + GOSSIP + TRANSPORT FRAGMENTÉ
+   ================================================================ */
+const NET={
+  ICE:{iceServers:[
+    {urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302','stun:stun2.l.google.com:19302']},
+    {urls:'stun:stun.cloudflare.com:3478'}
+  ]},
+  GOSSIP_TTL:6,
+  CHUNK:15000,           // taille max d'une trame DataChannel
+  MAX_BUF:4*1048576,     // backpressure : pause si buffer > 4 Mo
+
+  /* --- Signalisation manuelle (0 serveur) --- */
+  async createOffer(){
+    const pc=new RTCPeerConnection(NET.ICE);
+    const dc=pc.createDataChannel('mesh',{ordered:true});
+    NET.wireChannel(pc,dc,null);
+    await pc.setLocalDescription(await pc.createOffer());
+    await NET.iceDone(pc);
+    S.pendingOffer=pc;
+    return btoa(JSON.stringify({t:'o',sdp:pc.localDescription.sdp,id:S.me.id,pub:S.me.pub,name:S.me.name}));
+  },
+  async acceptOffer(code){
+    const o=JSON.parse(atob(code.trim()));
+    if(o.t!=='o')throw 0;
+    const pc=new RTCPeerConnection(NET.ICE);
+    pc.ondatachannel=e=>NET.wireChannel(pc,e.channel,o.id);
+    await NET.registerContact(o.id,o.pub,o.name);
+    await pc.setRemoteDescription({type:'offer',sdp:o.sdp});
+    await pc.setLocalDescription(await pc.createAnswer());
+    await NET.iceDone(pc);
+    return btoa(JSON.stringify({t:'a',sdp:pc.localDescription.sdp,id:S.me.id,pub:S.me.pub,name:S.me.name}));
+  },
+  async acceptAnswer(code){
+    const a=JSON.parse(atob(code.trim()));
+    if(a.t!=='a'||!S.pendingOffer)throw 0;
+    await NET.registerContact(a.id,a.pub,a.name);
+    S.pendingOffer._peerId=a.id;
+    await S.pendingOffer.setRemoteDescription({type:'answer',sdp:a.sdp});
+  },
+  iceDone:pc=>new Promise(r=>{
+    if(pc.iceGatheringState==='complete')return r();
+    const t=setTimeout(r,4000);
+    pc.onicegatheringstatechange=()=>{if(pc.iceGatheringState==='complete'){clearTimeout(t);r()}};
+  }),
+
+  async registerContact(id,pub,name){
+    if(id===S.me.id)return;
+    let c=S.contacts.get(id);
+    if(!c){c={id,pub,name,localName:'',bio:'',avatar:'',lastSeen:0,unread:0,lastMsg:'',lastTs:0};
+      S.contacts.set(id,c);await DB.put('contacts',c);}
+    else if(pub){c.pub=pub;await DB.put('contacts',c);}
+    S.keys.set(id,await Crypto.pairKey(S.me.priv,pub));
+    UI.renderChatList();
+  },
+
+  wireChannel(pc,dc,peerId){
+    dc.binaryType='arraybuffer';
+    let closed=false;
+    dc.onopen=()=>{
+      const pid=peerId||pc._peerId;
+      if(pid){
+        S.peers.set(pid,{pc,dc,online:true,lastPong:now()});
+        NET.sendTo(pid,{t:'hello',profile:{name:S.me.name,bio:S.me.bio,avatar:S.me.avatar},pub:S.me.pub});
+        NET.sendTo(pid,{t:'syncReq',since:S.contacts.get(pid)?.lastTs||0});
+        const c=S.contacts.get(pid);if(c){c.lastSeen=now();DB.put('contacts',c);}
+        toast('>> CONNEXION ETABLIE: '+(S.contacts.get(pid)?.name||pid.slice(0,6)).toUpperCase());
+      }
+      UI.updateNetBadge();UI.renderChatList();UI.refreshChatHead();
+    };
+    const cleanup=()=>{
+      if(closed)return;closed=true;
+      const pid=peerId||pc._peerId;
+      if(pid&&S.peers.get(pid)?.dc===dc){
+        S.peers.delete(pid);
+        const c=S.contacts.get(pid);if(c){c.lastSeen=now();DB.put('contacts',c);}
+        toast('!! CONNEXION PERDUE: '+(S.contacts.get(pid)?.name||pid.slice(0,6)).toUpperCase());
+      }
+      UI.updateNetBadge();UI.renderChatList();UI.refreshChatHead();
+    };
+    dc.onclose=cleanup;dc.onerror=()=>{};
+    dc.onmessage=e=>NET.onData(peerId||pc._peerId,e.data);
+    pc.onconnectionstatechange=()=>{if(['failed','closed','disconnected'].includes(pc.connectionState))cleanup()};
+  },
+
+  /* FIX #3 : envoi fragmenté avec backpressure (grosses charges = images) */
+  _send(dc,str){
+    if(str.length<=NET.CHUNK){try{dc.send(str)}catch(e){}return}
+    const id=uid().slice(0,10),total=Math.ceil(str.length/NET.CHUNK);
+    let i=0;
+    const pump=()=>{
+      if(dc.readyState!=='open')return;
+      while(i<total){
+        if(dc.bufferedAmount>NET.MAX_BUF){setTimeout(pump,60);return}
+        try{dc.send('#C|'+id+'|'+i+'|'+total+'|'+str.slice(i*NET.CHUNK,(i+1)*NET.CHUNK))}catch(e){return}
+        i++;
+      }
+    };
+    pump();
+  },
+  sendTo(pid,obj){const p=S.peers.get(pid);
+    if(p&&p.dc.readyState==='open'){NET._send(p.dc,JSON.stringify(obj));return true}return false;},
+  broadcast(obj,except){let n=0;const str=JSON.stringify(obj);
+    for(const [pid,p] of S.peers)if(pid!==except&&p.dc.readyState==='open'){NET._send(p.dc,str);n++}
+    return n;},
+
+  /* --- GOSSIP --- */
+  async gossip(env,fromPeer){
+    if(S.seen.has(env.id))return;
+    S.seen.add(env.id);
+    await DB.put('shards',{id:env.id,env,ts:now()});
+    await MSG.process(env);
+    if(env.ttl>0){env.ttl--;NET.broadcast({t:'gossip',env},fromPeer);}
+  },
+  async emit(kind,to,payloadEnc,meta={}){
+    const env={id:uid(),kind,from:S.me.id,to,ts:now(),ttl:NET.GOSSIP_TTL,data:payloadEnc,meta};
+    await NET.gossip(env,null);
+    return env;
+  },
+
+  /* --- Réception : réassemblage + routage --- */
+  async onData(pid,raw){
+    if(typeof raw!=='string')return;
+    // Réassemblage des trames fragmentées
+    if(raw.startsWith('#C|')){
+      const p1=raw.indexOf('|',3),p2=raw.indexOf('|',p1+1),p3=raw.indexOf('|',p2+1);
+      const id=raw.slice(3,p1),idx=+raw.slice(p1+1,p2),total=+raw.slice(p2+1,p3);
+      let buf=S.chunks.get(id);
+      if(!buf){buf={parts:new Array(total),got:0,ts:now()};S.chunks.set(id,buf)}
+      if(buf.parts[idx]===undefined){buf.parts[idx]=raw.slice(p3+1);buf.got++}
+      if(buf.got<total)return;
+      S.chunks.delete(id);raw=buf.parts.join('');
+    }
+    let m;try{m=JSON.parse(raw)}catch(e){return}
+    const pp=S.peers.get(pid);if(pp)pp.lastPong=now();   // toute activité = vivant
+    switch(m.t){
+      case 'ping':NET.sendTo(pid,{t:'pong'});break;
+      case 'pong':break;
+      case 'hello':{
+        const c=S.contacts.get(pid);
+        if(c){Object.assign(c,{name:m.profile.name,bio:m.profile.bio,avatar:m.profile.avatar});
+          if(m.pub){c.pub=m.pub;S.keys.set(pid,await Crypto.pairKey(S.me.priv,m.pub));}
+          await DB.put('contacts',c);UI.renderChatList();UI.refreshChatHead();}
+        break;}
+      case 'gossip':NET.gossip(m.env,pid);break;
+      case 'typing':S.typing.set(pid,m.on?now():0);UI.refreshChatHead();break;
+      case 'syncReq':{
+        const shards=(await DB.all('shards')).filter(s=>s.env.ts>m.since).slice(-400);
+        for(const s of shards)NET.sendTo(pid,{t:'gossip',env:{...s.env,ttl:1}});
+        break;}
+      case 'call':CALL.onSignal(pid,m);break;
+    }
+  },
+
+  /* FIX #4 : heartbeat — garde les mappings NAT vivants + détecte les morts */
+  startHeartbeat(){
+    setInterval(()=>{
+      for(const [pid,p] of S.peers){
+        if(p.dc.readyState!=='open')continue;
+        if(now()-p.lastPong>32000){try{p.pc.close()}catch(e){}continue}
+        NET.sendTo(pid,{t:'ping'});
+      }
+      // purge des buffers de fragments abandonnés
+      for(const [id,b] of S.chunks)if(now()-b.ts>120000)S.chunks.delete(id);
+    },10000);
+  }
+};
+
+/* ================================================================
+   COUCHE MESSAGES
+   ================================================================ */
+const MSG={
+  async sendText(chatId,text,media){
+    const isGroup=S.groups.has(chatId);
+    const mid=uid();
+    const body={mid,text,media,quote:S.replyTo?{mid:S.replyTo.mid,text:S.replyTo.text?.slice(0,90)||'◈ MEDIA',from:S.replyTo.from}:null};
+    const rec={id:mid,chatId,from:S.me.id,ts:now(),text,media,quote:body.quote,status:'sent',deleted:false};
+    await DB.put('messages',rec);
+    S.replyTo=null;$('#reply-bar').classList.add('hidden');
+    UI.appendMsg(rec);UI.bumpChat(chatId,text||'◈ MEDIA',rec.ts);
+    try{
+      if(isGroup){
+        const box=await Crypto.encrypt(S.gkeys.get(chatId),body);
+        await NET.emit('gmsg',chatId,box);
+      }else{
+        const key=S.keys.get(chatId);
+        if(!key)return toast('!! CLE DU CONTACT MANQUANTE');
+        const box=await Crypto.encrypt(key,body);
+        await NET.emit('msg',chatId,box);
+      }
+    }catch(e){toast('!! ERREUR CHIFFREMENT: '+e.message)}
+  },
+
+  async process(env){
+    const forMe=env.to===S.me.id;
+    const grp=S.groups.get(env.to);
+    switch(env.kind){
+      case 'msg':{
+        if(!forMe)return;
+        const key=S.keys.get(env.from);if(!key)return;
+        const body=await Crypto.decrypt(key,env.data);if(!body)return;
+        await MSG.receive(env.from,env.from,body,env.ts);
+        const box=await Crypto.encrypt(key,{mid:body.mid,status:'delivered'});
+        NET.emit('rcpt',env.from,box);
+        break;}
+      case 'gmsg':{
+        if(!grp||env.from===S.me.id)return;
+        const key=S.gkeys.get(env.to);if(!key)return;
+        const body=await Crypto.decrypt(key,env.data);if(!body)return;
+        await MSG.receive(env.to,env.from,body,env.ts);
+        break;}
+      case 'rcpt':{
+        if(!forMe)return;
+        const key=S.keys.get(env.from);if(!key)return;
+        const r=await Crypto.decrypt(key,env.data);if(!r)return;
+        const msg=await DB.get('messages',r.mid);
+        if(msg&&(r.status==='read'||msg.status!=='read')){msg.status=r.status;await DB.put('messages',msg);
+          if(S.activeChat===msg.chatId)UI.updateTicks(msg);}
+        break;}
+      case 'del':{
+        const key=forMe?S.keys.get(env.from):S.gkeys.get(env.to);
+        if(!key||(!forMe&&!grp))return;
+        const d=await Crypto.decrypt(key,env.data);if(!d)return;
+        const msg=await DB.get('messages',d.mid);
+        if(msg){msg.deleted=true;msg.text='';msg.media=null;await DB.put('messages',msg);
+          if(S.activeChat===msg.chatId)UI.openChat(msg.chatId,true);}
+        break;}
+      case 'status':{
+        if(!forMe)return;
+        const key=S.keys.get(env.from);if(!key)return;
+        const st=await Crypto.decrypt(key,env.data);if(!st)return;
+        await DB.put('statuses',{id:st.sid,owner:env.from,ts:env.ts,content:st,views:[],seenByMe:false});
+        UI.renderStatusList();
+        break;}
+      case 'sview':{
+        if(!forMe)return;
+        const key=S.keys.get(env.from);if(!key)return;
+        const v=await Crypto.decrypt(key,env.data);if(!v)return;
+        const st=await DB.get('statuses',v.sid);
+        if(st&&!st.views.includes(env.from)){st.views.push(env.from);await DB.put('statuses',st);}
+        break;}
+      case 'gkey':{
+        if(!forMe)return;
+        const key=S.keys.get(env.from);if(!key)return;
+        const g=await Crypto.decrypt(key,env.data);if(!g)return;
+        const existing=S.groups.get(g.id);
+        if(existing&&existing.lamport>=g.lamport)return;
+        const grp2={id:g.id,name:g.name,desc:g.desc,avatar:g.avatar,members:g.members,admins:g.admins,keyJwk:g.keyJwk,lamport:g.lamport};
+        S.groups.set(g.id,grp2);S.gkeys.set(g.id,await Crypto.importAes(g.keyJwk));
+        await DB.put('groups',grp2);UI.renderChatList();UI.renderCommList();
+        if(!existing)toast('>> AJOUTE AU GROUPE: '+g.name.toUpperCase());
+        break;}
+      case 'gop':{
+        if(!grp)return;
+        const key=S.gkeys.get(env.to);if(!key)return;
+        const op=await Crypto.decrypt(key,env.data);if(!op)return;
+        if(!grp.admins.includes(env.from))return;
+        if(op.lamport<=grp.lamport)return;
+        grp.lamport=op.lamport;
+        if(op.op==='rename'){grp.name=op.name;grp.desc=op.desc??grp.desc;grp.avatar=op.avatar??grp.avatar;}
+        if(op.op==='addMember'&&!grp.members.includes(op.member))grp.members.push(op.member);
+        if(op.op==='rmMember'){grp.members=grp.members.filter(m=>m!==op.member);grp.admins=grp.admins.filter(m=>m!==op.member);
+          if(op.member===S.me.id){S.groups.delete(grp.id);await DB.del('groups',grp.id);toast('!! RETIRE DU GROUPE '+grp.name.toUpperCase());UI.renderChatList();return;}}
+        if(op.op==='promote'&&!grp.admins.includes(op.member))grp.admins.push(op.member);
+        await DB.put('groups',grp);UI.renderChatList();UI.renderCommList();
+        break;}
+      case 'profile':{
+        if(!forMe)return;
+        const key=S.keys.get(env.from);if(!key)return;
+        const p=await Crypto.decrypt(key,env.data);if(!p)return;
+        const c=S.contacts.get(env.from);
+        if(c){Object.assign(c,p);await DB.put('contacts',c);UI.renderChatList();UI.refreshChatHead();}
+        break;}
+    }
+  },
+
+  async receive(chatId,from,body,ts){
+    if(await DB.get('messages',body.mid))return;
+    const rec={id:body.mid,chatId,from,ts,text:body.text,media:body.media,quote:body.quote,status:'delivered',deleted:false};
+    await DB.put('messages',rec);
+    const isActive=S.activeChat===chatId&&document.hasFocus();
+    if(isActive){UI.appendMsg(rec);MSG.markRead(chatId);}
+    else{
+      const c=S.contacts.get(chatId)||S.groups.get(chatId);
+      if(c){c.unread=(c.unread||0)+1;if(S.contacts.has(chatId))await DB.put('contacts',c);}
+    }
+    Notif.show((S.contacts.get(from)?.name||'GROUPE'),body.text||'◈ MEDIA',chatId,isActive);
+    UI.bumpChat(chatId,body.text||'◈ MEDIA',ts);
+  },
+
+  async markRead(chatId){
+    const msgs=await DB.byIndex('messages','chat',chatId);
+    for(const m of msgs)if(m.from!==S.me.id&&m.status!=='readSent'){
+      m.status='readSent';await DB.put('messages',m);
+      const key=S.keys.get(m.from);
+      if(key){const box=await Crypto.encrypt(key,{mid:m.id,status:'read'});NET.emit('rcpt',m.from,box);}
+    }
+    const c=S.contacts.get(chatId)||S.groups.get(chatId);
+    if(c){c.unread=0;if(S.contacts.has(chatId))await DB.put('contacts',c);}
+    UI.renderChatList();
+  },
+
+  async deleteMsg(mid,forAll){
+    const m=await DB.get('messages',mid);if(!m)return;
+    if(forAll){
+      m.deleted=true;m.text='';m.media=null;await DB.put('messages',m);
+      const isGroup=S.groups.has(m.chatId);
+      const key=isGroup?S.gkeys.get(m.chatId):S.keys.get(m.chatId);
+      if(key){const box=await Crypto.encrypt(key,{mid});NET.emit('del',m.chatId,box);}
+    }else await DB.del('messages',mid);
+    UI.openChat(m.chatId,true);
+  }
+};
+
+/* ================================================================
+   GROUPES DÉCENTRALISÉS
+   ================================================================ */
+const GRP={
+  async create(name,memberIds){
+    const gid='g_'+uid();
+    const keyJwk=await Crypto.genGroupKey();
+    const grp={id:gid,name,desc:'',avatar:'',members:[S.me.id,...memberIds],admins:[S.me.id],keyJwk,lamport:1};
+    S.groups.set(gid,grp);S.gkeys.set(gid,await Crypto.importAes(keyJwk));
+    await DB.put('groups',grp);
+    await GRP.distributeKey(grp);
+    UI.renderChatList();UI.renderCommList();
+    toast('>> GROUPE CREE: '+name.toUpperCase());
+    return gid;
+  },
+  async distributeKey(grp){
+    for(const m of grp.members){
+      if(m===S.me.id)continue;
+      const key=S.keys.get(m);if(!key)continue;
+      const box=await Crypto.encrypt(key,{...grp});
+      await NET.emit('gkey',m,box);
+    }
+  },
+  async op(gid,op){
+    const grp=S.groups.get(gid);if(!grp||!grp.admins.includes(S.me.id))return toast('!! RESERVE AUX ADMINS');
+    grp.lamport++;op.lamport=grp.lamport;
+    if(op.op==='rename'){grp.name=op.name;grp.desc=op.desc??grp.desc;grp.avatar=op.avatar??grp.avatar;}
+    if(op.op==='addMember'&&!grp.members.includes(op.member))grp.members.push(op.member);
+    if(op.op==='rmMember'){grp.members=grp.members.filter(m=>m!==op.member);grp.admins=grp.admins.filter(m=>m!==op.member);}
+    if(op.op==='promote'&&!grp.admins.includes(op.member))grp.admins.push(op.member);
+    await DB.put('groups',grp);
+    const box=await Crypto.encrypt(S.gkeys.get(gid),op);
+    await NET.emit('gop',gid,box);
+    if(op.op==='addMember')await GRP.distributeKey(grp);
+    UI.renderChatList();UI.renderCommList();
+  }
+};
+
+/* ================================================================
+   STATUTS (éphémères 24h)
+   ================================================================ */
+const STATUS={
+  TTL:24*3600e3,
+  async publish(content){
+    const sid='s_'+uid();
+    const st={id:sid,owner:S.me.id,ts:now(),content:{sid,...content},views:[],seenByMe:true};
+    await DB.put('statuses',st);
+    for(const [cid] of S.contacts){
+      const key=S.keys.get(cid);if(!key)continue;
+      const box=await Crypto.encrypt(key,st.content);
+      await NET.emit('status',cid,box);
+    }
+    UI.renderStatusList();toast('>> STATUT PROPAGE SUR LE RESEAU');
+  },
+  async purge(){
+    for(const st of await DB.all('statuses'))
+      if(now()-st.ts>STATUS.TTL)await DB.del('statuses',st.id);
+  },
+  async markViewed(st){
+    if(st.owner===S.me.id||st.seenByMe)return;
+    st.seenByMe=true;await DB.put('statuses',st);
+    const key=S.keys.get(st.owner);
+    if(key){const box=await Crypto.encrypt(key,{sid:st.id});NET.emit('sview',st.owner,box);}
+  }
+};
+
+/* ================================================================
+   APPELS AUDIO/VIDÉO — FIX #5 : flux réécrit
+   ================================================================ */
+const CALL={
+  pc:null,stream:null,pendingIce:[],
+  linkOk(peerId){const p=S.peers.get(peerId);return !!(p&&p.dc.readyState==='open')},
+
+  async start(peerId,video){
+    if(S.call)return toast('!! APPEL DEJA EN COURS');
+    if(!CALL.linkOk(peerId))return toast('!! CONNEXION P2P INACTIVE — RECONNECTEZ LE CONTACT');
+    S.call={peerId,video,dir:'out',id:uid()};
+    try{CALL.stream=await navigator.mediaDevices.getUserMedia({audio:true,video:video?{width:{ideal:640},height:{ideal:480}}:false});}
+    catch(e){S.call=null;return toast('!! ACCES MICRO/CAMERA REFUSE')}
+    CALL.setup(peerId);
+    CALL.stream.getTracks().forEach(t=>CALL.pc.addTrack(t,CALL.stream));
+    UI.showCall('NEGOCIATION DU LIEN DIRECT…');
+    if(video)$('#local-video').srcObject=CALL.stream;
+    const offer=await CALL.pc.createOffer();
+    await CALL.pc.setLocalDescription(offer);
+    NET.sendTo(peerId,{t:'call',a:'offer',sdp:{type:offer.type,sdp:offer.sdp},video});
+  },
+
+  setup(peerId){
+    const pc=new RTCPeerConnection(NET.ICE);CALL.pc=pc;CALL.pendingIce=[];
+    pc.onicecandidate=e=>{if(e.candidate)NET.sendTo(peerId,{t:'call',a:'ice',c:e.candidate.toJSON()})};
+    pc.ontrack=e=>{
+      const rv=$('#remote-video');
+      if(rv&&e.streams[0]&&rv.srcObject!==e.streams[0])rv.srcObject=e.streams[0];
+      const cs=$('#call-status');if(cs)cs.textContent='LIEN ETABLI // P2P DIRECT // CHIFFRE DTLS-SRTP';
+    };
+    pc.onconnectionstatechange=()=>{if(['failed','closed'].includes(pc.connectionState))CALL.end(false)};
+  },
+
+  async flushIce(){
+    for(const c of CALL.pendingIce){try{await CALL.pc.addIceCandidate(c)}catch(e){}}
+    CALL.pendingIce=[];
+  },
+
+  async onSignal(pid,m){
+    if(m.a==='offer'){
+      if(S.call){NET.sendTo(pid,{t:'call',a:'busy'});return}
+      S.call={peerId:pid,video:m.video,dir:'in',sdp:m.sdp};
+      CALL.pendingIce=[];
+      UI.showIncoming(pid,m.video);
+      Notif.show(S.contacts.get(pid)?.name||'?','APPEL '+(m.video?'VIDEO':'AUDIO')+' ENTRANT',pid,false);
+    }else if(m.a==='answer'&&CALL.pc){
+      try{await CALL.pc.setRemoteDescription(m.sdp);await CALL.flushIce();}catch(e){toast('!! ECHEC NEGOCIATION');CALL.end(true)}
+    }else if(m.a==='ice'){
+      if(CALL.pc&&CALL.pc.remoteDescription){try{await CALL.pc.addIceCandidate(m.c)}catch(e){}}
+      else CALL.pendingIce.push(m.c);
+    }else if(m.a==='end'){CALL.end(false)}
+    else if(m.a==='busy'){toast('!! LIGNE OCCUPEE');CALL.end(false)}
+  },
+
+  async answer(){
+    const {peerId,video,sdp}=S.call;
+    try{CALL.stream=await navigator.mediaDevices.getUserMedia({audio:true,video:video?{width:{ideal:640},height:{ideal:480}}:false});}
+    catch(e){toast('!! ACCES MICRO/CAMERA REFUSE');return CALL.end(true)}
+    CALL.setup(peerId);
+    UI.showCall('CONNEXION…');
+    CALL.stream.getTracks().forEach(t=>CALL.pc.addTrack(t,CALL.stream));
+    if(video)$('#local-video').srcObject=CALL.stream;
+    try{
+      await CALL.pc.setRemoteDescription(sdp);
+      await CALL.flushIce();
+      const ans=await CALL.pc.createAnswer();
+      await CALL.pc.setLocalDescription(ans);
+      NET.sendTo(peerId,{t:'call',a:'answer',sdp:{type:ans.type,sdp:ans.sdp}});
+    }catch(e){toast('!! ECHEC NEGOCIATION: '+e.message);CALL.end(true)}
+  },
+
+  async end(notify=true){
+    if(notify&&S.call)NET.sendTo(S.call.peerId,{t:'call',a:'end'});
+    CALL.stream?.getTracks().forEach(t=>t.stop());
+    try{CALL.pc?.close()}catch(e){}
+    CALL.pc=null;CALL.stream=null;CALL.pendingIce=[];
+    if(S.call)await DB.put('calls',{id:uid(),peer:S.call.peerId,video:S.call.video,dir:S.call.dir,ts:now()});
+    S.call=null;$('#call-ui')?.remove();UI.renderCallList();
+  }
+};
+
+/* ================================================================
+   NOTIFICATIONS — bip + clignotement titre
+   ================================================================ */
+const Notif={
+  enabled:true,ctx:null,blinkT:null,baseTitle:document.title,
+  async ask(){try{if(Notification.permission==='default')await Notification.requestPermission()}catch(e){}},
+  beep(){
+    try{
+      const a=Notif.ctx||(Notif.ctx=new (window.AudioContext||window.webkitAudioContext)());
+      if(a.state==='suspended')a.resume();
+      const o=a.createOscillator(),g=a.createGain();
+      o.type='square';o.frequency.value=740;g.gain.value=.035;
+      o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+.09);
+    }catch(e){}
+  },
+  blink(){
+    if(Notif.blinkT)return;
+    let on=false;
+    Notif.blinkT=setInterval(()=>{document.title=(on=!on)?'█ NOUVEAU MESSAGE █':Notif.baseTitle},900);
+    const stop=()=>{clearInterval(Notif.blinkT);Notif.blinkT=null;document.title=Notif.baseTitle};
+    window.addEventListener('focus',stop,{once:true});
+  },
+  show(title,body,chatId,isActive){
+    if(!Notif.enabled||isActive)return;
+    Notif.beep();
+    if(document.hidden)Notif.blink();
+    if(Notification.permission==='granted'&&(document.hidden||!document.hasFocus())){
+      try{
+        const n=new Notification('▣ '+String(title).toUpperCase(),{body:String(body).slice(0,120),tag:chatId});
+        n.onclick=()=>{window.focus();UI.openChat(chatId);n.close()};
+      }catch(e){}
+    }
+  }
+};
+
+/* ================================================================
+   PWA
+   ================================================================ */
+const PWA={
+  init(){
+    const icon='data:image/svg+xml,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#060606"/><text x="50" y="64" font-size="40" fill="#d8cfae" font-family="monospace" text-anchor="middle">▣</text></svg>`);
+    const manifest={name:'MeshChat Terminal',short_name:'MESH',start_url:location.href,display:'standalone',
+      background_color:'#060606',theme_color:'#060606',icons:[{src:icon,sizes:'192x192 512x512',type:'image/svg+xml',purpose:'any'}]};
+    const mUrl=URL.createObjectURL(new Blob([JSON.stringify(manifest)],{type:'application/json'}));
+    const link=document.createElement('link');link.rel='manifest';link.href=mUrl;document.head.appendChild(link);
+    const swCode=`
+      const C='meshterm-v2';
+      self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.add('${location.pathname}')));self.skipWaiting()});
+      self.addEventListener('activate',e=>self.clients.claim());
+      self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(f=>{
+        if(e.request.method==='GET'&&f.ok)caches.open(C).then(c=>c.put(e.request,f.clone()));return f;}).catch(()=>caches.match('${location.pathname}'))))});`;
+    if('serviceWorker' in navigator){
+      const swUrl=URL.createObjectURL(new Blob([swCode],{type:'text/javascript'}));
+      navigator.serviceWorker.register(swUrl,{scope:location.pathname}).catch(()=>{});
+    }
+  }
+};
+
+/* ================================================================
+   VISUALISATIONS : empreinte QR + nuage de particules orbital 3D
+   ================================================================ */
+function fingerprintGrid(str,el){
+  crypto.subtle.digest('SHA-256',enc8(str)).then(h=>{
+    const bytes=new Uint8Array(h);const N=21;
+    el.innerHTML='';el.style.gridTemplateColumns=`repeat(${N},5px)`;
+    for(let i=0;i<N*N;i++){
+      const d=document.createElement('div');
+      if((bytes[(i*7)%32]>>(i%8))&1)d.className='b';
+      el.appendChild(d);
+    }
+  });
+}
+function startMesh(cv,peerFn){
+  const ctx=cv.getContext('2d');
+  const N=120,pts=[];
+  for(let i=0;i<N;i++){const th=Math.acos(2*Math.random()-1),ph=Math.random()*Math.PI*2;
+    pts.push({x:Math.sin(th)*Math.cos(ph),y:Math.cos(th)*.8,z:Math.sin(th)*Math.sin(ph)});}
+  let a=0;
+  (function loop(){
+    if(!cv.isConnected)return requestAnimationFrame(loop);
+    a+=.0045;
+    const W=cv.width=cv.clientWidth||300,H=cv.height=cv.clientHeight||120;
+    ctx.clearRect(0,0,W,H);
+    const R=Math.min(W*.5,H)*.75,proj=[];
+    for(const p of pts){
+      const x=p.x*Math.cos(a)-p.z*Math.sin(a),z=p.x*Math.sin(a)+p.z*Math.cos(a);
+      const s=1.4/(2.1+z);
+      proj.push({X:W/2+x*R*1.7*s,Y:H/2+p.y*R*s,s});
+    }
+    ctx.strokeStyle='rgba(216,207,174,.10)';ctx.lineWidth=1;
+    for(let i=0;i<N;i+=2)for(let j=i+2;j<N;j+=9){
+      const dx=proj[i].X-proj[j].X,dy=proj[i].Y-proj[j].Y;
+      if(dx*dx+dy*dy<1100){ctx.beginPath();ctx.moveTo(proj[i].X,proj[i].Y);ctx.lineTo(proj[j].X,proj[j].Y);ctx.stroke();}
+    }
+    const bright=(peerFn?peerFn():0)*4+2;
+    proj.forEach((p,i)=>{
+      const hot=i<bright;
+      ctx.fillStyle=hot?'#f4eeda':'rgba(216,207,174,'+(0.18+p.s*.5)+')';
+      const r=(hot?2.6:1.5)*p.s;
+      ctx.fillRect(p.X-r/2,p.Y-r/2,r,r);
+    });
+    requestAnimationFrame(loop);
+  })();
+}
+
+/* ================================================================
+   INTERFACE UTILISATEUR
+   ================================================================ */
+const UI={
+  avatarHtml(x,extra=''){
+    const src=x?.avatar,n=(x?.localName||x?.name||'?');
+    return `<div class="avatar ${extra}">${src?`<img src="${src}">`:esc(n[0].toUpperCase())}${S.peers.has(x?.id)?'<span class="online-dot"></span>':''}</div>`;
+  },
+  updateNetBadge(){$('#tb-peers').textContent=S.peers.size},
+  async renderChatList(){
+    const list=$('#list-chats');const q=($('#search').value||'').toLowerCase();
+    const items=[...S.contacts.values(),...S.groups.values()]
+      .filter(c=>(c.localName||c.name||'').toLowerCase().includes(q))
+      .sort((a,b)=>(b.lastTs||0)-(a.lastTs||0));
+    if(!items.length){list.innerHTML=`<div class="empty-hint">┌ AUCUN CANAL ┐<br><br>UTILISEZ [+CONTACT] POUR ETABLIR<br>VOTRE PREMIERE CONNEXION P2P<br>OU LA DECOUVERTE EN LIGNE.</div>`;return;}
+    list.innerHTML=items.map(c=>{
+      const isG=c.id.startsWith('g_');
+      const on=!isG&&S.peers.has(c.id);
+      return `<div class="row" data-chat="${c.id}">
+        ${UI.avatarHtml(isG?{name:c.name,avatar:c.avatar}:c)}
+        <div class="info">
+          <div class="name"><span>${isG?'[G] ':''}${upName(c.localName||c.name)}</span><span class="time">${c.lastTs?fmtTime(c.lastTs):''}</span></div>
+          <div class="sub"><span>${on?'● ':'○ '}${esc((c.lastMsg||(isG?'CANAL DE GROUPE':'CANAL DIRECT')).slice(0,44))}</span>${c.unread?`<span class="badge">${c.unread}</span>`:''}</div>
+        </div></div>`;
+    }).join('');
+    $$('#list-chats .row').forEach(r=>r.onclick=()=>UI.openChat(r.dataset.chat));
+    const tot=items.reduce((s,c)=>s+(c.unread||0),0);
+    $('#cnt-chats').classList.toggle('hidden',!tot);$('#cnt-chats').textContent='['+tot+']';
+  },
+  bumpChat(chatId,txt,ts){
+    const c=S.contacts.get(chatId)||S.groups.get(chatId);
+    if(c){c.lastMsg=txt;c.lastTs=ts;
+      if(S.contacts.has(chatId))DB.put('contacts',c);else DB.put('groups',c);}
+    UI.renderChatList();
+  },
+
+  async openChat(chatId,keepScroll){
+    S.activeChat=chatId;
+    $('#main').classList.add('open');
+    $('#main-empty').classList.add('hidden');
+    $('#chat-view').classList.remove('hidden');
+    UI.refreshChatHead();
+    const box=$('#msgs');box.innerHTML='';
+    const msgs=(await DB.byIndex('messages','chat',chatId)).sort((a,b)=>a.ts-b.ts);
+    let lastDay='';
+    for(const m of msgs){
+      const d=fmtDay(m.ts);
+      if(d!==lastDay){lastDay=d;box.insertAdjacentHTML('beforeend',`<div class="day-sep">── ${d} ──</div>`);}
+      UI.appendMsg(m,true);
+    }
+    box.scrollTop=box.scrollHeight;
+    MSG.markRead(chatId);
+  },
+  refreshChatHead(){
+    const id=S.activeChat;if(!id)return;
+    const isG=id.startsWith('g_');
+    const c=isG?S.groups.get(id):S.contacts.get(id);if(!c)return;
+    $('#ch-name').textContent=(c.localName||c.name).toUpperCase();
+    $('#ch-avatar').innerHTML=c.avatar?`<img src="${c.avatar}">`:esc((c.localName||c.name)[0].toUpperCase());
+    const p=$('#ch-presence');p.className='presence';
+    if(isG)p.textContent=c.members.length+' MEMBRES // RESEAU MAILLE';
+    else if(S.typing.get(id)&&now()-S.typing.get(id)<4000){p.textContent='TRANSMISSION EN COURS…█';p.classList.add('typing');}
+    else if(S.peers.has(id))p.textContent='● EN LIGNE // P2P DIRECT // CHIFFRE';
+    else p.textContent=c.lastSeen?'○ HORS LIGNE // DERNIER SIGNAL '+fmtTime(c.lastSeen):'○ HORS LIGNE';
+  },
+  ticksHtml(m){
+    if(m.from!==S.me.id)return '';
+    const map={sent:'[--]',delivered:'[OK]',read:'[VU]',readSent:''};
+    return `<span class="ticks ${m.status==='read'?'read':''}" data-tick="${m.id}" title="${m.status==='sent'?'Envoyé':m.status==='delivered'?'Distribué sur le réseau':'Lu'}">${map[m.status]||'[--]'}</span>`;
+  },
+  updateTicks(m){const el=$(`[data-tick="${m.id}"]`);
+    if(el){el.textContent=m.status==='sent'?'[--]':m.status==='read'?'[VU]':'[OK]';el.classList.toggle('read',m.status==='read');}},
+  mediaHtml(md){
+    if(!md)return '';
+    if(md.kind==='image')return `<img src="${md.data}" loading="lazy">`;
+    if(md.kind==='video')return `<video src="${md.data}" controls></video>`;
+    if(md.kind==='audio')return `<audio src="${md.data}" controls style="max-width:230px"></audio>`;
+    return `<a class="file-chip" href="${md.data}" download="${esc(md.name)}" style="color:var(--bright)">◈ <span>${esc(md.name)}<br><small class="dim">${((md.size||0)/1024).toFixed(1)} KO</small></span></a>`;
+  },
+  appendMsg(m,silent){
+    if(S.activeChat!==m.chatId)return;
+    const out=m.from===S.me.id;
+    const isG=m.chatId.startsWith('g_');
+    const sender=!out&&isG?`<div class="sender">┌ ${upName(S.contacts.get(m.from)?.name||'NODE_'+m.from.slice(0,6))}</div>`:'';
+    const el=document.createElement('div');
+    el.className=`bubble ${out?'out':'in'}${m.deleted?' deleted':''}`;el.dataset.mid=m.id;
+    el.innerHTML=m.deleted?`[MSG EFFACE DU RESEAU]<div class="meta">${fmtTime(m.ts)}</div>`:
+      `${sender}${m.quote?`<div class="quote">↳ ${esc(m.quote.text)}</div>`:''}
+       ${UI.mediaHtml(m.media)}${m.text?richText(m.text):''}
+       <div class="meta">${fmtTime(m.ts)} ${UI.ticksHtml(m)}</div>
+       <span class="actions" data-menu="${m.id}">[≡]</span>`;
+    $('#msgs').appendChild(el);
+    el.querySelector('[data-menu]')?.addEventListener('click',e=>{e.stopPropagation();UI.msgMenu(e,m)});
+    if(!silent)$('#msgs').scrollTop=$('#msgs').scrollHeight;
+  },
+  msgMenu(e,m){
+    $('.msg-menu')?.remove();
+    const menu=document.createElement('div');menu.className='msg-menu';
+    menu.style.left=Math.min(e.clientX,innerWidth-210)+'px';menu.style.top=Math.min(e.clientY,innerHeight-170)+'px';
+    menu.innerHTML=`<button data-a="reply">↳ REPONDRE</button>
+      <button data-a="copy">▤ COPIER</button>
+      <button data-a="delme">✕ SUPPRIMER POUR MOI</button>
+      ${m.from===S.me.id?'<button data-a="delall" style="color:var(--red)">✕✕ SUPPRIMER POUR TOUS</button>':''}`;
+    document.body.appendChild(menu);
+    menu.onclick=ev=>{const a=ev.target.dataset.a;menu.remove();
+      if(a==='reply'){S.replyTo={mid:m.id,text:m.text,from:m.from};
+        $('#reply-quote').textContent='↳ '+(m.text||'◈ MEDIA').slice(0,80);$('#reply-bar').classList.remove('hidden');$('#msg-input').focus();}
+      if(a==='copy')navigator.clipboard?.writeText(m.text||'');
+      if(a==='delme')MSG.deleteMsg(m.id,false);
+      if(a==='delall')MSG.deleteMsg(m.id,true);};
+    setTimeout(()=>document.addEventListener('click',()=>menu.remove(),{once:true}));
+  },
+
+  /* ---- Statuts ---- */
+  async renderStatusList(){
+    await STATUS.purge();
+    const all=(await DB.all('statuses')).sort((a,b)=>b.ts-a.ts);
+    const mine=all.filter(s=>s.owner===S.me.id);
+    const byOwner=new Map();
+    for(const s of all)if(s.owner!==S.me.id){if(!byOwner.has(s.owner))byOwner.set(s.owner,[]);byOwner.get(s.owner).push(s);}
+    let html=`<div class="row" id="my-status-row">
+      <div class="avatar ${mine.length?'status-ring':''}">${S.me.avatar?`<img src="${S.me.avatar}">`:esc(S.me.name[0])}</div>
+      <div class="info"><div class="name">MON SIGNAL</div>
+      <div class="sub">${mine.length?mine.length+' PUBLICATION(S) · '+mine.reduce((s,x)=>s+x.views.length,0)+' VUE(S)':'[+STATUT] POUR EMETTRE'}</div></div></div>`;
+    for(const [owner,sts] of byOwner){
+      const c=S.contacts.get(owner);const unseen=sts.some(s=>!s.seenByMe);
+      html+=`<div class="row" data-sowner="${owner}">
+        <div class="avatar status-ring ${unseen?'':'seen'}">${c?.avatar?`<img src="${c.avatar}">`:esc((c?.name||'?')[0])}</div>
+        <div class="info"><div class="name">${upName(c?.localName||c?.name||owner.slice(0,8))}</div>
+        <div class="sub">${fmtTime(sts[0].ts)} · ${sts.length} SIGNAL(AUX)</div></div></div>`;
+    }
+    $('#list-status').innerHTML=html;
+    $('#my-status-row').onclick=()=>mine.length?UI.viewStatuses(mine,true):Modal.newStatus();
+    $$('[data-sowner]').forEach(r=>r.onclick=()=>UI.viewStatuses(byOwner.get(r.dataset.sowner),false));
+  },
+  viewStatuses(sts,mine){
+    let idx=0,timer;
+    const v=document.createElement('div');v.id='status-viewer';
+    v.innerHTML=`<div id="sv-progress">${sts.map(()=>'<div><i></i></div>').join('')}</div>
+      <div id="sv-content"></div><div id="sv-foot"></div>`;
+    document.body.appendChild(v);
+    const show=async i=>{
+      clearTimeout(timer);if(i>=sts.length)return v.remove();
+      idx=i;const st=sts[i],c=st.content;
+      $$('#sv-progress i').forEach((b,j)=>{b.style.transition='none';b.style.width=j<i?'100%':'0'});
+      const bar=$$('#sv-progress i')[i];
+      requestAnimationFrame(()=>{bar.style.transition='width 5s linear';bar.style.width='100%'});
+      $('#sv-content').innerHTML=c.kind==='text'
+        ?`<div id="sv-text">${richText(c.data)}</div>`
+        :c.kind==='video'?`<video src="${c.data}" autoplay muted></video>`:`<img src="${c.data}">`;
+      $('#sv-foot').innerHTML=mine
+        ?`VUES: ${st.views.length} — ${st.views.map(v2=>upName(S.contacts.get(v2)?.name||v2.slice(0,6))).join(', ')||'AUCUNE'}
+          <button class="btn-sm btn-danger" data-delst="${st.id}" style="margin-left:10px">SUPPRIMER</button>`
+        :fmtTime(st.ts)+' · PROPAGE VIA LE RESEAU';
+      $('[data-delst]')?.addEventListener('click',async e=>{e.stopPropagation();await DB.del('statuses',st.id);v.remove();UI.renderStatusList();});
+      STATUS.markViewed(st);
+      timer=setTimeout(()=>show(i+1),5000);
+    };
+    v.onclick=e=>{if(e.clientX<innerWidth/3)show(Math.max(0,idx-1));else show(idx+1)};
+    show(0);UI.renderStatusList();
+  },
+
+  /* ---- Appels ---- */
+  async renderCallList(){
+    const calls=(await DB.all('calls')).sort((a,b)=>b.ts-a.ts);
+    $('#list-calls').innerHTML=calls.length?calls.map(c=>{
+      const ct=S.contacts.get(c.peer);
+      return `<div class="row" data-callto="${c.peer}" data-v="${c.video?1:''}">
+        ${UI.avatarHtml(ct)}
+        <div class="info"><div class="name">${upName(ct?.localName||ct?.name||'?')}</div>
+        <div class="sub">${c.dir==='out'?'↗ SORTANT':'↙ ENTRANT'} · ${c.video?'[VID]':'[TEL]'} · ${fmtDay(c.ts)} ${fmtTime(c.ts)}</div></div></div>`;
+    }).join(''):`<div class="empty-hint">┌ AUCUN APPEL ┐<br><br>LES APPELS SONT EN P2P DIRECT.<br>LE CONTACT DOIT ETRE EN LIGNE (●).</div>`;
+    $$('[data-callto]').forEach(r=>r.onclick=()=>CALL.start(r.dataset.callto,!!r.dataset.v));
+  },
+  showCall(status){
+    $('#call-ui')?.remove();
+    const c=S.contacts.get(S.call.peerId);
+    const v=document.createElement('div');v.id='call-ui';
+    v.innerHTML=`<video id="remote-video" autoplay playsinline></video>
+      <video id="local-video" autoplay playsinline muted class="${S.call.video?'':'hidden'}"></video>
+      <div id="call-info"><div class="avatar lg" style="margin:0 auto 12px">${c?.avatar?`<img src="${c.avatar}">`:esc((c?.name||'?')[0])}</div>
+      <h2>${upName(c?.localName||c?.name||'?')}</h2><p id="call-status">${status}</p></div>
+      <div id="call-controls">
+        <button class="call-btn" id="cb-mute">[MUTE]</button>
+        <button class="call-btn end" id="cb-end">[FIN]</button>
+      </div>`;
+    document.body.appendChild(v);
+    $('#cb-end').onclick=()=>CALL.end(true);
+    $('#cb-mute').onclick=e=>{const t=CALL.stream?.getAudioTracks()[0];if(t){t.enabled=!t.enabled;e.target.textContent=t.enabled?'[MUTE]':'[MUET!]'}};
+  },
+  showIncoming(pid,video){
+    $('#call-ui')?.remove();
+    const c=S.contacts.get(pid);
+    const v=document.createElement('div');v.id='call-ui';
+    v.innerHTML=`<div id="call-info"><div class="avatar lg" style="margin:0 auto 12px">${c?.avatar?`<img src="${c.avatar}">`:esc((c?.name||'?')[0])}</div>
+      <h2>${upName(c?.localName||c?.name||'?')}</h2><p>>> APPEL ${video?'[VID]':'[TEL]'} ENTRANT…</p></div>
+      <div id="call-controls">
+        <button class="call-btn answer" id="cb-yes">[REPONDRE]</button>
+        <button class="call-btn end" id="cb-no">[REFUSER]</button>
+      </div>`;
+    document.body.appendChild(v);
+    $('#cb-yes').onclick=async()=>{v.remove();await CALL.answer()};
+    $('#cb-no').onclick=()=>CALL.end(true);
+  },
+
+  /* ---- Groupes ---- */
+  renderCommList(){
+    const grps=[...S.groups.values()];
+    $('#list-comm').innerHTML=grps.length?grps.map(g=>`
+      <div class="row" data-gview="${g.id}">
+        <div class="avatar">${g.avatar?`<img src="${g.avatar}">`:'[G]'}</div>
+        <div class="info"><div class="name">${upName(g.name)}</div>
+        <div class="sub">${g.members.length} MEMBRES · ${g.admins.length} ADMIN(S) · CONSENSUS DECENTRALISE</div></div></div>`).join('')
+      :`<div class="empty-hint">┌ AUCUN GROUPE ┐<br><br>CREEZ UN GROUPE [+GROUPE] :<br>DROITS ADMIN VALIDES PAR<br>CONSENSUS CRYPTOGRAPHIQUE.</div>`;
+    $$('[data-gview]').forEach(r=>r.onclick=()=>Modal.groupInfo(r.dataset.gview));
+  },
+  renderMe(){
+    $('#my-avatar').innerHTML=S.me.avatar?`<img src="${S.me.avatar}">`:esc(S.me.name[0].toUpperCase());
+    $('#my-name').textContent=S.me.name.toUpperCase();
+    $('#tb-agent').textContent=S.me.name.toUpperCase().replace(/\s+/g,'_');
+    $('#tb-node').textContent=S.me.id.slice(0,8).toUpperCase();
+  }
+};
+
+/* ================================================================
+   MODALES
+   ================================================================ */
+const Modal={
+  open(title,bodyHtml){
+    Modal.close();
+    const bg=document.createElement('div');bg.className='modal-bg';bg.id='modal-bg';
+    bg.innerHTML=`<div class="modal"><div class="modal-head"><h3>${title}</h3><button class="icon-btn" id="modal-x">[X]</button></div><div class="modal-body">${bodyHtml}</div></div>`;
+    document.body.appendChild(bg);
+    $('#modal-x').onclick=Modal.close;
+    bg.onclick=e=>{if(e.target===bg)Modal.close()};
+    return bg;
+  },
+  close(){$('#modal-bg')?.remove()},
+
+  async addContact(){
+    Modal.open('[+CONTACT] CONNEXION P2P',`
+      <p class="dim" style="font-size:.7rem;line-height:1.7">PLUSIEURS METHODES : ECHANGE DE CODE MANUEL, DECOUVERTE EN LIGNE VIA BROKER PUBLIC, OU BLUETOOTH (SI DISPONIBLE).</p>
+      <details open><summary>► JE PROPOSE (CODE MANUEL)</summary>
+        <span class="step-tag">ETAPE 1</span><br>
+        <button class="btn-sm" id="gen-offer">GENERER MON CODE D'INVITATION</button>
+        <div id="offer-zone" class="hidden">
+          <div class="code-box" id="offer-code" title="Cliquer pour copier"></div>
+          <div class="qr-grid" id="offer-qr"></div>
+          <p class="dim" style="font-size:.62rem;text-align:center">EMPREINTE DE VERIFICATION (ANTI-MITM)</p>
+          <span class="step-tag">ETAPE 2</span>
+          <div class="field"><label>COLLEZ LA REPONSE DU PAIR</label><textarea id="answer-in" rows="3"></textarea></div>
+          <button class="btn-sm" id="finish-offer">ETABLIR LA CONNEXION</button>
         </div>
-    </div>
+      </details>
+      <details><summary>◄ ON M'INVITE (CODE RECU)</summary>
+        <div class="field"><label>COLLEZ LE CODE RECU</label><textarea id="offer-in" rows="3"></textarea></div>
+        <button class="btn-sm" id="gen-answer">GENERER MA REPONSE</button>
+        <div id="answer-zone" class="hidden">
+          <div class="code-box" id="answer-code" title="Cliquer pour copier"></div>
+          <p class="dim" style="font-size:.68rem">>> RENVOYEZ CE CODE. LA CONNEXION S'ETABLIRA DES QU'IL SERA COLLE.</p>
+        </div>
+      </details>
+      <details><summary>► DECOUVERTE EN LIGNE (BROKER PUBLIC)</summary>
+        <p class="dim" style="font-size:.68rem;margin-bottom:10px">VOIR LES UTILISATEURS EN LIGNE SUR LE RESEAU MAILLE. CLIQUEZ POUR CONNECTER.</p>
+        <div id="online-list" style="max-height:250px;overflow-y:auto">CHARGEMENT…</div>
+        <button class="btn-sm" id="refresh-online" style="margin-top:8px">[ RAFRAICHIR ]</button>
+      </details>
+      <details><summary>► SCAN BLUETOOTH (PROXIMITE)</summary>
+        <p class="dim" style="font-size:.68rem">RECHERCHE UN APPAREIL PROCHE AVEC L'APPLICATION OUVERTE. NECESSITE UN APPAREIL COMPATIBLE.</p>
+        <button class="btn-sm" id="scan-bt">[ SCANNER BLUETOOTH ]</button>
+        <p id="bt-result" class="dim" style="font-size:.68rem;margin-top:6px"></p>
+      </details>`);
+    // Code manuel
+    $('#gen-offer').onclick=async e=>{
+      e.target.textContent='NEGOCIATION ICE…';
+      const code=await NET.createOffer();
+      $('#offer-code').textContent=code;$('#offer-zone').classList.remove('hidden');
+      fingerprintGrid(code,$('#offer-qr'));e.target.textContent='CODE GENERE ✓';
+      $('#offer-code').onclick=()=>{navigator.clipboard?.writeText(code);toast('>> COPIE')};
+    };
+    $('#finish-offer').onclick=async()=>{
+      try{await NET.acceptAnswer($('#answer-in').value);Modal.close();toast('>> CONNEXION EN COURS…');}
+      catch(e){toast('!! REPONSE INVALIDE')}
+    };
+    $('#gen-answer').onclick=async()=>{
+      try{const ans=await NET.acceptOffer($('#offer-in').value);
+        $('#answer-code').textContent=ans;$('#answer-zone').classList.remove('hidden');
+        $('#answer-code').onclick=()=>{navigator.clipboard?.writeText(ans);toast('>> COPIE')};}
+      catch(e){toast('!! CODE INVALIDE')}
+    };
+    // Découverte en ligne
+    const refreshOnline=async()=>{
+      const list=$('#online-list');if(!list)return;
+      list.innerHTML='CHARGEMENT…';
+      try{
+        const peers=await SIGNAL.getOnlinePeers();
+        if(!peers.length)list.innerHTML='<p class="dim">AUCUN UTILISATEUR EN LIGNE ACTUELLEMENT.</p>';
+        else list.innerHTML=peers.map(p=>`
+          <div class="member-row" data-online="${p.id}">
+            <div class="avatar">${p.avatar?`<img src="${p.avatar}">`:esc((p.name||'?')[0])}</div>
+            <div class="info"><span>${upName(p.name)}</span>
+              ${p.bio?`<span class="dim">${esc(p.bio)}</span>`:''}
+            </div>
+            <button class="btn-sm">CONNECTER</button>
+          </div>`).join('');
+        $$('#online-list [data-online]').forEach(el=>el.onclick=()=>connectToPeer(el.dataset.online));
+      }catch(e){list.innerHTML='<p class="dim">ERREUR: '+esc(e.message)+'</p>';}
+    };
+    const connectToPeer=async(targetId)=>{
+      toast('>> ENVOI DE L\'OFFRE…');
+      try{
+        const code=await NET.createOffer();
+        // Envoi via broker
+        await SIGNAL.sendSignal(targetId,{type:'offer',data:code,from:S.me.id,fromName:S.me.name});
+        toast('>> OFFRE ENVOYEE, ATTENTE DE REPONSE…');
+      }catch(e){toast('!! ECHEC: '+e.message)}
+    };
+    $('#refresh-online').onclick=refreshOnline;
+    refreshOnline();
+    // Bluetooth
+    $('#scan-bt').onclick=async()=>{
+      const res=$('#bt-result');
+      if(!navigator.bluetooth){res.textContent='BLUETOOTH NON SUPPORTE PAR CE NAVIGATEUR.';return;}
+      res.textContent='SCAN EN COURS…';
+      try{
+        const device=await navigator.bluetooth.requestDevice({
+          filters:[{services:['12345678-1234-5678-1234-56789abcdef0']}],
+          optionalServices:['12345678-1234-5678-1234-56789abcdef1']
+        });
+        const server=await device.gatt.connect();
+        const service=await server.getPrimaryService('12345678-1234-5678-1234-56789abcdef0');
+        const char=await service.getCharacteristic('12345678-1234-5678-1234-56789abcdef1');
+        const offer=await char.readValue();
+        // On suppose que la valeur est un code base64 (SDP)
+        const code=dec8(offer.buffer);
+        const ans=await NET.acceptOffer(code);
+        // Écrire la réponse
+        await char.writeValue(enc8(ans));
+        res.textContent='CONNEXION BLUETOOTH ETABLIE!';
+        toast('>> BLUETOOTH: CONNEXION REUSSIE');
+        Modal.close();
+      }catch(e){res.textContent='ECHEC BLUETOOTH: '+e.message;}
+    };
+  },
 
-    <div id="toastContainer"></div>
+  profile(){
+    Modal.open('[MON PROFIL]',`
+      <div style="text-align:center"><div class="avatar lg" style="margin:0 auto 10px">${S.me.avatar?`<img src="${S.me.avatar}">`:esc(S.me.name[0])}</div>
+      <p class="dim" style="font-size:.62rem">NODE ID: ${S.me.id}</p></div>
+      <div class="field"><label>NOM D'UTILISATEUR</label><input id="pf-name" value="${esc(S.me.name)}"></div>
+      <div class="field"><label>BIO</label><input id="pf-bio" value="${esc(S.me.bio||'')}"></div>
+      <div class="field"><label>PHOTO DE PROFIL</label><input type="file" id="pf-avatar" accept="image/*"></div>
+      <button id="pf-save">[ ENREGISTRER & PROPAGER ]</button>
+      <div style="margin-top:12px"><button class="btn-sm" id="pf-export">[ EXPORT DES CLES ]</button></div>`);
+    $('#pf-save').onclick=async()=>{
+      S.me.name=$('#pf-name').value.trim()||S.me.name;S.me.bio=$('#pf-bio').value.trim();
+      const f=$('#pf-avatar').files[0];if(f)S.me.avatar=await compressImage(f,256,.8);
+      await DB.kvSet('me',S.me);UI.renderMe();
+      for(const [cid] of S.contacts){const k=S.keys.get(cid);if(!k)continue;
+        const box=await Crypto.encrypt(k,{name:S.me.name,bio:S.me.bio,avatar:S.me.avatar});
+        NET.emit('profile',cid,box);}
+      Modal.close();toast('>> PROFIL PROPAGE');
+    };
+    $('#pf-export').onclick=Modal.exportKeys;
+  },
+  exportKeys(){
+    const blob=new Blob([JSON.stringify({v:1,identity:S.me,exported:now()})],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='mesh-account-keys.json';a.click();
+    toast('>> CLES EXPORTEES — LIEU SUR OBLIGATOIRE');
+  },
 
-    <script>
-        const DB_NAME = 'Web3MeshDB';
-        const DB_VERSION = 1;
-        let db = null;
+  contactInfo(cid){
+    const c=S.contacts.get(cid);if(!c)return;
+    Modal.open('[CONTACT] '+upName(c.name),`
+      <div style="text-align:center">${UI.avatarHtml(c,'lg')}</div>
+      <p class="dim" style="text-align:center;font-size:.72rem;margin:8px 0">${esc(c.bio||'')}</p>
+      <p class="dim" style="text-align:center;font-size:.6rem">${c.id}</p>
+      <p style="text-align:center;font-size:.68rem;color:${S.peers.has(cid)?'var(--bright)':'var(--dim)'}">${S.peers.has(cid)?'● CONNEXION P2P ACTIVE':'○ CONNEXION INACTIVE — RECONNECTEZ VIA [+CONTACT]'}</p>
+      <div class="field"><label>ALIAS LOCAL</label><input id="ci-rename" value="${esc(c.localName||'')}" placeholder="${esc(c.name)}"></div>
+      <button class="btn-sm" id="ci-save">ENREGISTRER</button>
+      <button class="btn-sm btn-danger" id="ci-del" style="margin-left:8px">SUPPRIMER LE CONTACT</button>`);
+    $('#ci-save').onclick=async()=>{c.localName=$('#ci-rename').value.trim();await DB.put('contacts',c);UI.renderChatList();UI.refreshChatHead();Modal.close();};
+    $('#ci-del').onclick=async()=>{S.contacts.delete(cid);await DB.del('contacts',cid);try{S.peers.get(cid)?.pc.close()}catch(e){}Modal.close();UI.renderChatList();};
+  },
 
-        function initDB() {
-            return new Promise((resolve, reject) => {
-                const request = indexedDB.open(DB_NAME, DB_VERSION);
-                request.onupgradeneeded = (e) => {
-                    const db = e.target.result;
-                    if (!db.objectStoreNames.contains('contacts')) db.createObjectStore('contacts', { keyPath: 'id' });
-                    if (!db.objectStoreNames.contains('messages')) db.createObjectStore('messages', { keyPath: 'id' });
-                    if (!db.objectStoreNames.contains('shards')) db.createObjectStore('shards', { keyPath: 'id' });
-                    if (!db.objectStoreNames.contains('stories')) db.createObjectStore('stories', { keyPath: 'id' });
-                    if (!db.objectStoreNames.contains('groups')) db.createObjectStore('groups', { keyPath: 'id' });
-                };
-                request.onsuccess = (e) => { db = e.target.result; resolve(db); };
-                request.onerror = (e) => reject(e);
-            });
+  newGroup(){
+    const opts=[...S.contacts.values()].map(c=>`
+      <label class="check-row"><input type="checkbox" value="${c.id}">${UI.avatarHtml(c)}<span>${upName(c.localName||c.name)}</span></label>`).join('');
+    Modal.open('[+GROUPE] NOUVEAU GROUPE',`
+      <p class="dim" style="font-size:.7rem;line-height:1.6">CLE AES-256 DISTRIBUEE CHIFFREE A CHAQUE MEMBRE. VOUS SEREZ ADMIN.</p>
+      <div class="field"><label>NOM DU GROUPE</label><input id="ng-name" maxlength="40"></div>
+      <div class="field"><label>MEMBRES</label>${opts||'<p class="dim">AJOUTEZ D\'ABORD DES CONTACTS.</p>'}</div>
+      <button id="ng-create">[ CREER LE GROUPE ]</button>`);
+    $('#ng-create').onclick=async()=>{
+      const name=$('#ng-name').value.trim();if(!name)return toast('!! NOM REQUIS');
+      const members=$$('#modal-bg input:checked').map(i=>i.value);
+      const gid=await GRP.create(name,members);Modal.close();UI.openChat(gid);
+    };
+  },
+
+  groupInfo(gid){
+    const g=S.groups.get(gid);if(!g)return;
+    const isAdmin=g.admins.includes(S.me.id);
+    const memberHtml=g.members.map(m=>{
+      const c=m===S.me.id?{name:S.me.name+' (MOI)',avatar:S.me.avatar}:S.contacts.get(m)||{name:'NODE_'+m.slice(0,8)};
+      return `<div class="member-row">${UI.avatarHtml(c)}<div class="info">${upName(c.localName||c.name)}
+        ${g.admins.includes(m)?'<span class="tag-admin">ADMIN</span>':''}
+        ${isAdmin&&m!==S.me.id?`<button class="btn-sm" data-promote="${m}">[★]</button><button class="btn-sm btn-danger" data-kick="${m}">[X]</button>`:''}</div></div>`;
+    }).join('');
+    const addable=[...S.contacts.values()].filter(c=>!g.members.includes(c.id));
+    Modal.open('[GROUPE] '+upName(g.name),`
+      ${isAdmin?`<div class="field"><label>NOM</label><input id="gi-name" value="${esc(g.name)}"></div>
+      <div class="field"><label>DESCRIPTION</label><input id="gi-desc" value="${esc(g.desc||'')}"></div>
+      <div class="field"><label>IMAGE</label><input type="file" id="gi-img" accept="image/*"></div>
+      <button class="btn-sm" id="gi-save">ENREGISTRER LES MODIFICATIONS</button><hr style="border-color:var(--dim2);margin:14px 0">`
+      :`<p class="dim" style="font-size:.75rem">${esc(g.desc||'AUCUNE DESCRIPTION')}</p>`}
+      <h4>MEMBRES (${g.members.length})</h4>${memberHtml}
+      ${isAdmin&&addable.length?`<div class="field" style="margin-top:14px"><label>AJOUTER UN MEMBRE</label>
+        <select id="gi-add">${addable.map(c=>`<option value="${c.id}">${upName(c.localName||c.name)}</option>`).join('')}</select></div>
+        <button class="btn-sm" id="gi-addbtn">[+] AJOUTER</button>`:''}`);
+    if(isAdmin){
+      $('#gi-save').onclick=async()=>{
+        const f=$('#gi-img').files[0];
+        await GRP.op(gid,{op:'rename',name:$('#gi-name').value.trim()||g.name,desc:$('#gi-desc').value,avatar:f?await compressImage(f,256,.8):g.avatar});
+        Modal.close();toast('>> MODIFICATIONS PROPAGEES');};
+      $('#gi-addbtn')?.addEventListener('click',async()=>{await GRP.op(gid,{op:'addMember',member:$('#gi-add').value});Modal.close();toast('>> MEMBRE AJOUTE + CLE DISTRIBUEE');});
+      $$('[data-kick]').forEach(b=>b.onclick=async()=>{await GRP.op(gid,{op:'rmMember',member:b.dataset.kick});Modal.groupInfo(gid);});
+      $$('[data-promote]').forEach(b=>b.onclick=async()=>{await GRP.op(gid,{op:'promote',member:b.dataset.promote});Modal.groupInfo(gid);});
+    }
+  },
+
+  newStatus(){
+    Modal.open('[+STATUT] SIGNAL EPHEMERE 24H',`
+      <div class="field"><label>TEXTE</label><textarea id="st-text" rows="3" placeholder="TRANSMISSION…"></textarea></div>
+      <div class="field"><label>OU PHOTO / VIDEO</label><input type="file" id="st-media" accept="image/*,video/*"></div>
+      <button id="st-pub">[ EMETTRE SUR LE RESEAU ]</button>
+      <p class="dim" style="font-size:.62rem;margin-top:10px">CHIFFRE INDIVIDUELLEMENT POUR CHAQUE CONTACT · GOSSIP · AUTO-DESTRUCTION 24H.</p>`);
+    $('#st-pub').onclick=async()=>{
+      const f=$('#st-media').files[0];
+      if(f){
+        if(f.type.startsWith('image')){await STATUS.publish({kind:'image',data:await compressImage(f)});}
+        else{if(f.size>5*1048576)return toast('!! VIDEO > 5 MO');
+          await STATUS.publish({kind:'video',data:await fileToB64(f)});}
+      }else{const t=$('#st-text').value.trim();if(!t)return toast('!! CONTENU VIDE');
+        await STATUS.publish({kind:'text',data:t});}
+      Modal.close();
+    };
+  },
+
+  async settings(){
+    const shards=await DB.all('shards');
+    const size=(JSON.stringify(shards).length/1048576).toFixed(2);
+    Modal.open('[REGLAGES] PARAMETRES & RESEAU',`
+      <h4>// ETAT DU RESEAU MAILLE</h4>
+      <div class="stat-grid">
+        <div class="stat-card"><b>${S.peers.size}</b><span>NŒUDS CONNECTES</span></div>
+        <div class="stat-card"><b>${shards.length}</b><span>FRAGMENTS REPLIQUES</span></div>
+        <div class="stat-card"><b>${size}</b><span>MO ALLOUES AU RESEAU</span></div>
+        <div class="stat-card"><b>${S.contacts.size}</b><span>CONTACTS / CLES ECDH</span></div>
+      </div>
+      <label class="check-row"><input type="checkbox" id="set-notif" ${Notif.enabled?'checked':''}> NOTIFICATIONS + BIP SONORE</label>
+      <details><summary>EXPORT DES CLES</summary>
+        <p class="dim" style="font-size:.68rem">CONTIENT VOTRE CLE PRIVEE ECDH. NE JAMAIS PARTAGER.</p>
+        <button class="btn-sm" id="set-export">[ EXPORT DES CLES ]</button>
+      </details>
+      <details><summary>MAINTENANCE DU STOCKAGE</summary>
+        <button class="btn-sm" id="set-prune">PURGER LES FRAGMENTS &gt; 7 JOURS</button>
+      </details>
+      <details><summary style="color:var(--red)">ZONE DE DANGER</summary>
+        <p class="dim" style="font-size:.68rem">EFFACE INDEXEDDB, DETRUIT LES CLES, COUPE TOUS LES LIENS. IRREVERSIBLE.</p>
+        <button class="btn-danger" id="set-destroy">[ DESTRUCTION TOTALE ]</button>
+      </details>`);
+    $('#set-notif').onchange=e=>{Notif.enabled=e.target.checked;if(Notif.enabled)Notif.ask();DB.kvSet('notif',Notif.enabled);};
+    $('#set-export').onclick=Modal.exportKeys;
+    $('#set-prune').onclick=async()=>{let n=0;
+      for(const s of shards)if(now()-s.ts>7*864e5){await DB.del('shards',s.id);n++}
+      toast('>> '+n+' FRAGMENTS PURGES');Modal.settings();};
+    $('#set-destroy').onclick=async()=>{
+      if(!confirm('DETRUIRE DEFINITIVEMENT TOUTES VOS DONNEES ET CLES ?'))return;
+      for(const [,p] of S.peers)try{p.pc.close()}catch(e){}
+      await DB.wipe();
+      const regs=await navigator.serviceWorker?.getRegistrations?.()||[];
+      for(const r of regs)r.unregister();
+      location.reload();};
+  }
+};
+
+/* ================================================================
+   SIGNALING EN LIGNE (BROKER MQTT PUBLIC)
+   ================================================================ */
+const SIGNAL={
+  client:null, connected:false, onlinePeers:new Map(),
+  TOPIC_PRESENCE:'meshchat/presence/',
+  TOPIC_SIGNAL:'meshchat/signal/',
+  async connect(){
+    if(SIGNAL.client)return;
+    const broker='wss://broker.emqx.io:8084/mqtt';
+    const clientId='mesh_'+uid().slice(0,8);
+    SIGNAL.client=new WebSocket(broker);
+    SIGNAL.client.binaryType='arraybuffer';
+    SIGNAL.client.onopen=()=>{
+      SIGNAL.connected=true;
+      // CONNECT MQTT
+      const connectPacket=MQTT.connect(clientId);
+      SIGNAL.client.send(connectPacket);
+      // Souscrire aux signaux
+      SIGNAL.client.send(MQTT.subscribe(SIGNAL.TOPIC_SIGNAL+S.me.id));
+      // Publier présence
+      SIGNAL.publishPresence();
+    };
+    SIGNAL.client.onmessage=e=>{
+      const packet=MQTT.parse(e.data);
+      if(packet.type==='publish'){
+        const topic=packet.topic;
+        const payload=packet.payload.toString();
+        if(topic.startsWith(SIGNAL.TOPIC_PRESENCE)){
+          const id=topic.slice(SIGNAL.TOPIC_PRESENCE.length);
+          if(id===S.me.id)return;
+          try{
+            const data=JSON.parse(payload);
+            SIGNAL.onlinePeers.set(id,data);
+          }catch(e){}
+        }else if(topic===SIGNAL.TOPIC_SIGNAL+S.me.id){
+          // Réception d'un signal
+          try{
+            const msg=JSON.parse(payload);
+            SIGNAL.handleSignal(msg);
+          }catch(e){}
         }
-
-        function showToast(msg, type = 'info') {
-            const container = document.getElementById('toastContainer');
-            const toast = document.createElement('div');
-            toast.className = 'toast-msg';
-            if (type === 'error') toast.style.borderColor = 'var(--accent-red)';
-            if (type === 'success') toast.style.borderColor = 'var(--accent-green)';
-            toast.innerText = msg;
-            container.appendChild(toast);
-            setTimeout(() => {
-                toast.remove();
-            }, 4000);
-        }
-
-        let pendingConfirmCallback = null;
-        function showConfirmDialog(title, text, onConfirm) {
-            document.getElementById('confirmTitle').innerText = title;
-            document.getElementById('confirmMessage').innerText = text;
-            pendingConfirmCallback = onConfirm;
-            document.getElementById('confirmBtnYes').onclick = () => {
-                if (pendingConfirmCallback) pendingConfirmCallback();
-                closeConfirmModal();
-            };
-            document.getElementById('confirmModal').classList.add('active');
-        }
-        function closeConfirmModal() {
-            document.getElementById('confirmModal').classList.remove('active');
-            pendingConfirmCallback = null;
-        }
-
-        const CryptoModule = {
-            keyPair: null,
-            nodeId: null,
-
-            async generateIdentity() {
-                this.keyPair = await window.crypto.subtle.generateKey(
-                    { name: "ECDH", namedCurve: "P-256" },
-                    true,
-                    ["deriveKey", "deriveBits"]
-                );
-                const exportedRaw = await window.crypto.subtle.exportKey("spki", this.keyPair.publicKey);
-                const hashBuffer = await window.crypto.subtle.digest("SHA-256", exportedRaw);
-                const hashArray = Array.from(new Uint8Array(hashBuffer));
-                this.nodeId = "NODE_" + hashArray.slice(0, 6).map(b => b.toString(16).padStart(2, '0')).join('');
-                return { nodeId: this.nodeId, pubKeySpki: this.arrayBufferToBase64(exportedRaw) };
-            },
-
-            async deriveSharedKey(peerPubSpkiBase64) {
-                const peerKeyBuffer = this.base64ToArrayBuffer(peerPubSpkiBase64);
-                const importedPeerPubKey = await window.crypto.subtle.importKey(
-                    "spki", peerKeyBuffer, { name: "ECDH", namedCurve: "P-256" }, true, []
-                );
-                return await window.crypto.subtle.deriveKey(
-                    { name: "ECDH", public: importedPeerPubKey },
-                    this.keyPair.privateKey,
-                    { name: "AES-GCM", length: 256 },
-                    false,
-                    ["encrypt", "decrypt"]
-                );
-            },
-
-            async encryptMessage(sharedKey, textData) {
-                const enc = new TextEncoder();
-                const iv = window.crypto.getRandomValues(new Uint8Array(12));
-                const encrypted = await window.crypto.subtle.encrypt(
-                    { name: "AES-GCM", iv: iv },
-                    sharedKey,
-                    enc.encode(textData)
-                );
-                return {
-                    cipher: this.arrayBufferToBase64(encrypted),
-                    iv: this.arrayBufferToBase64(iv)
-                };
-            },
-
-            async decryptMessage(sharedKey, cipherBase64, ivBase64) {
-                const dec = new TextDecoder();
-                const cipherBuffer = this.base64ToArrayBuffer(cipherBase64);
-                const ivBuffer = this.base64ToArrayBuffer(ivBase64);
-                const decrypted = await window.crypto.subtle.decrypt(
-                    { name: "AES-GCM", iv: ivBuffer },
-                    sharedKey,
-                    cipherBuffer
-                );
-                return dec.decode(decrypted);
-            },
-
-            arrayBufferToBase64(buf) {
-                return btoa(String.fromCharCode.apply(null, new Uint8Array(buf)));
-            },
-            base64ToArrayBuffer(base64) {
-                const binary_string = atob(base64);
-                const len = binary_string.length;
-                const bytes = new Uint8Array(len);
-                for (let i = 0; i < len; i++) { bytes[i] = binary_string.charCodeAt(i); }
-                return bytes.buffer;
-            }
-        };
-
-        const MeshEngine = {
-            peers: {}, // nodeId -> { pc, dc, pubKey, handle }
-            knownGossipIds: new Set(),
-            activeChatId: null,
-
-            async createOffer() {
-                const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19020' }] });
-                const dc = pc.createDataChannel("mesh-channel");
-                this.setupDataChannel(dc, "PENDING");
-
-                pc.onicecandidate = (e) => {
-                    if (!e.candidate) {
-                        const offerStr = JSON.stringify({
-                            type: 'OFFER',
-                            nodeId: CryptoModule.nodeId,
-                            pubKey: myIdentity.pubKeySpki,
-                            sdp: pc.localDescription
-                        });
-                        document.getElementById('myOfferSdp').value = btoa(offerStr);
-                        generateQRCode(btoa(offerStr));
-                    }
-                };
-
-                const offer = await pc.createOffer();
-                await pc.setLocalDescription(offer);
-                return pc;
-            },
-
-            async acceptOfferOrAnswer(base64SdpPacket) {
-                try {
-                    const packet = JSON.parse(atob(base64SdpPacket));
-                    if (packet.type === 'OFFER') {
-                        const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19020' }] });
-                        pc.ondatachannel = (e) => {
-                            this.setupDataChannel(e.channel, packet.nodeId);
-                        };
-                        
-                        await pc.setRemoteDescription(new RTCSessionDescription(packet.sdp));
-                        const answer = await pc.createAnswer();
-                        await pc.setLocalDescription(answer);
-
-                        pc.onicecandidate = (e) => {
-                            if (!e.candidate) {
-                                const answerStr = JSON.stringify({
-                                    type: 'ANSWER',
-                                    nodeId: CryptoModule.nodeId,
-                                    pubKey: myIdentity.pubKeySpki,
-                                    sdp: pc.localDescription
-                                });
-                                document.getElementById('myOfferSdp').value = btoa(answerStr);
-                                showToast("Answer packet generated! Copy and send back to peer.", 'success');
-                            }
-                        };
-                        this.peers[packet.nodeId] = { pc, pubKey: packet.pubKey };
-                        saveContact({ id: packet.nodeId, pubKey: packet.pubKey, handle: packet.nodeId });
-                    } else if (packet.type === 'ANSWER') {
-                        const peer = Object.values(this.peers).find(p => p.pc);
-                        if (peer) {
-                            await peer.pc.setRemoteDescription(new RTCSessionDescription(packet.sdp));
-                            showToast("Handshake complete! Connected to peer.", 'success');
-                        }
-                    }
-                } catch (err) {
-                    showToast("Invalid Handshake Packet: " + err.message, 'error');
-                }
-            },
-
-            setupDataChannel(dc, peerNodeId) {
-                dc.onopen = () => {
-                    document.getElementById('p2pStatusDot').className = "status-dot online";
-                    document.getElementById('p2pStatusText').innerText = "MESH ACTIVE";
-                    this.updatePeerCount();
-                    this.broadcastGossip({
-                        type: 'ANNOUNCE',
-                        nodeId: CryptoModule.nodeId,
-                        handle: userProfile.handle
-                    });
-                };
-
-                dc.onmessage = async (e) => {
-                    const data = JSON.parse(e.data);
-                    this.handleGossipPacket(data, peerNodeId);
-                };
-
-                dc.onclose = () => {
-                    this.updatePeerCount();
-                };
-            },
-
-            async handleGossipPacket(packet, senderId) {
-                if (this.knownGossipIds.has(packet.id)) return;
-                this.knownGossipIds.add(packet.id);
-
-                this.broadcastGossip(packet, senderId);
-
-                switch (packet.type) {
-                    case 'ANNOUNCE':
-                        saveContact({ id: packet.nodeId, handle: packet.handle });
-                        renderChatList();
-                        break;
-
-                    case 'CHAT_MSG':
-                        if (packet.recipient === CryptoModule.nodeId || packet.recipient === 'BROADCAST') {
-                            const sharedKey = await CryptoModule.deriveSharedKey(packet.senderPubKey);
-                            const decryptedText = await CryptoModule.decryptMessage(sharedKey, packet.cipher, packet.iv);
-                            
-                            const msgObj = {
-                                id: packet.id,
-                                sender: packet.sender,
-                                recipient: packet.recipient,
-                                text: decryptedText,
-                                timestamp: packet.timestamp,
-                                status: 'read'
-                            };
-                            saveMessage(msgObj);
-                            if (this.activeChatId === packet.sender) {
-                                renderMessages(this.activeChatId);
-                            }
-                            // Send delivery receipt back
-                            this.broadcastGossip({
-                                type: 'RECEIPT',
-                                msgId: packet.id,
-                                status: 'read',
-                                sender: CryptoModule.nodeId,
-                                recipient: packet.sender
-                            });
-                        }
-                        break;
-
-                    case 'RECEIPT':
-                        updateMessageStatus(packet.msgId, packet.status);
-                        if (this.activeChatId === packet.recipient || this.activeChatId === packet.sender) {
-                            renderMessages(this.activeChatId);
-                        }
-                        break;
-
-                    case 'STORY_BROADCAST':
-                        saveStory(packet.story);
-                        renderStories();
-                        break;
-
-                    case 'SHARD_STORE':
-                        saveShard(packet.shard);
-                        updateShardCountDisplay();
-                        break;
-                }
-            },
-
-            broadcastGossip(packet, excludeSenderId = null) {
-                if (!packet.id) packet.id = 'gossip_' + Math.random().toString(36).substr(2, 9);
-                this.knownGossipIds.add(packet.id);
-
-                const jsonStr = JSON.stringify(packet);
-                Object.keys(this.peers).forEach(id => {
-                    if (id !== excludeSenderId && this.peers[id].dc && this.peers[id].dc.readyState === 'open') {
-                        this.peers[id].dc.send(jsonStr);
-                    }
-                });
-            },
-
-            updatePeerCount() {
-                const active = Object.values(this.peers).filter(p => p.dc && p.dc.readyState === 'open').length;
-                document.getElementById('connectedCount').innerText = active;
-                document.getElementById('visualizerPeerCount').innerText = active;
-            }
-        };
-
-        function toggleTheme() {
-            document.body.classList.toggle('theme-parchment');
-        }
-
-        function switchTab(tabId, btn) {
-            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
-            if (btn) btn.classList.add('active');
-        }
-
-        function generateQRCode(text) {
-            const svg = document.getElementById('qrSvg');
-            svg.innerHTML = '';
-            const size = 33;
-            for (let x = 0; x < size; x++) {
-                for (let y = 0; y < size; y++) {
-                    if ((x % 2 === 0 && y % 3 === 0) || (x < 7 && y < 7) || (x > 25 && y < 7) || (x < 7 && y > 25)) {
-                        const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-                        rect.setAttribute("x", x);
-                        rect.setAttribute("y", y);
-                        rect.setAttribute("width", 1);
-                        rect.setAttribute("height", 1);
-                        rect.setAttribute("fill", "#000");
-                        svg.appendChild(rect);
-                    }
-                }
-            }
-        }
-
-        function openHandshakeModal() {
-            MeshEngine.createOffer();
-            document.getElementById('handshakeModal').classList.add('active');
-        }
-        function closeHandshakeModal() {
-            document.getElementById('handshakeModal').classList.remove('active');
-        }
-        function copyOfferSdp() {
-            const copyText = document.getElementById("myOfferSdp");
-            copyText.select();
-            document.execCommand("copy");
-            showToast("SDP Offer copied to clipboard!", 'success');
-        }
-        function acceptRemoteHandshake() {
-            const input = document.getElementById("remoteAnswerSdp").value.trim();
-            if (!input) {
-                showToast("Please paste a valid SDP Packet first.", 'error');
-                return;
-            }
-            MeshEngine.acceptOfferOrAnswer(input);
-            closeHandshakeModal();
-        }
-
-        function openGroupModal() {
-            document.getElementById('groupModal').classList.add('active');
-        }
-        function closeGroupModal() {
-            document.getElementById('groupModal').classList.remove('active');
-        }
-        function createNewGroup() {
-            const name = document.getElementById('groupNameInput').value.trim();
-            if (!name) {
-                showToast("Enter a group name.", 'error');
-                return;
-            }
-            const groupId = 'GROUP_' + Math.random().toString(36).substr(2, 8).toUpperCase();
-            saveGroup({ id: groupId, name: name, members: [CryptoModule.nodeId] });
-            closeGroupModal();
-            renderChatList();
-            showToast("Group created: " + name, 'success');
-        }
-
-        function saveContact(contact) {
-            if (!db) return;
-            const tx = db.transaction('contacts', 'readwrite');
-            tx.objectStore('contacts').put(contact);
-        }
-
-        function saveMessage(msg) {
-            if (!db) return;
-            const tx = db.transaction('messages', 'readwrite');
-            tx.objectStore('messages').put(msg);
-        }
-
-        function updateMessageStatus(msgId, status) {
-            if (!db) return;
-            const tx = db.transaction('messages', 'readwrite');
-            const store = tx.objectStore('messages');
-            const req = store.get(msgId);
-            req.onsuccess = () => {
-                if (req.result) {
-                    req.result.status = status;
-                    store.put(req.result);
-                }
-            };
-        }
-
-        function saveStory(story) {
-            if (!db) return;
-            const tx = db.transaction('stories', 'readwrite');
-            tx.objectStore('stories').put(story);
-        }
-
-        function saveShard(shard) {
-            if (!db) return;
-            const tx = db.transaction('shards', 'readwrite');
-            tx.objectStore('shards').put(shard);
-        }
-
-        function saveGroup(group) {
-            if (!db) return;
-            const tx = db.transaction('groups', 'readwrite');
-            tx.objectStore('groups').put(group);
-        }
-
-        function updateShardCountDisplay() {
-            if (!db) return;
-            const tx = db.transaction('shards', 'readonly');
-            const req = tx.objectStore('shards').count();
-            req.onsuccess = () => {
-                document.getElementById('storageShardCount').innerText = req.result;
-            };
-        }
-
-        function renderChatList() {
-            const container = document.getElementById('chatListContainer');
-            container.innerHTML = '';
-
-            if (!db) return;
-            const tx = db.transaction(['contacts', 'groups'], 'readonly');
-            
-            const contactsReq = tx.objectStore('contacts').getAll();
-            contactsReq.onsuccess = () => {
-                const contacts = contactsReq.result || [];
-                contacts.forEach(c => {
-                    const div = document.createElement('div');
-                    div.className = `chat-item ${MeshEngine.activeChatId === c.id ? 'active' : ''}`;
-                    div.onclick = () => selectChat(c.id, c.handle || c.id, false);
-                    div.innerHTML = `
-                        <div>
-                            <div style="font-weight:bold; font-size:0.8rem;">${c.handle || c.id}</div>
-                            <div style="font-size:0.65rem; color:var(--text-muted);">Encrypted Direct Link</div>
-                        </div>
-                        <span class="status-dot ${MeshEngine.peers[c.id] ? 'online' : ''}"></span>
-                    `;
-                    container.appendChild(div);
-                });
-            };
-
-            const groupsReq = tx.objectStore('groups').getAll();
-            groupsReq.onsuccess = () => {
-                const groups = groupsReq.result || [];
-                groups.forEach(g => {
-                    const div = document.createElement('div');
-                    div.className = `chat-item ${MeshEngine.activeChatId === g.id ? 'active' : ''}`;
-                    div.onclick = () => selectChat(g.id, '[GRP] ' + g.name, true);
-                    div.innerHTML = `
-                        <div>
-                            <div style="font-weight:bold; font-size:0.8rem; color:var(--accent-amber);">👥 ${g.name}</div>
-                            <div style="font-size:0.65rem; color:var(--text-muted);">Decentralized Consensus</div>
-                        </div>
-                    `;
-                    container.appendChild(div);
-                });
-            };
-        }
-
-        function selectChat(id, title, isGroup) {
-            MeshEngine.activeChatId = id;
-            document.getElementById('activeChatTitle').innerText = title;
-            document.getElementById('activeChatStatus').innerText = isGroup ? "MESH GROUP" : (MeshEngine.peers[id] ? "ONLINE" : "OFFLINE");
-            renderChatList();
-            renderMessages(id);
-        }
-
-        function renderMessages(chatId) {
-            const feed = document.getElementById('messageFeed');
-            feed.innerHTML = '';
-
-            if (!db) return;
-            const tx = db.transaction('messages', 'readonly');
-            const req = tx.objectStore('messages').getAll();
-            req.onsuccess = () => {
-                const msgs = (req.result || []).filter(m => m.sender === chatId || m.recipient === chatId || m.recipient === 'BROADCAST');
-                msgs.sort((a,b) => a.timestamp - b.timestamp);
-
-                msgs.forEach(m => {
-                    const isSent = m.sender === CryptoModule.nodeId;
-                    const bubble = document.createElement('div');
-                    bubble.className = `msg-bubble ${isSent ? 'sent' : 'received'}`;
-                    
-                    let formattedText = m.text
-                        .replace(/\*(.*?)\*/g, '<strong>$1</strong>')
-                        .replace(/_(.*?)_/g, '<em>$1</em>');
-
-                    let receiptSymbol = '✓';
-                    if (m.status === 'routed') receiptSymbol = '✓✓';
-                    if (m.status === 'read') receiptSymbol = `<span class="receipt-check read">✓✓</span>`;
-
-                    bubble.innerHTML = `
-                        <div>${formattedText}</div>
-                        <div class="msg-meta">
-                            <span>${new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
-                            ${isSent ? `<span>${receiptSymbol}</span>` : ''}
-                        </div>
-                    `;
-                    feed.appendChild(bubble);
-                });
-                feed.scrollTop = feed.scrollHeight;
-            };
-        }
-
-        async function sendChatMessage() {
-            const input = document.getElementById('msgInput');
-            const text = input.value.trim();
-            if (!text || !MeshEngine.activeChatId) return;
-
-            const targetPeer = MeshEngine.peers[MeshEngine.activeChatId];
-            if (!targetPeer && !MeshEngine.activeChatId.startsWith('GROUP_')) {
-                showToast("Peer not directly connected. Propagating via Mesh...", 'info');
-            }
-
-            const msgObj = {
-                id: 'msg_' + Math.random().toString(36).substr(2, 9),
-                sender: CryptoModule.nodeId,
-                recipient: MeshEngine.activeChatId,
-                text: text,
-                timestamp: Date.now(),
-                status: 'sent'
-            };
-
-            saveMessage(msgObj);
-            input.value = '';
-            renderMessages(MeshEngine.activeChatId);
-
-            if (targetPeer && targetPeer.pubKey) {
-                const sharedKey = await CryptoModule.deriveSharedKey(targetPeer.pubKey);
-                const encrypted = await CryptoModule.encryptMessage(sharedKey, text);
-                
-                MeshEngine.broadcastGossip({
-                    type: 'CHAT_MSG',
-                    id: msgObj.id,
-                    sender: CryptoModule.nodeId,
-                    recipient: MeshEngine.activeChatId,
-                    senderPubKey: myIdentity.pubKeySpki,
-                    cipher: encrypted.cipher,
-                    iv: encrypted.iv,
-                    timestamp: msgObj.timestamp
-                });
-            } else {
-                // Broadcast for mesh group or unlinked gossip
-                MeshEngine.broadcastGossip({
-                    type: 'CHAT_MSG',
-                    id: msgObj.id,
-                    sender: CryptoModule.nodeId,
-                    recipient: MeshEngine.activeChatId,
-                    senderPubKey: myIdentity.pubKeySpki,
-                    cipher: btoa(text), // Open mesh channel payload fallback
-                    iv: btoa('plain_iv_1234'),
-                    timestamp: msgObj.timestamp
-                });
-            }
-        }
-
-        function handleKeyPress(e) {
-            if (e.key === 'Enter') sendChatMessage();
-        }
-
-        function triggerFileInput() {
-            document.getElementById('fileInput').click();
-        }
-
-        function sendFileChunked(file) {
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const content = e.target.result;
-                const fileMsg = `[FILE]: ${file.name} (${Math.round(file.size/1024)} KB)\n${content.substr(0,100)}...`;
-                document.getElementById('msgInput').value = fileMsg;
-                sendChatMessage();
-                showToast("File encrypted & chunked onto network.", 'success');
-            };
-            reader.readAsDataURL(file);
-        }
-
-        let mediaRecorder = null;
-        let audioChunks = [];
-        let isRecording = false;
-
-        function toggleVoiceRecording() {
-            const btn = document.getElementById('voiceNoteBtn');
-            if (!isRecording) {
-                if (!navigator.mediaDevices) {
-                    showToast("Audio recording not supported in current context.", 'error');
-                    return;
-                }
-                navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-                    mediaRecorder = new MediaRecorder(stream);
-                    audioChunks = [];
-                    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-                    mediaRecorder.onstop = () => {
-                        const blob = new Blob(audioChunks, { type: 'audio/ogg; codecs=opus' });
-                        const reader = new FileReader();
-                        reader.onload = function(e) {
-                            document.getElementById('msgInput').value = `[AUDIO_NOTE]: ${e.target.result}`;
-                            sendChatMessage();
-                        };
-                        reader.readAsDataURL(blob);
-                    };
-                    mediaRecorder.start();
-                    isRecording = true;
-                    btn.style.backgroundColor = 'var(--accent-red)';
-                    showToast("Recording voice note...", 'info');
-                }).catch(err => {
-                    showToast("Microphone access denied: " + err.message, 'error');
-                });
-            } else {
-                if (mediaRecorder) mediaRecorder.stop();
-                isRecording = false;
-                btn.style.backgroundColor = 'var(--accent-amber)';
-            }
-        }
-
-        function publishStory() {
-            const input = document.getElementById('storyTextInput');
-            const text = input.value.trim();
-            if (!text) return;
-
-            const story = {
-                id: 'story_' + Math.random().toString(36).substr(2, 9),
-                author: userProfile.handle,
-                text: text,
-                timestamp: Date.now(),
-                expiresAt: Date.now() + (24 * 60 * 60 * 1000)
-            };
-
-            saveStory(story);
-            MeshEngine.broadcastGossip({ type: 'STORY_BROADCAST', story: story });
-            input.value = '';
-            renderStories();
-            showToast("Broadcast published to Mesh Stories!", 'success');
-        }
-
-        function renderStories() {
-            const container = document.getElementById('storiesContainer');
-            container.innerHTML = '';
-
-            if (!db) return;
-            const tx = db.transaction('stories', 'readonly');
-            const req = tx.objectStore('stories').getAll();
-            req.onsuccess = () => {
-                const stories = (req.result || []).filter(s => s.expiresAt > Date.now());
-                stories.forEach(s => {
-                    const card = document.createElement('div');
-                    card.className = 'brutalist-card';
-                    card.innerHTML = `
-                        <div style="font-size:0.7rem; color:var(--accent-amber); font-weight:bold;">${s.author}</div>
-                        <div style="font-size:0.85rem; margin:10px 0;">${s.text}</div>
-                        <div style="font-size:0.6rem; color:var(--text-muted);">
-                            Expires in ${Math.round((s.expiresAt - Date.now()) / (1000 * 60 * 60))} hrs
-                        </div>
-                    `;
-                    container.appendChild(card);
-                });
-            };
-        }
-
-        let localStream = null;
-
-        async function startCall(videoEnabled) {
-            try {
-                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: videoEnabled });
-                document.getElementById('localVideo').srcObject = localStream;
-                document.getElementById('callStatusText').innerText = `CALL ACTIVE (${videoEnabled ? 'VIDEO' : 'AUDIO'})`;
-                showToast("Local media stream initialized.", 'info');
-            } catch (err) {
-                showToast("Media access failed: " + err.message, 'error');
-            }
-        }
-
-        function endCall() {
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-                document.getElementById('localVideo').srcObject = null;
-            }
-            document.getElementById('callStatusText').innerText = "DIRECT WEBRTC AV CHANNEL";
-            showToast("Call ended.", 'info');
-        }
-
-        function saveProfile() {
-            userProfile.handle = document.getElementById('profileNameInput').value || 'AGENT_NODE';
-            userProfile.bio = document.getElementById('profileBioInput').value || 'P2P Node';
-            document.getElementById('profileAvatarPreview').innerText = userProfile.handle.substr(0,2).toUpperCase();
-            showToast("Local Profile Updated", 'success');
-        }
-
-        function exportAccountKeys() {
-            if (!myIdentity) return;
-            const keysJson = JSON.stringify(myIdentity);
-            const blob = new Blob([keysJson], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${CryptoModule.nodeId}_keys.json`;
-            a.click();
-            showToast("Keys exported successfully.", 'success');
-        }
-
-        function importAccountKeys() {
-            showToast("Import feature ready: Select exported .json key file.", 'info');
-        }
-
-        function confirmNukeLocalData() {
-            showConfirmDialog(
-                "TOTAL DATA NUKE",
-                "Are you sure you want to permanently erase all IndexedDB keys, messages, contacts, and storage shards?",
-                nukeLocalData
-            );
-        }
-
-        function nukeLocalData() {
-            if (db) db.close();
-            const req = indexedDB.deleteDatabase(DB_NAME);
-            req.onsuccess = () => {
-                location.reload();
-            };
-        }
-
-        function initMeshVisualizer() {
-            const canvas = document.getElementById('meshCanvas');
-            const ctx = canvas.getContext('2d');
-            let width, height;
-
-            function resize() {
-                width = canvas.width = canvas.clientWidth;
-                height = canvas.height = canvas.clientHeight;
-            }
-            window.addEventListener('resize', resize);
-            resize();
-
-            const nodes = Array.from({ length: 18 }, () => ({
-                x: (Math.random() - 0.5) * 300,
-                y: (Math.random() - 0.5) * 300,
-                z: (Math.random() - 0.5) * 300
-            }));
-
-            let angleY = 0;
-            function render() {
-                ctx.clearRect(0, 0, width, height);
-                angleY += 0.005;
-
-                const cos = Math.cos(angleY);
-                const sin = Math.sin(angleY);
-
-                const projected = nodes.map(n => {
-                    const x = n.x * cos - n.z * sin;
-                    const z = n.z * cos + n.x * sin + 400;
-                    const scale = 300 / z;
-                    return {
-                        px: x * scale + width / 2,
-                        py: n.y * scale + height / 2,
-                        scale
-                    };
-                });
-
-                ctx.strokeStyle = 'rgba(255, 176, 0, 0.2)';
-                ctx.beginPath();
-                for (let i = 0; i < projected.length; i++) {
-                    for (let j = i + 1; j < projected.length; j++) {
-                        ctx.moveTo(projected[i].px, projected[i].py);
-                        ctx.lineTo(projected[j].px, projected[j].py);
-                    }
-                }
-                ctx.stroke();
-
-                projected.forEach(p => {
-                    ctx.fillStyle = '#ffb000';
-                    ctx.beginPath();
-                    ctx.arc(p.px, p.py, 3 * p.scale, 0, Math.PI * 2);
-                    ctx.fill();
-                });
-
-                requestAnimationFrame(render);
-            }
-            render();
-        }
-
-        let myIdentity = null;
-        let userProfile = { handle: 'AGENT_NODE', bio: 'P2P Node' };
-
-        async function initApp() {
-            await initDB();
-            myIdentity = await CryptoModule.generateIdentity();
-            document.getElementById('nodeIdDisplay').innerText = "ID: " + myIdentity.nodeId;
-            document.getElementById('publicSeedDisplay').innerText = myIdentity.pubKeySpki;
-            
-            const protocolBadge = document.getElementById('envProtocolBadge');
-            if (window.location.protocol.startsWith('http')) {
-                protocolBadge.innerText = "HTTP_ONLINE";
-                protocolBadge.style.color = "var(--accent-green)";
-            } else {
-                protocolBadge.innerText = "LOCAL_FILE";
-                protocolBadge.style.color = "var(--accent-amber)";
-            }
-
-            initMeshVisualizer();
-            renderChatList();
-            renderStories();
-            updateShardCountDisplay();
-
-            // Safe ServiceWorker registration guarded for file:// or unsecure frame origins
-            if ('serviceWorker' in navigator && window.location.protocol.startsWith('http') && window.isSecureContext) {
-                try {
-                    const swCode = `
-                        self.addEventListener('install', e => self.skipWaiting());
-                        self.addEventListener('activate', e => self.clients.claim());
-                        self.addEventListener('fetch', e => e.respondWith(fetch(e.request)));
-                    `;
-                    const blob = new Blob([swCode], { type: 'text/javascript' });
-                    navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(err => {
-                        console.warn("[ServiceWorker Registration suppressed]", err);
-                    });
-                } catch (e) {
-                    console.warn("[ServiceWorker initialized safely without blob worker]", e);
-                }
-            }
-        }
-
-        window.onload = function() {
-            initApp();
-        };
-    </script>
+      }
+    };
+    SIGNAL.client.onclose=()=>{SIGNAL.connected=false;SIGNAL.client=null;setTimeout(()=>SIGNAL.connect(),5000);};
+  },
+  publishPresence(){
+    if(!SIGNAL.connected)return;
+    const payload=JSON.stringify({id:S.me.id,name:S.me.name,bio:S.me.bio,avatar:S.me.avatar,ts:now()});
+    SIGNAL.client.send(MQTT.publish(SIGNAL.TOPIC_PRESENCE+S.me.id,payload));
+  },
+  async getOnlinePeers(){
+    if(!SIGNAL.connected)await SIGNAL.connect();
+    // Récupérer la liste actuelle (ou attendre un peu)
+    await new Promise(r=>setTimeout(r,800));
+    return [...SIGNAL.onlinePeers.values()].filter(p=>p.id!==S.me.id);
+  },
+  sendSignal(targetId,msg){
+    if(!SIGNAL.connected)throw new Error('Non connecté au broker');
+    const payload=JSON.stringify(msg);
+    SIGNAL.client.send(MQTT.publish(SIGNAL.TOPIC_SIGNAL+targetId,payload));
+  },
+  handleSignal(msg){
+    if(msg.from===S.me.id)return;
+    if(msg.type==='offer'){
+      // On a reçu une offre de quelqu'un
+      const code=msg.data;
+      toast('>> OFFRE RECUE DE '+msg.fromName);
+      // Accepter l'offre et envoyer la réponse via broker
+      (async()=>{
+        try{
+          const ans=await NET.acceptOffer(code);
+          await SIGNAL.sendSignal(msg.from,{type:'answer',data:ans,from:S.me.id,fromName:S.me.name});
+          toast('>> REPONSE ENVOYEE');
+        }catch(e){toast('!! ECHEC ACCEPTATION: '+e.message)}
+      })();
+    }else if(msg.type==='answer'){
+      // Réponse à notre offre
+      const code=msg.data;
+      (async()=>{
+        try{
+          await NET.acceptAnswer(code);
+          toast('>> CONNEXION ETABLIE AVEC '+msg.fromName);
+        }catch(e){toast('!! ECHEC CONNEXION: '+e.message)}
+      })();
+    }
+  }
+};
+
+/* ================================================================
+   MQTT MINIMAL (WebSocket)
+   ================================================================ */
+const MQTT={
+  connect(clientId){
+    // CONNECT packet MQTT 3.1.1
+    const header=[0x10];
+    const payload=[]; // protocol name
+    const protocolName=[0x00,0x04,'M','Q','T','T'];
+    payload.push(...protocolName);
+    const level=4;payload.push(level);
+    // Connect Flags: clean session, no will, no username/password
+    payload.push(0x02);
+    // Keep alive (seconds)
+    payload.push(0x00,0x3C);
+    // Client ID
+    payload.push(0x00,clientId.length,...[...clientId].map(c=>c.charCodeAt(0)));
+    // Variable header + payload
+    const len=payload.length;
+    const remLen=encodeVarInt(len);
+    return new Uint8Array([...header,...remLen,...payload]).buffer;
+  },
+  subscribe(topic){
+    // SUBSCRIBE packet
+    const packetType=0x82;
+    const packetId=Math.floor(Math.random()*65535);
+    const payload=[];
+    payload.push((packetId>>8)&0xFF,packetId&0xFF);
+    // Topic filter
+    payload.push(0x00,topic.length,...[...topic].map(c=>c.charCodeAt(0)));
+    payload.push(0x00); // QoS 0
+    const remLen=encodeVarInt(payload.length);
+    return new Uint8Array([packetType,...remLen,...payload]).buffer;
+  },
+  publish(topic,msg){
+    // PUBLISH packet (QoS 0)
+    const packetType=0x30;
+    const payload=[];
+    // Topic
+    payload.push(0x00,topic.length,...[...topic].map(c=>c.charCodeAt(0)));
+    // Message
+    payload.push(...[...msg].map(c=>c.charCodeAt(0)));
+    const remLen=encodeVarInt(payload.length);
+    return new Uint8Array([packetType,...remLen,...payload]).buffer;
+  },
+  parse(buffer){
+    // Simple parser for PUBLISH only (QoS0)
+    const data=new Uint8Array(buffer);
+    let pos=0;
+    const type=data[pos]>>4;
+    if(type===3){ // PUBLISH
+      const remLen=decodeVarInt(data,pos+1);
+      pos+=1+remLen.bytes;
+      // Topic length
+      const topicLen=(data[pos]<<8)|data[pos+1];pos+=2;
+      const topic=dec8(data.slice(pos,pos+topicLen));pos+=topicLen;
+      // Payload
+      const payload=dec8(data.slice(pos));
+      return {type:'publish',topic,payload};
+    }
+    return {type:'other'};
+  }
+};
+function encodeVarInt(len){
+  const bytes=[];
+  do{
+    let b=len&0x7F;
+    len>>=7;
+    if(len)b|=0x80;
+    bytes.push(b);
+  }while(len);
+  return bytes;
+}
+function decodeVarInt(data,start){
+  let pos=start,multiplier=1,value=0;
+  do{
+    const b=data[pos++];
+    value+=(b&0x7F)*multiplier;
+    multiplier*=128;
+    if((b&0x80)===0)break;
+  }while(pos<data.length);
+  return {value,bytes:pos-start};
+}
+
+/* ================================================================
+   ÉVÉNEMENTS UI & DÉMARRAGE
+   ================================================================ */
+function bindEvents(){
+  $$('.tab').forEach(t=>t.onclick=()=>{
+    $$('.tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');
+    const tab=t.dataset.tab;
+    for(const l of ['chats','status','calls','comm'])$('#list-'+l).classList.toggle('hidden',l!==tab);
+    $('#fab-status').classList.toggle('hidden',tab!=='status');
+    if(tab==='status')UI.renderStatusList();
+    if(tab==='calls')UI.renderCallList();
+    if(tab==='comm')UI.renderCommList();
+  });
+  $('#search').oninput=()=>UI.renderChatList();
+  $('#btn-add-contact').onclick=Modal.addContact;
+  $('#btn-new-group').onclick=Modal.newGroup;
+  $('#btn-settings').onclick=Modal.settings;
+  $('#open-profile').onclick=Modal.profile;
+  $('#fab-status').onclick=Modal.newStatus;
+  $('#back-btn').onclick=()=>{$('#main').classList.remove('open');S.activeChat=null};
+  $('#reply-cancel').onclick=()=>{S.replyTo=null;$('#reply-bar').classList.add('hidden')};
+  $('#ch-info').onclick=()=>{const id=S.activeChat;
+    if(id.startsWith('g_'))Modal.groupInfo(id);else Modal.contactInfo(id);};
+  $('#btn-call-audio').onclick=()=>{if(S.activeChat&&!S.activeChat.startsWith('g_'))CALL.start(S.activeChat,false)};
+  $('#btn-call-video').onclick=()=>{if(S.activeChat&&!S.activeChat.startsWith('g_'))CALL.start(S.activeChat,true)};
+
+  // Saisie & envoi
+  const input=$('#msg-input'),sendBtn=$('#btn-send');
+  const refreshBtn=()=>{if(!S.mediaRec)sendBtn.textContent=input.value.trim()?'[ENVOYER]':'[REC]'};
+  let typingT;
+  input.oninput=()=>{refreshBtn();
+    input.style.height='auto';input.style.height=Math.min(input.scrollHeight,110)+'px';
+    if(S.activeChat&&!S.activeChat.startsWith('g_')){
+      NET.sendTo(S.activeChat,{t:'typing',on:true});
+      clearTimeout(typingT);typingT=setTimeout(()=>NET.sendTo(S.activeChat,{t:'typing',on:false}),2500);}};
+  input.onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();doSend()}};
+  const doSend=()=>{const t=input.value.trim();if(!t||!S.activeChat)return;
+    input.value='';input.style.height='auto';refreshBtn();MSG.sendText(S.activeChat,t);};
+  sendBtn.onclick=async()=>{
+    if(input.value.trim())return doSend();
+    if(S.mediaRec){S.mediaRec.stop();return;}
+    if(!S.activeChat)return;
+    try{
+      const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+      const rec=new MediaRecorder(stream);const chunks=[];
+      rec.ondataavailable=e=>chunks.push(e.data);
+      rec.onstop=async()=>{stream.getTracks().forEach(t=>t.stop());
+        sendBtn.classList.remove('rec');sendBtn.textContent='[REC]';S.mediaRec=null;
+        const blob=new Blob(chunks,{type:'audio/webm'});
+        const data=await fileToB64(blob);
+        MSG.sendText(S.activeChat,'',{kind:'audio',data,name:'note-vocale.webm',size:blob.size});};
+      rec.start();S.mediaRec=rec;sendBtn.classList.add('rec');sendBtn.textContent='[■]';
+      toast('>> ENREGISTREMENT… CLIQUEZ [■] POUR ENVOYER');
+    }catch(e){toast('!! MICRO NON AUTORISE')}
+  };
+
+  // Pièces jointes — compression images + transport fragmenté
+  $('#btn-attach').onclick=()=>$('#file-input').click();
+  $('#file-input').onchange=async e=>{
+    if(!S.activeChat)return;
+    for(const f of e.target.files){
+      let data,kind;
+      if(f.type.startsWith('image')){
+        kind='image';
+        toast('>> COMPRESSION DE '+f.name.toUpperCase()+'…');
+        data=await compressImage(f);
+      }else{
+        if(f.size>5*1048576){toast('!! '+f.name.toUpperCase()+' > 5 MO — REJETE');continue;}
+        data=await fileToB64(f);
+        kind=f.type.startsWith('video')?'video':f.type.startsWith('audio')?'audio':'file';
+      }
+      await MSG.sendText(S.activeChat,'',{kind,data,name:f.name,size:Math.round(data.length*0.75)});
+    }
+    e.target.value='';
+  };
+
+  window.addEventListener('focus',()=>{
+    if(S.activeChat)MSG.markRead(S.activeChat);
+    // re-sync au retour de focus
+    for(const [pid] of S.peers)NET.sendTo(pid,{t:'syncReq',since:now()-3600e3});
+  });
+  setInterval(()=>{UI.refreshChatHead();STATUS.purge()},4000);
+
+  // Horloge de session + lignes de télémétrie
+  setInterval(()=>{
+    const s=Math.floor((now()-S.bootTs)/1000);
+    const pad=n=>String(n).padStart(2,'0');
+    $('#tb-time').textContent=pad(s/3600|0)+':'+pad(s/60%60|0)+':'+pad(s%60);
+  },1000);
+  setInterval(()=>{
+    const pct=S.peers.size?(97+Math.random()*2.9).toFixed(1):'0.0';
+    const bars=S.peers.size?18+(Math.random()*6|0):0;
+    $('#sync-line').textContent=`NODE SYNC [${'#'.repeat(bars)}${'.'.repeat(24-bars)}] ${pct}%`;
+    const names=[...S.peers.keys()].map(id=>(S.contacts.get(id)?.name||id.slice(0,6)).toUpperCase().replace(/\s+/g,'_'));
+    $('#repl-line').textContent=names.length?`REPLICATING SECURE DATA TO: [${names.join(', ')}]`:'STANDBY // AWAITING PEER LINK';
+  },1500);
+}
+
+async function enterApp(){
+  $('#onboard').classList.add('hidden');
+  $('#app').classList.remove('hidden');
+  UI.renderMe();UI.renderChatList();UI.updateNetBadge();
+  Notif.ask();
+  startMesh($('#mesh-canvas'),()=>S.peers.size);
+  NET.startHeartbeat();
+  // Connexion au broker pour la découverte en ligne
+  SIGNAL.connect();
+  // Publication périodique de présence
+  setInterval(()=>SIGNAL.publishPresence(),30000);
+}
+
+function initOnboard(){
+  const c='0123456789ABCDEF';let g='';
+  for(let l=0;l<9;l++){let s='';for(let i=0;i<52;i++)s+=Math.random()<.08?' ':c[Math.random()*16|0];g+=s+'\n'}
+  $('#ob-gibber').textContent=g;
+  const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('vis')}),{threshold:.12});
+  $$('.ob-sec').forEach(s=>io.observe(s));
+  $('#ob-avatar').onchange=async e=>{
+    const f=e.target.files[0];if(!f)return;
+    $('#ob-ascii').innerHTML=`<img src="${await compressImage(f,256,.8)}">`;
+  };
+  startMesh($('#ob-mesh'),()=>3);
+}
+
+async function boot(){
+  await DB.open();
+  PWA.init();
+  S.me=await DB.kvGet('me');
+  Notif.enabled=(await DB.kvGet('notif'))??true;
+  for(const c of await DB.all('contacts')){
+    S.contacts.set(c.id,c);
+    if(S.me&&c.pub){try{S.keys.set(c.id,await Crypto.pairKey(S.me.priv,c.pub))}catch(e){}}
+  }
+  for(const g of await DB.all('groups')){S.groups.set(g.id,g);
+    try{S.gkeys.set(g.id,await Crypto.importAes(g.keyJwk))}catch(e){}}
+  for(const s of (await DB.all('shards')).slice(-2000))S.seen.add(s.id);
+  bindEvents();
+  initOnboard();
+  if(S.me)return enterApp();
+  $('#ob-create').onclick=async()=>{
+    const name=$('#ob-name').value.trim();
+    if(!name)return toast('!! NOM D\'UTILISATEUR REQUIS');
+    const id=await Crypto.genIdentity();
+    S.me={...id,name,bio:$('#ob-bio').value.trim(),avatar:''};
+    const f=$('#ob-avatar').files[0];if(f)S.me.avatar=await compressImage(f,256,.8);
+    await DB.kvSet('me',S.me);
+    toast('>> IDENTITE SOUVERAINE GENEREE (ECDH P-256)');
+    enterApp();
+  };
+  $('#ob-import').onclick=()=>{
+    const inp=document.createElement('input');inp.type='file';inp.accept='.json';
+    inp.onchange=async()=>{try{
+      const data=JSON.parse(await inp.files[0].text());
+      if(!data.identity?.priv)throw 0;
+      S.me=data.identity;await DB.kvSet('me',S.me);
+      toast('>> IDENTITE RESTAUREE');enterApp();
+    }catch(e){toast('!! FICHIER DE CLES INVALIDE')}};
+    inp.click();
+  };
+}
+boot();
+</script>
 </body>
 </html>
