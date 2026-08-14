@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-MlcUt3BuBE7/peWxwj3dDr/DWM6PAA/aZM7gen/Zjow='; style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob: mediastream:; connect-src wss: https: blob:; worker-src blob:; manifest-src blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-gZfb+pSGuIyTlsH3eVcgJxRM7EcRLVo98PVxTeXXaJw='; style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob: mediastream:; connect-src wss: https: blob:; worker-src blob:; manifest-src blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
 <meta name="theme-color" content="#060606">
 <title>MESHCHAT // TERMINAL NOSTR-MESH</title>
 <style>
@@ -130,8 +130,9 @@ pre{white-space:pre-wrap;word-break:break-word}
 .bubble img,.bubble video{max-width:100%;margin-bottom:5px;display:block;max-height:320px;border:1px solid var(--dim2)}
 .bubble .file-chip{display:flex;align-items:center;gap:8px;border:1px dashed var(--dim);padding:8px 10px;margin-bottom:4px;font-size:.72rem}
 .bubble.deleted{font-style:italic;color:var(--dim)}
-.bubble .actions{position:absolute;top:1px;right:4px;opacity:0;transition:.15s;font-size:.7rem;color:var(--dim);cursor:pointer}
+.bubble .actions{position:absolute;top:3px;right:4px;opacity:.72;transition:.15s;font-size:1rem;line-height:1;min-width:34px;min-height:34px;display:flex;align-items:center;justify-content:center;color:var(--beige);cursor:pointer;border:1px solid transparent}.bubble .actions:active,.bubble .actions:hover{opacity:1;border-color:var(--beige);background:#000}
 .bubble:hover .actions{opacity:1}
+.msg-menu button{min-height:45px;font-size:.8rem}
 .reacts{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
 .reacts span{border:1px solid var(--dim2);background:#000;font-size:.68rem;padding:1px 7px;cursor:pointer}
 .reacts span.mine{border-color:var(--beige)}
@@ -187,7 +188,7 @@ details>*:not(summary){margin-top:10px}
 #call-ui{position:fixed;inset:0;background:#000;z-index:160;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
 #remote-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
 #remote-audio{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
-.voice-player{display:flex;align-items:center;gap:9px;min-width:210px;max-width:310px;border:1px solid var(--dim);background:#000;padding:8px 9px;margin-bottom:5px}.voice-player audio{display:none}.voice-play{width:30px;height:30px;padding:0;border:1px solid var(--beige);color:var(--beige);font-size:.72rem;flex-shrink:0}.voice-wave{flex:1;height:5px;background:var(--dim2);position:relative;cursor:pointer}.voice-wave i{display:block;height:100%;width:0;background:var(--beige);pointer-events:none}.voice-time{font-size:.6rem;color:var(--dim);white-space:nowrap;min-width:34px;text-align:right}
+.voice-player{display:flex;align-items:center;gap:10px;min-width:220px;max-width:320px;border:1px solid var(--dim);background:#000;padding:9px 10px;margin-bottom:5px}.voice-player audio{display:none}.voice-play{width:34px;height:34px;padding:0;border:1px solid var(--beige);background:#080808;color:transparent;font-size:0;line-height:1;display:grid;place-items:center;flex-shrink:0}.voice-play::before{content:'▶';color:var(--beige);font-size:14px;line-height:1;transform:translateX(1px)}.voice-play.playing::before{content:'Ⅱ';font-size:13px;transform:none}.voice-play:disabled{opacity:.45}.voice-wave{flex:1;height:6px;background:var(--dim2);position:relative;cursor:pointer;min-width:72px}.voice-wave i{display:block;height:100%;width:0;background:var(--beige);pointer-events:none}.voice-time{font-size:.64rem;color:var(--dim);white-space:nowrap;min-width:36px;text-align:right}
 #local-video{position:absolute;bottom:110px;right:16px;width:110px;border:1px solid var(--beige);z-index:2;background:#111}
 #call-info{z-index:2;text-align:center}
 #call-info h2{font-size:1.1rem;letter-spacing:3px}
@@ -3355,7 +3356,7 @@ const STATUS={TTL:24*3600e3,
    APPELS — signalisation via relais (plus besoin de lien préexistant)
    ================================================================ */
 const CALL={
-  pc:null,stream:null,pendingIce:[],earlyIce:new Map(),
+  pc:null,stream:null,remoteAudio:null,remoteVideo:null,pendingIce:[],earlyIce:new Map(),
   sig(pid,obj){sendPayload(pid,{t:'rtc',scope:'call',...obj},{eph:false})},
   async start(peerId,video){
     if(!S.allowP2P)return toast('!! APPELS DIRECTS DESACTIVES — ACTIVEZ-LES EXPLICITEMENT DANS CFG');
@@ -3365,6 +3366,7 @@ const CALL={
     try{CALL.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:video?{width:{ideal:640},height:{ideal:480}}:false})}
     catch(e){S.call=null;return toast('!! ACCES MICRO/CAMERA REFUSE')}
     CALL.setup(peerId);
+    CALL.pc.addTransceiver('audio',{direction:'sendrecv'});if(video)CALL.pc.addTransceiver('video',{direction:'sendrecv'});
     CALL.stream.getTracks().forEach(t=>CALL.pc.addTrack(t,CALL.stream));
     UI.showCall('SONNERIE VIA LE MAILLAGE…');
     if(video)$('#local-video').srcObject=CALL.stream;
@@ -3372,18 +3374,20 @@ const CALL={
     CALL.sig(peerId,{a:'offer',sdp:{type:of.type,sdp:of.sdp},video});
   },
   setup(peerId){
-    const pc=new RTCPeerConnection(NET.ICE);CALL.pc=pc;CALL.pendingIce=[];
+    const pc=new RTCPeerConnection(NET.ICE);CALL.pc=pc;CALL.pendingIce=[];CALL.remoteAudio=new MediaStream();CALL.remoteVideo=new MediaStream();
     pc.onicecandidate=e=>{if(e.candidate)CALL.sig(peerId,{a:'ice',c:e.candidate.toJSON()})};
     pc.oniceconnectionstatechange=async()=>{const cs=$('#call-status');if(cs)cs.textContent='ICE: '+pc.iceConnectionState.toUpperCase()+' // '+ICECFG.status();if(pc.iceConnectionState==='failed'&&S.call?.dir==='out'){try{const retry=await pc.createOffer({iceRestart:true});await pc.setLocalDescription(retry);CALL.sig(peerId,{a:'offer',sdp:{type:retry.type,sdp:retry.sdp},video:S.call.video,restart:true})}catch(e){CALL.end(false)}}else if(pc.iceConnectionState==='closed')CALL.end(false)};
-    pc.ontrack=async e=>{
-      const stream=e.streams[0]||new MediaStream([e.track]),ra=$('#remote-audio'),rv=$('#remote-video');
-      if(ra&&ra.srcObject!==stream){ra.srcObject=stream;ra.muted=false;ra.volume=1;try{await ra.play()}catch(err){}}
-      if(rv&&S.call?.video&&rv.srcObject!==stream){rv.srcObject=stream;rv.muted=false;rv.volume=1;try{await rv.play()}catch(err){}}
-      e.track.onunmute=()=>{ra?.play().catch(()=>{});if(S.call?.video)rv?.play().catch(()=>{})};
-      const cs=$('#call-status');if(cs)cs.textContent='LIEN AUDIO ETABLI // P2P DIRECT // DTLS-SRTP';
+    pc.ontrack=e=>{
+      const ra=$('#remote-audio'),rv=$('#remote-video'),isVideo=e.track.kind==='video';
+      const target=isVideo?CALL.remoteVideo:CALL.remoteAudio;if(!target.getTracks().some(t=>t.id===e.track.id))target.addTrack(e.track);
+      const el=isVideo?rv:ra;if(el&&el.srcObject!==target){el.srcObject=target;el.muted=false;el.volume=1;el.onloadedmetadata=()=>CALL.playRemote();el.oncanplay=()=>CALL.playRemote()}
+      e.track.onunmute=()=>CALL.playRemote();e.track.onended=()=>{const cs=$('#call-status');if(cs)cs.textContent='FLUX DISTANT TERMINE'};
+      const cs=$('#call-status');if(cs)cs.textContent='FLUX DISTANT '+(isVideo?'VIDEO':'AUDIO')+' RECU // '+ICECFG.status();
+      CALL.playRemote();
     };
     pc.onconnectionstatechange=()=>{if(['failed','closed'].includes(pc.connectionState))CALL.end(false)};
   },
+  async playRemote(){const ra=$('#remote-audio'),rv=$('#remote-video');try{if(ra?.srcObject)await ra.play();if(S.call?.video&&rv?.srcObject)await rv.play();const b=$('#btn-audio');if(b)b.textContent='[SON ACTIF]'}catch(e){const b=$('#btn-audio');if(b)b.textContent='[ACTIVER SON]'}},
   async flushIce(){for(const c of CALL.pendingIce){try{await CALL.pc.addIceCandidate(c)}catch(e){}}CALL.pendingIce=[]},
   async onSignal(pid,m){
     if(!S.allowP2P){if(m?.a==='offer')CALL.sig(pid,{a:'end'});return}
@@ -3408,6 +3412,7 @@ const CALL={
     try{CALL.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:video?{width:{ideal:640},height:{ideal:480}}:false})}
     catch(e){toast('!! ACCES MICRO/CAMERA REFUSE');return CALL.end(true)}
     CALL.setup(peerId);UI.showCall('CONNEXION…');
+    CALL.pc.addTransceiver('audio',{direction:'sendrecv'});if(video)CALL.pc.addTransceiver('video',{direction:'sendrecv'});
     CALL.stream.getTracks().forEach(t=>CALL.pc.addTrack(t,CALL.stream));
     if(video)$('#local-video').srcObject=CALL.stream;
     try{await CALL.pc.setRemoteDescription(sdp);await CALL.flushIce();
@@ -3419,7 +3424,7 @@ const CALL={
     if(notify&&S.call)CALL.sig(S.call.peerId,{a:'end'});
     CALL.stream?.getTracks().forEach(t=>t.stop());
     try{CALL.pc?.close()}catch(e){}
-    CALL.pc=null;CALL.stream=null;CALL.pendingIce=[];
+    CALL.pc=null;CALL.stream=null;CALL.remoteAudio=null;CALL.remoteVideo=null;CALL.pendingIce=[];
     if(S.call)await DB.put('calls',{id:uid(),peer:S.call.peerId,video:S.call.video,dir:S.call.dir,ts:now()});
     S.call=null;$('#call-ui')?.remove();UI.renderCallList();
   }
@@ -3496,7 +3501,7 @@ const VUI={
   bind(root){
     const audio=root.querySelector('audio'),play=root.querySelector('.voice-play'),wave=root.querySelector('.voice-wave'),bar=wave.querySelector('i'),time=root.querySelector('.voice-time');if(!audio||!play||root.dataset.bound)return;root.dataset.bound='1';
     const paint=()=>{const duration=Number.isFinite(audio.duration)&&audio.duration>0?audio.duration:0;bar.style.width=(duration?Math.min(100,(audio.currentTime/duration)*100):0)+'%';time.textContent=VUI.fmt(audio.currentTime||0)};
-    const sync=()=>{play.textContent=audio.paused?'[▶]':'[■]';paint()};
+    const sync=()=>{play.classList.toggle('playing',!audio.paused);play.setAttribute('aria-label',audio.paused?'Lire la note vocale':'Mettre en pause');paint()};
     play.addEventListener('click',async()=>{try{if(audio.paused)await audio.play();else audio.pause()}catch(e){toast('!! LECTURE AUDIO BLOQUEE PAR LE NAVIGATEUR')}sync()});
     wave.addEventListener('click',e=>{if(Number.isFinite(audio.duration)&&audio.duration>0){const r=wave.getBoundingClientRect();audio.currentTime=Math.max(0,Math.min(audio.duration,(e.clientX-r.left)/r.width*audio.duration));paint()}});
     audio.addEventListener('loadedmetadata',paint);audio.addEventListener('timeupdate',paint);audio.addEventListener('play',sync);audio.addEventListener('pause',sync);audio.addEventListener('ended',()=>{audio.currentTime=0;sync()});audio.addEventListener('error',()=>{time.textContent='ERR';play.disabled=true});
@@ -3700,7 +3705,7 @@ const UI={
         <button class="call-btn end" id="btn-hangup">[FIN]</button></div>`;
     document.body.appendChild(div);
     $('#btn-hangup').onclick=()=>CALL.end(true);
-    $('#btn-audio').onclick=async()=>{const ra=$('#remote-audio'),rv=$('#remote-video');try{await ra?.play();await rv?.play();$('#btn-audio').textContent='[SON ACTIF]'}catch(e){toast('!! LE NAVIGATEUR BLOQUE LE SON')}};
+    $('#btn-audio').onclick=async()=>{await CALL.playRemote();if($('#btn-audio').textContent!=='[SON ACTIF]')toast('!! LE NAVIGATEUR BLOQUE LE SON')};
     $('#btn-mute').onclick=()=>{const t=CALL.stream?.getAudioTracks()[0];
       if(t){t.enabled=!t.enabled;$('#btn-mute').textContent=t.enabled?'[MUTE]':'[MUTE✓]'}};
   },
