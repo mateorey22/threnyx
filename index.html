@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-d9inI5sYfNk4tQsq2E3qTSoV/CCd1xh1WQuzT6c5iDs=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob: mediastream:; connect-src wss: https: blob:; worker-src 'self' blob:; manifest-src 'self' blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-TpsHFiCoLZApx+zw+RuQnqd2G+MdwoUG7HlCLkXz1o0=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob: mediastream:; connect-src wss: https: blob:; worker-src 'self' blob:; manifest-src 'self' blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
 <meta name="theme-color" content="#060606">
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="application-name" content="Threnyx">
@@ -4118,7 +4118,7 @@ const Modal={
       a.download='threnyx_backup_chiffree_'+S.me.pub.slice(0,8)+'.json';a.click();URL.revokeObjectURL(a.href);
       toast('>> SAUVEGARDE CHIFFREE GENEREE')};
     $('#cv-snapshot').onclick=async e=>{const b=e.currentTarget;b.disabled=true;try{toast('>> CONSTELLATION : CHIFFREMENT ET REPLICATION EN COURS');const head=await Constellation.snapshot();toast('>> SNAPSHOT CONFIRME — '+head.parts+' FRAGMENT(S) SUR PLUSIEURS RELAIS');Modal.settings()}catch(err){toast('!! '+String(err.message||'ECHEC CONSTELLATION').toUpperCase())}finally{b.disabled=false}};
-    $('#cv-write').onclick=async e=>{const b=e.currentTarget;b.disabled=true;try{if(!S.me.constellation?.head)throw Error('PUBLIEZ D’ABORD UN SNAPSHOT CHIFFRE');if(!confirm('Cette clé NFC peut restaurer votre identité. Gardez-la hors de portée et ne la partagez jamais. Continuer ?'))return;toast('>> APPROCHEZ LE TAG NFC — SON CONTENU SERA REMPLACE');await NFC.write(Constellation.card());navigator.vibrate?.([25,45,25]);toast('>> CLE NFC CONSTELLATION ECRITE')}catch(err){toast('!! '+NFC.explain(err,'write'))}finally{b.disabled=false}};
+    $('#cv-write').onclick=async e=>{const b=e.currentTarget;if(b.disabled)return;b.disabled=true;try{if(!S.me.constellation?.head)throw Error('PUBLIEZ D’ABORD UN SNAPSHOT CHIFFRE');const card=Constellation.card();toast('>> APPROCHEZ LE TAG NFC — 97 CARACTERES — SON CONTENU SERA REMPLACE');await NFC.write(card);navigator.vibrate?.([25,45,25]);toast('>> CLE NFC CONSTELLATION ECRITE')}catch(err){toast('!! '+NFC.explain(err,'write'))}finally{b.disabled=false}};
     $('#theme-dark').onclick=async()=>{await Theme.set('dark');Modal.settings()};$('#theme-light').onclick=async()=>{await Theme.set('light');Modal.settings()};
     $('#set-notif').onchange=e=>{Notif.enabled=e.target.checked;DB.kvSet('notif',Notif.enabled)};$('#set-notif-sound').onchange=e=>{Notif.prefs.sound=e.target.checked;Notif.save()};$('#set-notif-vibrate').onchange=e=>{Notif.prefs.vibrate=e.target.checked;Notif.save()};$('#set-notif-volume').oninput=e=>{$('#notif-volume-out').textContent=e.target.value;Notif.prefs.volume=+e.target.value;Notif.save()};$('#set-notif-tone').onchange=e=>{Notif.prefs.tone=e.target.value;Notif.save()};$('#notif-test').onclick=()=>{Notif.beep();if(Notif.prefs.vibrate)navigator.vibrate?.(20)};
     $('#set-p2p').onchange=e=>{S.allowP2P=e.target.checked;DB.kvSet('allowP2P',S.allowP2P);if(!S.allowP2P){for(const[,p]of S.peers)try{p.pc.close()}catch(err){};toast('>> P2P DESACTIVE — RELAIS UNIQUEMENT')}};
@@ -4153,7 +4153,7 @@ const PWA={
   standalone(){return matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true},
   async init(){
     if(!('serviceWorker' in navigator)||!window.isSecureContext)return;
-    try{PWA.registration=await navigator.serviceWorker.register('./service-worker.js?v=14',{scope:'./',updateViaCache:'none'});await PWA.registration.update();await navigator.serviceWorker.ready;let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!reloaded){reloaded=true;location.reload()}})}catch(e){}
+    try{PWA.registration=await navigator.serviceWorker.register('./service-worker.js?v=15',{scope:'./',updateViaCache:'none'});await PWA.registration.update();await navigator.serviceWorker.ready;let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!reloaded){reloaded=true;location.reload()}})}catch(e){}
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();PWA.deferred=e;PWA.refreshUI()});
     window.addEventListener('appinstalled',()=>{PWA.deferred=null;PWA.refreshUI();toast('>> THRENYX INSTALLE COMME APPLICATION')});
   },
