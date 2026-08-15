@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-+acXXoiRxN8u61zIbz7QLA17lIu6+Kkcx1MiCVDOaks=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob: mediastream:; connect-src wss: https: blob:; worker-src 'self' blob:; manifest-src 'self' blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-w+NbO935jSZqJcxXoQHXPuog8s8qyzVj4bNc+oV8iGM=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob: mediastream:; connect-src wss: https: blob:; worker-src 'self' blob:; manifest-src 'self' blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
 <meta name="theme-color" content="#060606">
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="application-name" content="Threnyx">
@@ -348,7 +348,6 @@ html[data-theme="light"] .nfc-card{background:linear-gradient(135deg,rgba(81,70,
           <div class="avatar" id="ch-avatar">?</div>
           <div class="info" id="ch-info"><div class="name" id="ch-name"></div><div class="presence" id="ch-presence"></div></div>
           <button class="icon-btn chat-action" id="btn-find" title="Rechercher" aria-label="Rechercher">⌕</button>
-          <button class="icon-btn chat-action" id="btn-semantic" title="Recherche locale intelligente" aria-label="Recherche locale intelligente">✦</button>
           <button class="icon-btn chat-action" id="btn-call-audio" title="Appel audio" aria-label="Appel audio">☎</button>
           <button class="icon-btn chat-action" id="btn-call-video" title="Appel vidéo" aria-label="Appel vidéo">◉</button>
         </div>
@@ -3408,75 +3407,6 @@ const STATUS={TTL:24*3600e3,
 /* ================================================================
    APPELS — signalisation via relais (plus besoin de lien préexistant)
    ================================================================ */
-const LocalAI={session:null,mode:'',
-  async probe(){
-    const API=globalThis.LanguageModel;
-    if(API?.availability){try{const state=await API.availability();if(state!=='unavailable')return{engine:'builtin',state,webgpu:!!navigator.gpu,reason:''}}catch(e){}}
-    if(navigator.gpu)return{engine:'webllm',state:'downloadable',webgpu:true,reason:'Le mini-modèle SmolLM2 135M peut être téléchargé sur cet appareil.'};
-    return{engine:'none',state:'unsupported',webgpu:false,reason:'WebGPU et le modèle local du navigateur ne sont pas disponibles ici.'}
-  },
-  label(status){
-    if(status.engine==='webllm')return'COMPATIBLE : MINI-MODÈLE LOCAL SMOLLM2 135M À TÉLÉCHARGER';
-    if(status.state==='available')return'PRÊT : MODÈLE LOCAL DISPONIBLE';
-    if(status.state==='downloadable')return'PRÊT À TÉLÉCHARGER : ACTION EXPLICITE REQUISE';
-    if(status.state==='downloading')return'TÉLÉCHARGEMENT LOCAL EN COURS';
-    return status.webgpu?'MODELE LOCAL INDISPONIBLE DANS CE NAVIGATEUR':'WEBGPU / MODÈLE LOCAL INDISPONIBLE';
-  },
-  async activate(){
-    const state=await this.probe();if(state.engine==='none')throw Error(state.reason||'MODELE LOCAL INDISPONIBLE');
-    if(this.session)return this.session;
-    if(state.engine==='builtin'){
-      const API=globalThis.LanguageModel;this.mode='builtin';
-      this.session=await API.create({initialPrompts:[{role:'system',content:'Tu es l’assistant local expérimental de Threnyx. Réponds de manière concise en français. Tu ne prétends pas voir les messages, appels, contacts ou fichiers de la personne : elle doit les coller explicitement. Tu ne fournis pas de conseil médical, légal ou financier.'}],monitor:m=>m.addEventListener?.('downloadprogress',e=>{const out=$('#local-ai-state');if(out)out.textContent='TÉLÉCHARGEMENT LOCAL : '+Math.round((e.loaded||0)*100)+'%'})});
-    }else{
-      this.mode='webllm';const out=$('#local-ai-state');if(out)out.textContent='OUVERTURE DU MOTEUR LOCAL THRENYX…';
-      const webllm=await import('./webllm-local.mjs');
-      this.session=await webllm.CreateMLCEngine('SmolLM2-135M-Instruct-q0f16-MLC',{initProgressCallback:p=>{const el=$('#local-ai-state');if(el)el.textContent='TÉLÉCHARGEMENT LOCAL : '+(p.text||'PRÉPARATION…')}});
-    }
-    return this.session;
-  },
-  async open(){
-    const status=await this.probe();
-    Modal.open('// INTELLIGENCE LOCALE',`<p class="qr-help">Assistant expérimental exécuté sur votre appareil. <strong>Threnyx ne lui transmet ni vos messages, ni vos appels, ni vos contacts.</strong> Seul le texte que vous saisissez ici est analysé localement.</p><div class="peer-exchange-note"><span>◈</span><p><strong>${esc(this.label(status))}</strong><br>${status.webgpu?'WebGPU détecté.':'WebGPU non détecté.'} Si le modèle intégré du navigateur manque, Threnyx propose SmolLM2 135M (mini-modèle WebGPU). Ses fichiers proviennent de WebLLM/MLC et sont téléchargés uniquement après votre clic ; vos questions ne sont pas envoyées avec ce téléchargement.</p></div><button class="btn-sm" id="local-ai-init" style="width:100%">[ ACTIVER L’ASSISTANT LOCAL ]</button><p class="qr-help" id="local-ai-state">Aucun modèle ne se télécharge avant votre action.</p><div class="field"><label>QUESTION LOCALE</label><textarea id="local-ai-input" maxlength="1600" placeholder="Ex. Résume ce texte que je colle volontairement…"></textarea></div><button class="btn-sm" id="local-ai-ask" style="width:100%">[ DEMANDER AU MODELE LOCAL ]</button><div class="code-box" id="local-ai-output" style="white-space:pre-wrap;min-height:68px;margin-top:10px">AUCUNE DONNÉE ANALYSÉE.</div><p class="qr-help">Fonctions à venir, non actives dans cette version : sous-titres de vos appels, recherche sémantique chiffrée, filtres AR et alerte deepfake expérimentale. Elles restent désactivées tant que leur traitement local et leur fiabilité ne sont pas validés.</p>`);
-    const setState=t=>{const el=$('#local-ai-state');if(el)el.textContent=t};
-    $('#local-ai-init').onclick=async()=>{try{setState('PRÉPARATION DU MODÈLE LOCAL…');await this.activate();setState('ASSISTANT LOCAL PRÊT — AUCUNE CONVERSATION N’EST IMPORTÉE.')}catch(e){setState('!! '+String(e.message||'ACTIVATION IMPOSSIBLE').toUpperCase())}};
-    $('#local-ai-ask').onclick=async()=>{const input=$('#local-ai-input').value.trim();if(!input)return toast('!! ÉCRIVEZ UNE QUESTION LOCALE');const out=$('#local-ai-output');try{out.textContent='ANALYSE LOCALE EN COURS…';const session=await this.activate();if(this.mode==='webllm'){const r=await session.chat.completions.create({messages:[{role:'system',content:'Tu es l’assistant local expérimental de Threnyx. Réponds de manière concise en français. Tu ne vois ni l’historique ni les contacts de la personne : analyse seulement son texte collé. Tu ne fournis pas de conseil médical, légal ou financier.'},{role:'user',content:input}],temperature:.2,max_tokens:350});out.textContent=r.choices?.[0]?.message?.content?.trim()||'AUCUNE RÉPONSE DU MODÈLE LOCAL.'}else out.textContent=await session.prompt(input)}catch(e){out.textContent='INDISPONIBLE : '+String(e.message||e)}};
-  },
-  async searchActiveChat(){
-    const chatId=S.activeChat;if(!chatId)return toast('!! OUVREZ UNE CONVERSATION');
-    const records=(await DB.byIndex('messages','chat',chatId)).filter(m=>m.text&&!m.deleted&&(!m.expiresAt||m.expiresAt>now())).sort((a,b)=>a.ts-b.ts).slice(-80);
-    if(!records.length)return toast('!! AUCUN TEXTE LOCAL À ANALYSER');
-    Modal.open('// RECHERCHE LOCALE DANS CE CHAT',`<p class="qr-help"><strong>Action manuelle :</strong> si vous lancez la recherche, les ${records.length} derniers messages textuels de cette conversation seront donnés <strong>uniquement au modèle local de cet appareil</strong>. Ils ne sont pas envoyés à Threnyx, un relais, ni à un serveur. Aucun index non chiffré n’est conservé.</p><div class="field"><label>CE QUE VOUS CHERCHEZ</label><textarea id="semantic-query" maxlength="240" placeholder="Ex. De quoi parlions-nous au sujet des vacances ?"></textarea></div><button class="btn-sm" id="semantic-run" style="width:100%">[ ANALYSER LOCALEMENT ]</button><div class="code-box" id="semantic-out" style="white-space:pre-wrap;min-height:72px;margin-top:10px">AUCUNE ANALYSE LANCÉE.</div>`);
-    $('#semantic-run').onclick=async()=>{const q=$('#semantic-query').value.trim();if(!q)return toast('!! ÉCRIVEZ VOTRE RECHERCHE');const out=$('#semantic-out');try{out.textContent='RECHERCHE LOCALE EN COURS…';const context=records.map(m=>`[${new Date(m.ts).toLocaleDateString('fr-FR')}] ${m.from===S.me.pub?'MOI':'CONTACT'} : ${(m.text||'').slice(0,450)}`).join('\n').slice(0,18000);const prompt=`Recherche uniquement dans les extraits de conversation locaux ci-dessous. Question : ${q}\n\nDonne une réponse concise en français avec les éléments retrouvés et leurs dates. N’invente rien. Si les extraits ne suffisent pas, dis-le.\n\nEXTRAITS :\n${context}`;const session=await this.activate();if(this.mode==='webllm'){const r=await session.chat.completions.create({messages:[{role:'system',content:'Tu réalises une recherche locale privée dans des extraits fournis volontairement. Tu ne dois pas inventer de faits ni prétendre voir un autre historique.'},{role:'user',content:prompt}],temperature:.1,max_tokens:450});out.textContent=r.choices?.[0]?.message?.content?.trim()||'AUCUNE CORRESPONDANCE CLAIRE.'}else out.textContent=await session.prompt(prompt)}catch(e){out.textContent='INDISPONIBLE : '+String(e.message||e)}};
-  }
-};
-
-const Captions={rec:null,active:false,translator:null,
-  async open(){
-    if(!S.call)return toast('!! LANCEZ D’ABORD UN APPEL');
-    Modal.open('// SOUS-TITRES LOCAUX',`<p class="qr-help"><strong>Mode expérimental :</strong> les sous-titres écoutent uniquement <strong>votre microphone local</strong>. Ils ne transcrivent pas encore l’audio du correspondant. Le démarrage exige un pack de reconnaissance hors ligne ; Threnyx ne basculera jamais vers une reconnaissance cloud.</p><div class="field"><label>LANGUE PARLÉE</label><select id="caption-source"><option value="fr-FR">FRANÇAIS</option><option value="en-US">ANGLAIS</option><option value="es-ES">ESPAGNOL</option></select></div><div class="field"><label>TRADUIRE VERS</label><select id="caption-target"><option value="">PAS DE TRADUCTION</option><option value="fr">FRANÇAIS</option><option value="en">ANGLAIS</option><option value="es">ESPAGNOL</option></select></div><button class="btn-sm" id="caption-start" style="width:100%">[ ACTIVER LES SOUS-TITRES LOCAUX ]</button><p class="qr-help">Les packs de langue et de traduction, lorsqu’ils sont pris en charge, sont téléchargés après votre clic puis restent sur l’appareil. Cette fonction dépend aujourd’hui des navigateurs de bureau compatibles.</p>`);
-    $('#caption-start').onclick=async()=>{const src=$('#caption-source').value,target=$('#caption-target').value;try{await this.start(src,target);Modal.close();toast('>> SOUS-TITRES LOCAUX ACTIFS')}catch(e){toast('!! '+String(e.message||'SOUS-TITRES LOCAUX INDISPONIBLES').toUpperCase())}};
-  },
-  async start(source,target){
-    this.stop();const SR=globalThis.SpeechRecognition||globalThis.webkitSpeechRecognition;
-    if(!SR||!SR.available||!SR.install)throw Error('RECONNAISSANCE HORS LIGNE NON PRISE EN CHARGE ICI');
-    let availability=await SR.available({langs:[source],processLocally:true,quality:'conversation'});
-    if(availability==='unavailable')throw Error('PACK DE RECONNAISSANCE LOCALE INDISPONIBLE POUR CETTE LANGUE');
-    if(availability!=='available'){const installed=await SR.install({langs:[source],processLocally:true,quality:'conversation'});if(!installed)throw Error('INSTALLATION DU PACK LOCAL IMPOSSIBLE')}
-    this.translator=null;const sourceShort=source.split('-')[0];
-    if(target&&target!==sourceShort){
-      if(!globalThis.Translator?.availability||!globalThis.Translator?.create)throw Error('TRADUCTION LOCALE NON PRISE EN CHARGE ICI');
-      const state=await globalThis.Translator.availability({sourceLanguage:sourceShort,targetLanguage:target});if(state==='unavailable')throw Error('PAIRE DE TRADUCTION LOCALE INDISPONIBLE');
-      this.translator=await globalThis.Translator.create({sourceLanguage:sourceShort,targetLanguage:target,monitor:m=>m.addEventListener?.('downloadprogress',()=>{const c=$('#local-captions');if(c)c.textContent='PRÉPARATION DU PACK DE TRADUCTION LOCAL…'})});
-    }
-    const rec=this.rec=new SR();rec.lang=source;rec.continuous=true;rec.interimResults=true;rec.processLocally=true;this.active=true;
-    rec.onresult=async e=>{let original='';for(let i=e.resultIndex;i<e.results.length;i++)original+=e.results[i][0].transcript;const c=$('#local-captions');if(!c)return;const final=e.results[e.results.length-1]?.isFinal;c.textContent='VOUS · '+original.trim();if(final&&this.translator&&original.trim()){try{const translated=await this.translator.translate(original.trim());if(c&&this.active)c.textContent='VOUS · '+original.trim()+'\n↳ '+translated}catch(err){}}};
-    rec.onerror=e=>{const c=$('#local-captions');if(c)c.textContent='SOUS-TITRES ARRÊTÉS : '+String(e.error||'ERREUR');this.active=false};
-    rec.onend=()=>{if(this.active)try{rec.start()}catch(e){}};rec.start();
-  },
-  stop(){this.active=false;try{this.rec?.stop()}catch(e){}try{this.translator?.destroy?.()}catch(e){}this.rec=null;this.translator=null;}
-};
-
 const CALL={
   pc:null,stream:null,remoteAudio:null,remoteVideo:null,pendingIce:[],earlyIce:new Map(),
   sig(pid,obj){sendPayload(pid,{t:'rtc',scope:'call',...obj},{eph:false})},
@@ -3544,7 +3474,6 @@ const CALL={
   },
   async end(notify=true){
     if(notify&&S.call)CALL.sig(S.call.peerId,{a:'end'});
-    Captions.stop();
     CALL.stream?.getTracks().forEach(t=>t.stop());
     try{CALL.pc?.close()}catch(e){}
     CALL.pc=null;CALL.stream=null;CALL.remoteAudio=null;CALL.remoteVideo=null;CALL.pendingIce=[];
@@ -3804,10 +3733,9 @@ const UI={
     const div=document.createElement('div');div.id='call-ui';
     div.innerHTML=`<audio id="remote-audio" autoplay playsinline></audio><video id="remote-video" autoplay playsinline></video>
       ${S.call.video?'<video id="local-video" autoplay playsinline muted></video>':''}
-      <div id="call-info"><h2>${upName(c?.localName||c?.name||'?')}</h2><p id="call-status">${esc(status)}</p><p id="local-captions" style="white-space:pre-wrap;font-size:.66rem;line-height:1.45;max-width:280px;margin:8px auto 0;color:var(--bright)"></p></div>
+      <div id="call-info"><h2>${upName(c?.localName||c?.name||'?')}</h2><p id="call-status">${esc(status)}</p></div>
       <div id="call-controls">
         <button class="call-btn" id="btn-audio">[ACTIVER SON]</button>
-        <button class="call-btn" id="btn-captions">[CC LOCAL]</button>
         <button class="call-btn" id="btn-mute">[MUTE]</button>
         <button class="call-btn end" id="btn-hangup">[FIN]</button></div>`;
     document.body.appendChild(div);
@@ -3815,7 +3743,6 @@ const UI={
     $('#btn-audio').onclick=async()=>{await CALL.playRemote();if($('#btn-audio').textContent!=='[SON ACTIF]')toast('!! LE NAVIGATEUR BLOQUE LE SON')};
     $('#btn-mute').onclick=()=>{const t=CALL.stream?.getAudioTracks()[0];
       if(t){t.enabled=!t.enabled;$('#btn-mute').textContent=t.enabled?'[MUTE]':'[MUTE✓]'}};
-    $('#btn-captions').onclick=()=>Captions.open();
   },
   showIncoming(pid,video){
     const c=S.contacts.get(pid);Notif.beep();
@@ -4049,7 +3976,6 @@ const Modal={
       <details open><summary>⚙ PREFERENCES D’INTERFACE</summary>
         <div class="field"><label>APPARENCE</label><div class="theme-switch"><button type="button" class="${Theme.mode==='dark'?'active':''}" id="theme-dark">◐ SOMBRE</button><button type="button" class="${Theme.mode==='light'?'active':''}" id="theme-light">☼ CLAIR</button></div></div>
         <label class="check-row"><input type="checkbox" id="set-notif" ${Notif.enabled?'checked':''}>NOTIFICATIONS SYSTEME</label><label class="check-row"><input type="checkbox" id="set-notif-sound" ${Notif.prefs.sound?'checked':''}>SIGNAL SONORE DANS L’APPLICATION</label><label class="check-row"><input type="checkbox" id="set-notif-vibrate" ${Notif.prefs.vibrate?'checked':''}>VIBRATION COURTE</label><div class="range-row"><label>VOLUME</label><input id="set-notif-volume" type="range" min="0" max="100" value="${Notif.prefs.volume}"><output id="notif-volume-out">${Notif.prefs.volume}</output></div><div class="field"><label>SON</label><select id="set-notif-tone"><option value="tick" ${Notif.prefs.tone==='tick'?'selected':''}>TICK</option><option value="soft" ${Notif.prefs.tone==='soft'?'selected':''}>DOUX</option><option value="alert" ${Notif.prefs.tone==='alert'?'selected':''}>ALERTE</option></select></div><button class="btn-sm" id="notif-test" style="width:100%">[TESTER LE SIGNAL]</button><label class="check-row"><input type="checkbox" id="set-p2p" ${S.allowP2P?'checked':''}>AUTORISER LE P2P / APPELS DIRECTS (VOTRE IP PEUT ETRE VISIBLE PAR LE PAIR)</label><button class="btn-sm" id="ask-notif" style="width:100%">[AUTORISER LES NOTIFICATIONS SYSTEME]</button><button class="btn-sm" id="install-pwa" style="width:100%;margin-top:8px">[ INSTALLER THRENYX SUR CET APPAREIL ]</button><p class="dim" id="pwa-status" style="font-size:.62rem;line-height:1.6;margin-top:8px"></p><p class="dim" style="font-size:.62rem;line-height:1.6">Le son d’une notification système est contrôlé par Android/iOS. Ici, vous réglez seulement le signal de l’application au premier plan ; les alertes système sont silencieuses pour ne pas apparaître comme de la musique.</p></details>
-      <details><summary>✦ INTELLIGENCE LOCALE (EXPERIMENTAL)</summary><p class="dim" style="font-size:.64rem;line-height:1.6">Un assistant peut s’exécuter directement dans un navigateur compatible. Il est désactivé par défaut, ne lit jamais votre historique automatiquement et le modèle ne se télécharge qu’après votre clic.</p><button class="btn-sm" id="local-ai-open" style="width:100%">[ OUVRIR LE LABO LOCAL ]</button><p class="dim" style="font-size:.61rem;line-height:1.55;margin-top:8px">Sous-titres, recherche sémantique, filtres AR et alerte deepfake sont étudiés séparément et ne sont pas annoncés comme actifs ici.</p></details>
       <details><summary>▣ DEVERROUILLAGE BIOMETRIQUE</summary><p class="dim" id="bio-status" style="font-size:.64rem;line-height:1.6">VERIFICATION DE LA COMPATIBILITE BIOMETRIQUE…</p><button class="btn-sm" id="bio-enroll" style="width:100%">[ ACTIVER FACE ID / EMPREINTE ]</button><button class="btn-sm btn-danger" id="bio-remove" style="width:100%;margin-top:8px">[ SUPPRIMER LA BIOMETRIE ]</button></details>
       <details><summary style="color:var(--red)">⚠ ZONE DE DESTRUCTION</summary>
         <button class="btn-sm btn-danger" style="width:100%" id="nuke">[ DETRUIRE L'IDENTITE &amp; TOUTES LES DONNEES ]</button></details>`);
@@ -4084,7 +4010,7 @@ const Modal={
     $('#theme-dark').onclick=async()=>{await Theme.set('dark');Modal.settings()};$('#theme-light').onclick=async()=>{await Theme.set('light');Modal.settings()};
     $('#set-notif').onchange=e=>{Notif.enabled=e.target.checked;DB.kvSet('notif',Notif.enabled)};$('#set-notif-sound').onchange=e=>{Notif.prefs.sound=e.target.checked;Notif.save()};$('#set-notif-vibrate').onchange=e=>{Notif.prefs.vibrate=e.target.checked;Notif.save()};$('#set-notif-volume').oninput=e=>{$('#notif-volume-out').textContent=e.target.value;Notif.prefs.volume=+e.target.value;Notif.save()};$('#set-notif-tone').onchange=e=>{Notif.prefs.tone=e.target.value;Notif.save()};$('#notif-test').onclick=()=>{Notif.beep();if(Notif.prefs.vibrate)navigator.vibrate?.(20)};
     $('#set-p2p').onchange=e=>{S.allowP2P=e.target.checked;DB.kvSet('allowP2P',S.allowP2P);if(!S.allowP2P){for(const[,p]of S.peers)try{p.pc.close()}catch(err){};toast('>> P2P DESACTIVE — RELAIS UNIQUEMENT')}};
-    $('#ask-notif').onclick=()=>Notif.request();$('#install-pwa').onclick=()=>PWA.promptInstall();$('#local-ai-open').onclick=()=>LocalAI.open();PWA.refreshUI();
+    $('#ask-notif').onclick=()=>Notif.request();$('#install-pwa').onclick=()=>PWA.promptInstall();PWA.refreshUI();
     $('#nuke').onclick=async()=>{
       if(!confirm('DESTRUCTION IRREVERSIBLE DE L\'IDENTITE ET DE TOUTES LES DONNEES LOCALES. CONFIRMER ?'))return;
       await DB.wipe();location.reload()};
@@ -4115,7 +4041,7 @@ const PWA={
   standalone(){return matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true},
   async init(){
     if(!('serviceWorker' in navigator)||!window.isSecureContext)return;
-    try{PWA.registration=await navigator.serviceWorker.register('./service-worker.js?v=10',{scope:'./',updateViaCache:'none'});await PWA.registration.update();await navigator.serviceWorker.ready;let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!reloaded){reloaded=true;location.reload()}})}catch(e){}
+    try{PWA.registration=await navigator.serviceWorker.register('./service-worker.js?v=12',{scope:'./',updateViaCache:'none'});await PWA.registration.update();await navigator.serviceWorker.ready;let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!reloaded){reloaded=true;location.reload()}})}catch(e){}
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();PWA.deferred=e;PWA.refreshUI()});
     window.addEventListener('appinstalled',()=>{PWA.deferred=null;PWA.refreshUI();toast('>> THRENYX INSTALLE COMME APPLICATION')});
   },
@@ -4264,7 +4190,6 @@ function bindEvents(){
   $('#ch-info').onclick=()=>{
     if(!S.activeChat)return;
     S.activeChat.startsWith('g_')?Modal.groupInfo(S.activeChat):Modal.contactInfo(S.activeChat)};
-  $('#btn-semantic').onclick=()=>LocalAI.searchActiveChat();
   $('#btn-call-audio').onclick=()=>{if(S.activeChat&&!S.activeChat.startsWith('g_'))CALL.start(S.activeChat,false);
     else toast('!! APPELS DE GROUPE NON SUPPORTES')};
   $('#btn-call-video').onclick=()=>{if(S.activeChat&&!S.activeChat.startsWith('g_'))CALL.start(S.activeChat,true);
