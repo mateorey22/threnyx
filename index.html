@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-w+NbO935jSZqJcxXoQHXPuog8s8qyzVj4bNc+oV8iGM=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob: mediastream:; connect-src wss: https: blob:; worker-src 'self' blob:; manifest-src 'self' blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-YBBZa0JgZ/Z2S/7RuqVobNinhD/iDpaPB6Nn7rj469w=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob: mediastream:; connect-src wss: https: blob:; worker-src 'self' blob:; manifest-src 'self' blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
 <meta name="theme-color" content="#060606">
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="application-name" content="Threnyx">
@@ -4041,7 +4041,7 @@ const PWA={
   standalone(){return matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true},
   async init(){
     if(!('serviceWorker' in navigator)||!window.isSecureContext)return;
-    try{PWA.registration=await navigator.serviceWorker.register('./service-worker.js?v=12',{scope:'./',updateViaCache:'none'});await PWA.registration.update();await navigator.serviceWorker.ready;let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!reloaded){reloaded=true;location.reload()}})}catch(e){}
+    try{PWA.registration=await navigator.serviceWorker.register('./service-worker.js?v=13',{scope:'./',updateViaCache:'none'});await PWA.registration.update();await navigator.serviceWorker.ready;let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!reloaded){reloaded=true;location.reload()}})}catch(e){}
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();PWA.deferred=e;PWA.refreshUI()});
     window.addEventListener('appinstalled',()=>{PWA.deferred=null;PWA.refreshUI();toast('>> THRENYX INSTALLE COMME APPLICATION')});
   },
@@ -4109,9 +4109,11 @@ function initOnboard(){
   Bio.capability().then(ok=>{if(!ok){$('#ob-pick-bio').disabled=true;$('#ob-pick-bio').classList.remove('selected');choose('pass')}});
   $('#ob-create').onclick=async()=>{
     const name=Safe.text(($('#ob-name').value||'').trim(),30);if(!name)return toast('!! NOM D’AGENT REQUIS');
+    const existing=await DB.kvGet('vault');
+    if(existing?.salt&&existing?.box){toast('!! IDENTITE EXISTANTE DETECTEE — DEVERROUILLEZ LE COFFRE');await Gate.show();return}
     const priv=Secp.genPriv();S.me={priv,pub:Secp.getPub(priv),name,bio:Safe.text(($('#ob-bio').value||'').trim(),80),avatar:Safe.image(obAvatar),inviteCap:uid()};
     try{
-      if(method==='bio'){const raw=crypto.getRandomValues(new Uint8Array(32));try{await Bio.enrollRaw(raw,S.me);await Vault.createDeviceOnly(S.me,raw)}finally{raw.fill(0)}}
+      if(method==='bio'&&await Bio.capability()){const raw=crypto.getRandomValues(new Uint8Array(32));try{await Bio.enrollRaw(raw,S.me);await Vault.createDeviceOnly(S.me,raw)}finally{raw.fill(0)}}
       else {const pass=prompt('Choisissez une phrase secrète locale (12 caractères minimum) :'),confirmPass=prompt('Confirmez la phrase secrète :');if(!pass||pass.length<12||pass!==confirmPass)throw Error('phrase secrète invalide');await Vault.create(S.me,pass)}
       Notif.ask();await enterApp();
     }catch(e){await Bio.remove();toast('!! '+String(e.message||'ECHEC DE CREATION DU COFFRE').toUpperCase())}
@@ -4290,11 +4292,21 @@ function bindEvents(){
 
 /* ---------------- DEMARRAGE ---------------- */
 (async()=>{
-  await DB.open();
-  await PWA.init();
-  bindEvents();
-  const vault=await DB.kvGet('vault');
-  if(vault)await Gate.show();else initOnboard();
+  try{
+    await DB.open();
+    await PWA.init();
+    bindEvents();
+    const vault=await DB.kvGet('vault');
+    if(vault?.salt&&vault?.box)await Gate.show();
+    else {
+      const bio=await Bio.config();
+      if(bio?.credId)toast('!! COFFRE LOCAL INTROUVABLE — RESTAUREZ UNE SAUVEGARDE, NE CREEZ PAS D’IDENTITE DE REMPLACEMENT');
+      initOnboard();
+    }
+  }catch(e){
+    console.error('THRENYX_BOOT_ERROR',e);
+    const panel=document.createElement('div');panel.className='lock-gate';panel.innerHTML='<div class="lock-panel"><h2>OUVERTURE INTERROMPUE</h2><p>Le coffre local n’a pas été modifié. Fermez puis rouvrez Threnyx depuis son adresse principale. Si cela persiste, contactez le support avec une capture de ce message.</p></div>';document.body.appendChild(panel);
+  }
 })();
 </script>
 </body>
