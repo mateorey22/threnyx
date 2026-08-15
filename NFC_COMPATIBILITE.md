@@ -17,3 +17,5 @@ La version locale avec parcours NFC, repli QR et iconographie modernisée passe 
 La première vérification publique après le commit NFC a encore détecté la version précédente : ni le module NFC ni les nouveaux contrôles n’étaient présents. La construction GitHub Pages doit être contrôlée puis la page rechargée après propagation.
 
 La vérification publique finale de `https://mateorey22.github.io/zenithchat/` confirme la présence du module NFC, des contrôles « ÉCRIRE MA CARTE » et de l’iconographie de contact modernisée. Le service worker de la PWA reste actif.
+
+Correctif de visibilité : la carte NFC est désormais placée avant le QR dans la fenêtre « Contact ». Le code met aussi à jour le service worker avec une stratégie réseau prioritaire pour les pages de navigation afin d’éviter qu’une PWA installée conserve un ancien `index.html`.

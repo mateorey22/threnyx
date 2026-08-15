@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-RUx7W99ym7w7JWdjg0GDqRiWdUyrFJqALTLqxbmu8xs=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob: mediastream:; connect-src wss: https: blob:; worker-src 'self' blob:; manifest-src 'self' blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-quFgEMPmiASAMr13cQVZoyfG2HPYSSgakuooVDNxNBo=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob: mediastream:; connect-src wss: https: blob:; worker-src 'self' blob:; manifest-src 'self' blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
 <meta name="theme-color" content="#060606">
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="application-name" content="MeshChat">
@@ -254,9 +254,9 @@ button:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(0,0,0,.16)}bu
 .nav-action{gap:6px;padding:7px 9px!important;font-size:.62rem!important;min-width:auto!important}.nav-action span{font-size:1rem;line-height:1;color:var(--beige);transition:transform .22s ease}.nav-action b{font-weight:800;letter-spacing:.7px}.nav-action:hover span{transform:rotate(18deg) scale(1.13)}.nav-contact{border-color:rgba(216,207,174,.28)!important;background:rgba(216,207,174,.055)}
 .chat-action{width:37px;height:37px;padding:0!important;font-size:1.15rem!important;border-radius:12px!important;background:rgba(216,207,174,.045)}.compose-action{width:42px;height:42px;padding:0!important;font-size:1.25rem!important;border-radius:13px!important;background:rgba(216,207,174,.07)}
 .online-dot.p2p{box-shadow:0 0 0 3px rgba(244,238,218,.12),0 0 16px rgba(244,238,218,.52);animation:meshPulse 1.9s ease-in-out infinite}.online-dot.relay{box-shadow:0 0 11px rgba(216,207,174,.28)}
-.nfc-card{position:relative;overflow:hidden;border:1px solid var(--beige);border-radius:18px!important;background:linear-gradient(135deg,rgba(216,207,174,.11),rgba(7,7,6,.36));padding:16px;margin:12px 0;box-shadow:inset 0 1px 0 rgba(255,255,255,.07)}.nfc-card::before{content:'';position:absolute;width:145px;height:145px;border:1px solid rgba(216,207,174,.18);border-radius:50%;right:-52px;top:-63px;box-shadow:0 0 0 15px rgba(216,207,174,.025),0 0 0 30px rgba(216,207,174,.018)}.nfc-card h4{margin:0 0 6px!important;position:relative}.nfc-card p{position:relative;font-size:.67rem;line-height:1.6;color:var(--dim);max-width:360px}.nfc-actions{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.nfc-actions button{min-height:48px;border-radius:12px!important;font-size:.69rem}.nfc-actions .nfc-write{background:var(--beige);color:var(--black);border-color:var(--beige)}.nfc-chip{display:inline-flex;gap:7px;align-items:center;border:1px solid var(--dim2);border-radius:999px!important;padding:4px 9px;color:var(--beige);font-size:.58rem;letter-spacing:.7px;margin-top:6px}.nfc-chip i{width:7px;height:7px;background:var(--beige);border-radius:50%;box-shadow:0 0 10px var(--beige)}
+.nfc-priority{border-width:2px!important;animation:nfcAppear .38s ease both}.nfc-priority h4{font-size:.79rem!important}.nfc-card{position:relative;overflow:hidden;border:1px solid var(--beige);border-radius:18px!important;background:linear-gradient(135deg,rgba(216,207,174,.11),rgba(7,7,6,.36));padding:16px;margin:12px 0;box-shadow:inset 0 1px 0 rgba(255,255,255,.07)}.nfc-card::before{content:'';position:absolute;width:145px;height:145px;border:1px solid rgba(216,207,174,.18);border-radius:50%;right:-52px;top:-63px;box-shadow:0 0 0 15px rgba(216,207,174,.025),0 0 0 30px rgba(216,207,174,.018)}.nfc-card h4{margin:0 0 6px!important;position:relative}.nfc-card p{position:relative;font-size:.67rem;line-height:1.6;color:var(--dim);max-width:360px}.nfc-actions{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.nfc-actions button{min-height:48px;border-radius:12px!important;font-size:.69rem}.nfc-actions .nfc-write{background:var(--beige);color:var(--black);border-color:var(--beige)}.nfc-chip{display:inline-flex;gap:7px;align-items:center;border:1px solid var(--dim2);border-radius:999px!important;padding:4px 9px;color:var(--beige);font-size:.58rem;letter-spacing:.7px;margin-top:6px}.nfc-chip i{width:7px;height:7px;background:var(--beige);border-radius:50%;box-shadow:0 0 10px var(--beige)}
 .nfc-scan-stage{display:flex;min-height:205px;align-items:center;justify-content:center;text-align:center;border:1px dashed var(--dim);border-radius:16px!important;background:radial-gradient(circle,rgba(216,207,174,.1),transparent 60%);padding:22px}.nfc-wave{display:flex;gap:6px;justify-content:center;margin:11px 0}.nfc-wave span{width:4px;height:22px;border-radius:6px;background:var(--beige);animation:nfcWave 1s ease-in-out infinite}.nfc-wave span:nth-child(2){animation-delay:.12s;height:34px}.nfc-wave span:nth-child(3){animation-delay:.24s;height:46px}.nfc-wave span:nth-child(4){animation-delay:.36s;height:34px}.nfc-wave span:nth-child(5){animation-delay:.48s}
-@keyframes meshPulse{50%{transform:scale(1.18);box-shadow:0 0 0 5px rgba(244,238,218,0),0 0 20px rgba(244,238,218,.68)}}@keyframes nfcWave{50%{transform:scaleY(.35);opacity:.35}}
+@keyframes nfcAppear{from{opacity:0;transform:translateY(-7px)}to{opacity:1;transform:translateY(0)}}@keyframes meshPulse{50%{transform:scale(1.18);box-shadow:0 0 0 5px rgba(244,238,218,0),0 0 20px rgba(244,238,218,.68)}}@keyframes nfcWave{50%{transform:scaleY(.35);opacity:.35}}
 html[data-theme="light"] .nfc-card{background:linear-gradient(135deg,rgba(81,70,50,.11),rgba(255,250,240,.75))}html[data-theme="light"] .chat-action,html[data-theme="light"] .compose-action{background:rgba(81,70,50,.08)}
 @media(max-width:760px){.nav-action{width:37px;height:37px;padding:0!important}.nav-action b{display:none}.nav-action span{font-size:1.05rem}.nfc-actions{grid-template-columns:1fr}.nfc-card{padding:14px}.chat-action{width:35px;height:35px;font-size:1.05rem!important}}
 </style>
@@ -3812,15 +3812,15 @@ const Modal={
   addContact(){
     const invite=Invite.url();
     Modal.open('// AJOUTER UN PAIR',`
-      <h4>1 · MA CARTE DE CONTACT QR</h4>
+      <h4>1 · CARTE NFC OU QR</h4>
+      <div class="nfc-card nfc-priority"><h4>⌁ ÉCHANGE VIA CARTE NFC</h4><p>Posez une carte/tag NFC sur le téléphone pour l’écrire ou la lire. Le QR reste disponible juste en dessous.</p><div class="nfc-chip"><i></i>NFC NDEF · CHROME ANDROID · HTTPS</div><div class="nfc-actions"><button class="nfc-write" id="write-nfc">⌁ ÉCRIRE MA CARTE NFC</button><button id="scan-nfc">⌁ LIRE UNE CARTE NFC</button></div></div>
       <canvas id="qr-canvas" aria-label="QR code de contact"></canvas>
       <div class="code-box" id="my-id-box">${S.me.pub}</div>
       <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
         <button class="btn-sm" id="copy-id">[COPIER MON ID]</button>
         <button class="btn-sm" id="copy-invite">[COPIER MA CARTE]</button>
         <button class="btn-sm" id="scan-qr">[SCANNER UN QR]</button></div>
-      <div class="nfc-card"><h4>2 · CARTE NFC</h4><p>Écrivez votre carte de contact sur un tag NFC, ou lisez une carte NFC existante. Chaque carte utilise la même capacité limitée que le QR.</p><div class="nfc-chip"><i></i>NFC NDEF · CHROME ANDROID · HTTPS</div><div class="nfc-actions"><button class="nfc-write" id="write-nfc">⌁ ÉCRIRE MA CARTE</button><button id="scan-nfc">⌁ LIRE UNE CARTE</button></div></div>
-      <h4>3 · COLLER UNE CARTE OU UN MESH ID</h4>
+      <h4>2 · COLLER UNE CARTE OU UN MESH ID</h4>
       <input id="peer-id-in" autocomplete="off" placeholder="QR, lien #invite=… ou 64 caracteres hex">
       <div class="field" style="margin-top:10px"><label>ALIAS LOCAL (OPTIONNEL)</label>
         <input id="peer-alias" maxlength="30" placeholder="EX: AGENT_BRAVO"></div>
@@ -4074,7 +4074,7 @@ const PWA={
   standalone(){return matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true},
   async init(){
     if(!('serviceWorker' in navigator)||!window.isSecureContext)return;
-    try{PWA.registration=await navigator.serviceWorker.register('./service-worker.js',{scope:'./'});await navigator.serviceWorker.ready}catch(e){}
+    try{PWA.registration=await navigator.serviceWorker.register('./service-worker.js?v=4',{scope:'./',updateViaCache:'none'});await PWA.registration.update();await navigator.serviceWorker.ready;let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!reloaded){reloaded=true;location.reload()}})}catch(e){}
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();PWA.deferred=e;PWA.refreshUI()});
     window.addEventListener('appinstalled',()=>{PWA.deferred=null;PWA.refreshUI();toast('>> MESHCHAT INSTALLE COMME APPLICATION')});
   },
