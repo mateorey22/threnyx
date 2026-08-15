@@ -3,8 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-mvxyiIG4g+724mG7y6mfLs3f69VhtlKLHOLfNUipuRw=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob: mediastream:; connect-src wss: https: blob:; worker-src blob:; manifest-src blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-uG+c7vK5Rf6WZpu1vKqY6p+sY+o+a3FJCXdTnF0zcMA=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob: mediastream:; connect-src wss: https: blob:; worker-src 'self' blob:; manifest-src 'self' blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
 <meta name="theme-color" content="#060606">
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="application-name" content="MeshChat">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MeshChat">
+<link rel="apple-touch-icon" href="./icon-192.png">
 <title>MESHCHAT // TERMINAL NOSTR-MESH</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -3493,20 +3500,9 @@ const Notif={enabled:true,prefs:{sound:true,volume:35,tone:'tick',vibrate:true},
   blink(){if(Notif.blinkT)return;let on=false;Notif.blinkT=setInterval(()=>{document.title=(on=!on)?'█ NOUVEAU MESSAGE █':Notif.baseTitle},900);window.addEventListener('focus',()=>{clearInterval(Notif.blinkT);Notif.blinkT=null;document.title=Notif.baseTitle},{once:true})},
   offer(){const strip=$('#notif-permission');if(!strip)return;if(!('Notification' in window)||Notification.permission!=='default')return;strip.classList.remove('hidden')},
   async request(){await Notif.ask();if(Notification.permission==='granted'){Notif.beep(true);toast('>> NOTIFICATIONS ACTIVEES — SIGNAL DE TEST EMIS');$('#notif-permission')?.classList.add('hidden')}else toast('!! AUTORISATION DE NOTIFICATION REFUSEE OU INDISPONIBLE : VERIFIEZ LES REGLAGES DU NAVIGATEUR')},
-  show(title,body,chatId,isActive){if(!Notif.enabled)return;const visible=document.visibilityState==='visible';if(visible){Notif.beep(true);if(Notif.prefs.vibrate)navigator.vibrate?.([30,45,30]);toast('>> NOUVEAU MESSAGE — '+String(title).toUpperCase())}else{if(Notif.prefs.vibrate)navigator.vibrate?.([30,45,30]);Notif.blink()}if('Notification' in window&&Notification.permission==='granted'){try{const n=new Notification('▣ '+String(title).toUpperCase(),{body:String(body).slice(0,120),tag:chatId,renotify:true,silent:false});n.onclick=()=>{window.focus();UI.openChat(chatId);n.close()}}catch(e){if(!visible)toast('>> NOUVEAU MESSAGE — '+String(title).toUpperCase())}}}
+  show(title,body,chatId,isActive){if(!Notif.enabled)return;const visible=document.visibilityState==='visible';if(visible){Notif.beep(true);if(Notif.prefs.vibrate)navigator.vibrate?.([30,45,30]);toast('>> NOUVEAU MESSAGE — '+String(title).toUpperCase())}else{if(Notif.prefs.vibrate)navigator.vibrate?.([30,45,30]);Notif.blink()}if('Notification' in window&&Notification.permission==='granted'){const opts={body:String(body).slice(0,120),tag:chatId,renotify:true,silent:false,icon:'./icon-192.png',badge:'./icon-192.png',data:{chatId}};PWA.showNotification('▣ '+String(title).toUpperCase(),opts).catch(()=>{if(!visible)toast('>> NOUVEAU MESSAGE — '+String(title).toUpperCase())})}}
 };
-const PWA={init(){
-  const icon='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#060606"/><text x="50" y="64" font-size="40" fill="#d8cfae" font-family="monospace" text-anchor="middle">▣</text></svg>');
-  const manifest={name:'MeshChat Terminal',short_name:'MESH',start_url:location.href,display:'standalone',
-    background_color:'#060606',theme_color:'#060606',icons:[{src:icon,sizes:'192x192 512x512',type:'image/svg+xml',purpose:'any'}]};
-  const link=document.createElement('link');link.rel='manifest';
-  link.href=URL.createObjectURL(new Blob([JSON.stringify(manifest)],{type:'application/json'}));
-  document.head.appendChild(link);
-  const sw=`const C='meshterm-v3';self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.add('${location.pathname}')));self.skipWaiting()});self.addEventListener('activate',e=>self.clients.claim());self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(f=>{if(e.request.method==='GET'&&f.ok)caches.open(C).then(c=>c.put(e.request,f.clone()));return f}).catch(()=>caches.match('${location.pathname}'))))});`;
-  if('serviceWorker'in navigator){
-    try{navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'text/javascript'})),{scope:location.pathname}).catch(()=>{})}catch(e){}
-  }
-}};
+
 
 /* ================================================================
    NUAGE DE PARTICULES ORBITAL
@@ -3982,7 +3978,7 @@ const Modal={
         <p class="dim" style="font-size:.64rem">>> CONTIENT VOTRE CLE PRIVEE SECP256K1 + CONTACTS + GROUPES. A PROTEGER.</p></details>
       <details open><summary>⚙ PREFERENCES D’INTERFACE</summary>
         <div class="field"><label>APPARENCE</label><div class="theme-switch"><button type="button" class="${Theme.mode==='dark'?'active':''}" id="theme-dark">◐ SOMBRE</button><button type="button" class="${Theme.mode==='light'?'active':''}" id="theme-light">☼ CLAIR</button></div></div>
-        <label class="check-row"><input type="checkbox" id="set-notif" ${Notif.enabled?'checked':''}>NOTIFICATIONS SYSTEME</label><label class="check-row"><input type="checkbox" id="set-notif-sound" ${Notif.prefs.sound?'checked':''}>SIGNAL SONORE DANS L’APPLICATION</label><label class="check-row"><input type="checkbox" id="set-notif-vibrate" ${Notif.prefs.vibrate?'checked':''}>VIBRATION COURTE</label><div class="range-row"><label>VOLUME</label><input id="set-notif-volume" type="range" min="0" max="100" value="${Notif.prefs.volume}"><output id="notif-volume-out">${Notif.prefs.volume}</output></div><div class="field"><label>SON</label><select id="set-notif-tone"><option value="tick" ${Notif.prefs.tone==='tick'?'selected':''}>TICK</option><option value="soft" ${Notif.prefs.tone==='soft'?'selected':''}>DOUX</option><option value="alert" ${Notif.prefs.tone==='alert'?'selected':''}>ALERTE</option></select></div><button class="btn-sm" id="notif-test" style="width:100%">[TESTER LE SIGNAL]</button><label class="check-row"><input type="checkbox" id="set-p2p" ${S.allowP2P?'checked':''}>AUTORISER LE P2P / APPELS DIRECTS (VOTRE IP PEUT ETRE VISIBLE PAR LE PAIR)</label><button class="btn-sm" id="ask-notif" style="width:100%">[AUTORISER LES NOTIFICATIONS SYSTEME]</button><p class="dim" style="font-size:.62rem;line-height:1.6">Le son d’une notification système est contrôlé par Android/iOS. Ici, vous réglez seulement le signal de l’application au premier plan ; les alertes système sont silencieuses pour ne pas apparaître comme de la musique.</p></details>
+        <label class="check-row"><input type="checkbox" id="set-notif" ${Notif.enabled?'checked':''}>NOTIFICATIONS SYSTEME</label><label class="check-row"><input type="checkbox" id="set-notif-sound" ${Notif.prefs.sound?'checked':''}>SIGNAL SONORE DANS L’APPLICATION</label><label class="check-row"><input type="checkbox" id="set-notif-vibrate" ${Notif.prefs.vibrate?'checked':''}>VIBRATION COURTE</label><div class="range-row"><label>VOLUME</label><input id="set-notif-volume" type="range" min="0" max="100" value="${Notif.prefs.volume}"><output id="notif-volume-out">${Notif.prefs.volume}</output></div><div class="field"><label>SON</label><select id="set-notif-tone"><option value="tick" ${Notif.prefs.tone==='tick'?'selected':''}>TICK</option><option value="soft" ${Notif.prefs.tone==='soft'?'selected':''}>DOUX</option><option value="alert" ${Notif.prefs.tone==='alert'?'selected':''}>ALERTE</option></select></div><button class="btn-sm" id="notif-test" style="width:100%">[TESTER LE SIGNAL]</button><label class="check-row"><input type="checkbox" id="set-p2p" ${S.allowP2P?'checked':''}>AUTORISER LE P2P / APPELS DIRECTS (VOTRE IP PEUT ETRE VISIBLE PAR LE PAIR)</label><button class="btn-sm" id="ask-notif" style="width:100%">[AUTORISER LES NOTIFICATIONS SYSTEME]</button><button class="btn-sm" id="install-pwa" style="width:100%;margin-top:8px">[ INSTALLER MESHCHAT SUR CET APPAREIL ]</button><p class="dim" id="pwa-status" style="font-size:.62rem;line-height:1.6;margin-top:8px"></p><p class="dim" style="font-size:.62rem;line-height:1.6">Le son d’une notification système est contrôlé par Android/iOS. Ici, vous réglez seulement le signal de l’application au premier plan ; les alertes système sont silencieuses pour ne pas apparaître comme de la musique.</p></details>
       <details><summary>▣ DEVERROUILLAGE BIOMETRIQUE</summary><p class="dim" id="bio-status" style="font-size:.64rem;line-height:1.6">VERIFICATION DE LA COMPATIBILITE BIOMETRIQUE…</p><button class="btn-sm" id="bio-enroll" style="width:100%">[ ACTIVER FACE ID / EMPREINTE ]</button><button class="btn-sm btn-danger" id="bio-remove" style="width:100%;margin-top:8px">[ SUPPRIMER LA BIOMETRIE ]</button></details>
       <details><summary style="color:var(--red)">⚠ ZONE DE DESTRUCTION</summary>
         <button class="btn-sm btn-danger" style="width:100%" id="nuke">[ DETRUIRE L'IDENTITE &amp; TOUTES LES DONNEES ]</button></details>`);
@@ -4017,7 +4013,7 @@ const Modal={
     $('#theme-dark').onclick=async()=>{await Theme.set('dark');Modal.settings()};$('#theme-light').onclick=async()=>{await Theme.set('light');Modal.settings()};
     $('#set-notif').onchange=e=>{Notif.enabled=e.target.checked;DB.kvSet('notif',Notif.enabled)};$('#set-notif-sound').onchange=e=>{Notif.prefs.sound=e.target.checked;Notif.save()};$('#set-notif-vibrate').onchange=e=>{Notif.prefs.vibrate=e.target.checked;Notif.save()};$('#set-notif-volume').oninput=e=>{$('#notif-volume-out').textContent=e.target.value;Notif.prefs.volume=+e.target.value;Notif.save()};$('#set-notif-tone').onchange=e=>{Notif.prefs.tone=e.target.value;Notif.save()};$('#notif-test').onclick=()=>{Notif.beep();if(Notif.prefs.vibrate)navigator.vibrate?.(20)};
     $('#set-p2p').onchange=e=>{S.allowP2P=e.target.checked;DB.kvSet('allowP2P',S.allowP2P);if(!S.allowP2P){for(const[,p]of S.peers)try{p.pc.close()}catch(err){};toast('>> P2P DESACTIVE — RELAIS UNIQUEMENT')}};
-    $('#ask-notif').onclick=()=>Notif.ask();
+    $('#ask-notif').onclick=()=>Notif.request();$('#install-pwa').onclick=()=>PWA.promptInstall();PWA.refreshUI();
     $('#nuke').onclick=async()=>{
       if(!confirm('DESTRUCTION IRREVERSIBLE DE L\'IDENTITE ET DE TOUTES LES DONNEES LOCALES. CONFIRMER ?'))return;
       await DB.wipe();location.reload()};
@@ -4043,6 +4039,27 @@ async function addPeer(pub,name,alias,cap=''){
   toast(r?'>> INVITATION EMISE VIA '+(r==='p2p'?'P2P':'RELAIS'):'>> INVITATION EN FILE — LIVREE A SA CONNEXION');
   UI.openChat(pub);
 }
+const PWA={
+  deferred:null,registration:null,
+  standalone(){return matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true},
+  async init(){
+    if(!('serviceWorker' in navigator)||!window.isSecureContext)return;
+    try{PWA.registration=await navigator.serviceWorker.register('./service-worker.js',{scope:'./'});await navigator.serviceWorker.ready}catch(e){}
+    window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();PWA.deferred=e;PWA.refreshUI()});
+    window.addEventListener('appinstalled',()=>{PWA.deferred=null;PWA.refreshUI();toast('>> MESHCHAT INSTALLE COMME APPLICATION')});
+  },
+  async promptInstall(){
+    if(PWA.standalone())return toast('>> MESHCHAT EST DEJA INSTALLEE');
+    if(!PWA.deferred)return toast('>> INSTALLATION PAS ENCORE PRETE — ACTUALISEZ OU UTILISEZ LE MENU CHROME');
+    await PWA.deferred.prompt();const r=await PWA.deferred.userChoice;PWA.deferred=null;PWA.refreshUI();
+    if(r?.outcome==='accepted')toast('>> INSTALLATION ANDROID CONFIRMEE');
+  },
+  refreshUI(){const b=$('#install-pwa'),s=$('#pwa-status');if(!b||!s)return;if(PWA.standalone()){b.classList.add('hidden');s.textContent='APPLICATION INSTALLEE : OUVERTURE SANS BARRE CHROME.'}else if(PWA.deferred){b.classList.remove('hidden');s.textContent='PRETE A ETRE INSTALLEE COMME APPLICATION ANDROID.'}else{s.textContent='OUVREZ LA PAGE EN HTTPS, PUIS UTILISEZ INSTALLER L’APPLICATION DANS LE MENU CHROME SI CE BOUTON RESTE INACTIF.'}},
+  async showNotification(title,options){
+    try{const r=PWA.registration||await navigator.serviceWorker?.ready;if(r)return r.showNotification(title,options)}catch(e){}
+    try{return new Notification(title,options)}catch(e){}
+  }
+};
 const Theme={
   mode:'dark',
   apply(mode){Theme.mode=mode==='light'?'light':'dark';document.documentElement.dataset.theme=Theme.mode;const meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.content=Theme.mode==='light'?'#ece5d6':'#060606'},
@@ -4282,6 +4299,7 @@ function bindEvents(){
 /* ---------------- DEMARRAGE ---------------- */
 (async()=>{
   await DB.open();
+  await PWA.init();
   bindEvents();
   const vault=await DB.kvGet('vault');
   if(vault)await Gate.show();else initOnboard();
