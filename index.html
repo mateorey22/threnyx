@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-/LR22XOb2vn84fXzSfLyKs5DO5ub7DLDbRzf23TTsZM=' 'wasm-unsafe-eval' https://esm.run; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob: mediastream:; connect-src wss: https: blob:; worker-src 'self' blob:; manifest-src 'self' blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-+acXXoiRxN8u61zIbz7QLA17lIu6+Kkcx1MiCVDOaks=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob: mediastream:; connect-src wss: https: blob:; worker-src 'self' blob:; manifest-src 'self' blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
 <meta name="theme-color" content="#060606">
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="application-name" content="Threnyx">
@@ -3429,8 +3429,8 @@ const LocalAI={session:null,mode:'',
       const API=globalThis.LanguageModel;this.mode='builtin';
       this.session=await API.create({initialPrompts:[{role:'system',content:'Tu es l’assistant local expérimental de Threnyx. Réponds de manière concise en français. Tu ne prétends pas voir les messages, appels, contacts ou fichiers de la personne : elle doit les coller explicitement. Tu ne fournis pas de conseil médical, légal ou financier.'}],monitor:m=>m.addEventListener?.('downloadprogress',e=>{const out=$('#local-ai-state');if(out)out.textContent='TÉLÉCHARGEMENT LOCAL : '+Math.round((e.loaded||0)*100)+'%'})});
     }else{
-      this.mode='webllm';const out=$('#local-ai-state');if(out)out.textContent='CHARGEMENT DU MINI-MODÈLE LOCAL SMOLLM2 135M…';
-      const webllm=await import('https://esm.run/@mlc-ai/web-llm@0.2.84');
+      this.mode='webllm';const out=$('#local-ai-state');if(out)out.textContent='OUVERTURE DU MOTEUR LOCAL THRENYX…';
+      const webllm=await import('./webllm-local.mjs');
       this.session=await webllm.CreateMLCEngine('SmolLM2-135M-Instruct-q0f16-MLC',{initProgressCallback:p=>{const el=$('#local-ai-state');if(el)el.textContent='TÉLÉCHARGEMENT LOCAL : '+(p.text||'PRÉPARATION…')}});
     }
     return this.session;
