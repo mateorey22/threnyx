@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "MeshChat — Terminal privé",
-  "short_name": "MeshChat",
-  "description": "Messagerie privée MeshChat avec relais, chiffrement local et appels P2P.",
+  "name": "Threnyx — Terminal privé",
+  "short_name": "Threnyx",
+  "description": "Messagerie privée Threnyx avec relais, chiffrement local et appels P2P.",
   "lang": "fr",
   "dir": "ltr",
   "start_url": "./index.html",
