@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-byy9PRapVA+Fpvfh44/tZhhEXWkyKGKM4GwG7E1LNbE=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob: mediastream:; connect-src wss: https: blob:; worker-src blob:; manifest-src blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-4ymH4Tc+2qvwGdcJKpU+SARGGkaPoZuvs64Yz+977bE=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob: mediastream:; connect-src wss: https: blob:; worker-src blob:; manifest-src blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
 <meta name="theme-color" content="#060606">
 <title>MESHCHAT // TERMINAL NOSTR-MESH</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;border-radius:0!important}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--paper:#e8dfc6;--paper2:#ded4b6;--ink:#16130e;--black:#060606;--panel:#0b0b09;--panel2:#111009;
  --beige:#d8cfae;--bright:#f4eeda;--dim:#6b6552;--dim2:#3a362b;--red:#ff5540;--border:1px solid #3a362b}
 html,body{height:100%;font-family:ui-monospace,'Cascadia Mono','JetBrains Mono','Courier New',monospace;background:var(--black);color:var(--bright)}
@@ -204,6 +204,20 @@ details>*:not(summary){margin-top:10px}
 .toast{background:#000;color:var(--beige);border:1px solid var(--beige);padding:9px 16px;font-size:.7rem;letter-spacing:1px;animation:pop .2s;text-align:center}
 #qr-canvas{display:block;width:min(100%,260px);height:auto;margin:12px auto;background:#fff;border:8px solid #fff;image-rendering:pixelated}
 #qr-scan-video{width:100%;max-height:320px;background:#000;border:1px solid var(--beige);margin:10px 0;object-fit:cover}
+/* Raffinement conversation : garde le style terminal tout en améliorant la lecture tactile. */
+#msgs{padding:20px clamp(12px,4vw,54px);gap:12px}
+.bubble{max-width:min(84%,660px);padding:13px 56px 12px 15px;border-radius:14px!important;border-color:#4a4638;box-shadow:0 4px 14px rgba(0,0,0,.16)}
+.bubble.out{padding:13px 56px 12px 15px;border-radius:14px!important;border-color:#8a815f;background:#15130d}
+.bubble.in{border-radius:14px!important;background:#10100d}.bubble::before{display:none}
+.bubble .actions{top:9px;right:9px;opacity:1;min-width:38px;min-height:38px;border:1px solid var(--dim2);border-radius:10px!important;background:#060606;font-size:.84rem;font-weight:700;letter-spacing:0}
+.bubble .actions:active,.bubble .actions:hover{border-color:var(--beige);background:var(--beige);color:var(--black);transform:scale(1.04)}
+.bubble .meta{margin-top:7px}.bubble img,.bubble video{border-radius:9px!important;max-height:360px}.bubble .file-chip{border-radius:9px!important}
+.msg-menu{border:1px solid var(--beige);border-radius:12px!important;min-width:238px;max-width:calc(100vw - 20px);box-shadow:0 16px 40px rgba(0,0,0,.55);overflow:hidden}
+.msg-menu button{min-height:49px;padding:12px 16px;font-size:.76rem}.msg-menu .emoji-row{padding:11px 8px}.msg-menu .emoji-row span{font-size:1.2rem;padding:4px}
+.voice-player{border-radius:12px!important;padding:10px 12px}.voice-play{border-radius:50%!important;width:36px;height:36px}.voice-wave{border-radius:8px!important;overflow:hidden}.voice-wave i{border-radius:8px!important}
+#notif-permission{display:flex;align-items:center;gap:10px;padding:8px 12px;background:#14120c;border-bottom:1px solid var(--beige);font-size:.66rem;color:var(--beige);position:relative;z-index:5}#notif-permission span{flex:1;line-height:1.45}#notif-permission button{padding:7px 10px;white-space:nowrap;border-radius:7px!important}
+@media(max-width:560px){#msgs{padding:14px 10px;gap:10px}.bubble{max-width:94%;padding:13px 52px 12px 13px;border-radius:13px!important}.msg-menu{min-width:min(250px,calc(100vw - 16px))}.bubble .actions{top:8px;right:8px;min-width:37px;min-height:37px}.compose{padding:8px 8px}.icon-btn{min-height:35px}.chat-head{padding:8px}.chat-head .avatar{width:34px;height:34px}}
+
 .qr-help{font-size:.66rem;color:var(--dim);line-height:1.65;margin-top:10px}
 </style>
 </head>
@@ -299,6 +313,7 @@ KEY STORAGE ...... COFFRE CHIFFRE LOCAL (INDEXEDDB) — JAMAIS TRANSMIS</pre>
 <!-- ==================== APPLICATION ==================== -->
 <div id="app" class="hidden">
   <div id="topbar">NETWORK SESSION <b id="tb-time">00:00:00</b> | AGENT: <b id="tb-agent">—</b> | NODE: <b id="tb-node">—</b> | RELAYS: <b id="tb-relays">0</b> | P2P: <b id="tb-peers">0</b> | NOSTR-MESH V2.0</div>
+  <div id="notif-permission" class="hidden"><span>ACTIVER LES NOTIFICATIONS DE MESHCHAT POUR LES NOUVEAUX MESSAGES.</span><button id="btn-notif-permission">[ ACTIVER ]</button><button class="icon-btn" id="btn-notif-dismiss">[X]</button></div>
   <div id="cols">
     <div id="sidebar">
       <div class="sb-head">
@@ -2834,7 +2849,7 @@ const DB={db:null,
 
 /* ---------------- ÉTAT GLOBAL ---------------- */
 const S={me:null,localKey:null,contacts:new Map(),groups:new Map(),peers:new Map(),seen:new Set(),
- typing:new Map(),activeChat:null,replyTo:null,editing:null,call:null,mediaRec:null,
+ typing:new Map(),activeChat:null,replyTo:null,editing:null,call:null,mediaRec:null,fileDialog:false,
  lastSync:0,allowP2P:true,bootTs:now()};
 const Vault={
   key:null,salt:null,timer:null,armed:false,kdf:'ARGON2ID',params:{time:2,mem:19456,parallelism:1,hashLen:32},PBKDF_ITER:600000,
@@ -2845,8 +2860,9 @@ const Vault={
   async create(me,password){if(typeof password!=='string'||password.length<12)throw Error('phrase secrète trop courte');const salt=crypto.getRandomValues(new Uint8Array(16));Vault.key=await Vault.derive(password,salt);Vault.salt=salt;Vault.kdf='ARGON2ID';Vault.params={time:2,mem:19456,parallelism:1,hashLen:32};S.localKey=Vault.key;await Vault.save(me);Vault.arm()},
   async save(me=S.me){if(!Vault.key||!Vault.salt)throw Error('coffre verrouille');const box=await Crypto.encrypt(Vault.key,me);await DB.kvSet('vault',{v:4,kdf:Vault.kdf,params:Vault.params,salt:b64(Vault.salt),box})},
   async lock(reason='VERROUILLE'){clearTimeout(Vault.timer);Vault.key=null;Vault.salt=null;S.localKey=null;S.me=null;try{for(const[,p]of S.peers)p.pc.close()}catch(e){};location.reload()},
-  touch(){clearTimeout(Vault.timer);Vault.timer=setTimeout(()=>Vault.lock('INACTIVITE'),5*60e3)},
-  arm(){if(!Vault.armed){Vault.armed=true;['pointerdown','keydown','touchstart'].forEach(e=>document.addEventListener(e,()=>Vault.touch(),{passive:true}));document.addEventListener('visibilitychange',()=>{if(document.hidden)Vault.lock('ONGLET MASQUE')});window.addEventListener('blur',()=>setTimeout(()=>{if(!document.hasFocus())Vault.lock('FOCUS PERDU')},150));}Vault.touch()},
+  pause(){clearTimeout(Vault.timer);Vault.timer=null},
+  touch(){if(S.fileDialog)return;clearTimeout(Vault.timer);Vault.timer=setTimeout(()=>Vault.lock('INACTIVITE'),10*60e3)},
+  arm(){if(!Vault.armed){Vault.armed=true;['pointerdown','keydown','touchstart'].forEach(e=>document.addEventListener(e,()=>Vault.touch(),{passive:true}));document.addEventListener('visibilitychange',()=>{if(!document.hidden)Vault.touch()});window.addEventListener('focus',()=>{if(S.fileDialog){S.fileDialog=false;Vault.touch()}else Vault.touch()});}Vault.touch()},
   async throttle(){const s=(await DB.kvGet('unlockState'))||{fails:0,until:0};if(s.until>now()){const seconds=Math.ceil((s.until-now())/1000);throw Error('attendez '+seconds+' seconde(s) avant de réessayer')}return s},
   async fail(s){const fails=Math.min(8,(s.fails||0)+1),delay=Math.min(300000,1000*2**Math.min(fails,8));await DB.kvSet('unlockState',{fails,until:now()+delay})},
   async success(){await DB.kvSet('unlockState',{fails:0,until:0})},
@@ -2857,12 +2873,14 @@ const Vault={
 const Bio={
   async config(){return DB.kvGet('biometric')},
   ready:()=>window.isSecureContext&&!!window.PublicKeyCredential&&!!navigator.credentials,
+  async capability(){try{if(!Bio.ready())return false;if(typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable==='function')return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();return true}catch(e){return false}},
   rand:n=>crypto.getRandomValues(new Uint8Array(n)),
   async kek(prf,salt){const master=await crypto.subtle.importKey('raw',prf,'HKDF',false,['deriveKey']);return crypto.subtle.deriveKey({name:'HKDF',hash:'SHA-256',salt,info:enc8('meshchat/webauthn-prf/v1')},master,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])},
   async prfGet(conf){const credential=await navigator.credentials.get({publicKey:{challenge:Bio.rand(32),rpId:location.hostname,allowCredentials:[{type:'public-key',id:new Uint8Array(ub64(conf.credId))}],userVerification:'required',timeout:60000,extensions:{prf:{eval:{first:new Uint8Array(ub64(conf.prfSalt))}}}}});const first=credential?.getClientExtensionResults?.()?.prf?.results?.first;if(!first)throw Error('PRF biométrique non disponible');return new Uint8Array(first)},
-  async enroll(){if(!Bio.ready())throw Error('biométrie indisponible : HTTPS et navigateur compatible requis');const vault=await DB.kvGet('vault');if(!vault?.salt||!vault?.box)throw Error('coffre introuvable');const pass=prompt('Confirmez votre phrase secrète pour activer Face ID / empreinte :');if(!pass)throw Error('activation annulée');const legacy=vault.v===3&&vault.kdf==='PBKDF2-SHA-256';const salt=new Uint8Array(ub64(vault.salt));let raw;if(legacy){const base=await crypto.subtle.importKey('raw',enc8(pass),'PBKDF2',false,['deriveBits']);raw=new Uint8Array(await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt,iterations:vault.iter||Vault.PBKDF_ITER},base,256))}else raw=await Vault.rawArgon(pass,salt,vault.params||Vault.params);const check=await Crypto.decrypt(await crypto.subtle.importKey('raw',raw,'AES-GCM',false,['decrypt']),vault.box);if(!check?.priv)throw Error('phrase secrète invalide');const cred=await navigator.credentials.create({publicKey:{challenge:Bio.rand(32),rp:{id:location.hostname,name:'MeshChat Local Vault'},user:{id:enc8(S.me.pub),name:'meshchat-'+S.me.pub.slice(0,12),displayName:S.me.name||'MeshChat'},pubKeyCredParams:[{type:'public-key',alg:-7}],authenticatorSelection:{authenticatorAttachment:'platform',residentKey:'required',userVerification:'required'},timeout:60000,attestation:'none',extensions:{prf:{}}}});if(!cred)throw Error('création biométrique annulée');const conf={v:1,credId:b64(new Uint8Array(cred.rawId)),prfSalt:b64(Bio.rand(32))};const prf=await Bio.prfGet(conf);const key=await Bio.kek(prf,new Uint8Array(ub64(conf.prfSalt)));conf.box=await Crypto.encrypt(key,{raw:b64(raw)});raw.fill(0);await DB.kvSet('biometric',conf);toast('>> FACE ID / EMPREINTE ACTIVEE POUR CE COFFRE')},
+  async enroll(){if(!Bio.ready())throw Error('HTTPS REQUIS ET BIOMETRIE INDISPONIBLE DANS CE NAVIGATEUR');if(!(await Bio.capability()))throw Error('AUCUN AUTHENTIFICATEUR DE PLATEFORME DISPONIBLE');const vault=await DB.kvGet('vault');if(!vault?.salt||!vault?.box)throw Error('coffre introuvable');const pass=prompt('Confirmez votre phrase secrète pour activer Face ID / empreinte :');if(!pass)throw Error('activation annulée');const legacy=vault.v===3&&vault.kdf==='PBKDF2-SHA-256';const salt=new Uint8Array(ub64(vault.salt));let raw;if(legacy){const base=await crypto.subtle.importKey('raw',enc8(pass),'PBKDF2',false,['deriveBits']);raw=new Uint8Array(await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt,iterations:vault.iter||Vault.PBKDF_ITER},base,256))}else raw=await Vault.rawArgon(pass,salt,vault.params||Vault.params);const check=await Crypto.decrypt(await crypto.subtle.importKey('raw',raw,'AES-GCM',false,['decrypt']),vault.box);if(!check?.priv)throw Error('phrase secrète invalide');const cred=await navigator.credentials.create({publicKey:{challenge:Bio.rand(32),rp:{id:location.hostname,name:'MeshChat Local Vault'},user:{id:enc8(S.me.pub),name:'meshchat-'+S.me.pub.slice(0,12),displayName:S.me.name||'MeshChat'},pubKeyCredParams:[{type:'public-key',alg:-7}],authenticatorSelection:{authenticatorAttachment:'platform',residentKey:'required',userVerification:'required'},timeout:60000,attestation:'none',extensions:{prf:{}}}});if(!cred)throw Error('création biométrique annulée');const conf={v:1,credId:b64(new Uint8Array(cred.rawId)),prfSalt:b64(Bio.rand(32))};const prf=await Bio.prfGet(conf);const key=await Bio.kek(prf,new Uint8Array(ub64(conf.prfSalt)));conf.box=await Crypto.encrypt(key,{raw:b64(raw)});raw.fill(0);await DB.kvSet('biometric',conf);toast('>> FACE ID / EMPREINTE ACTIVEE POUR CE COFFRE')},
   async unlock(){const conf=await Bio.config();if(!conf?.credId||!conf?.prfSalt||!conf?.box)throw Error('biométrie non configurée');const prf=await Bio.prfGet(conf);const key=await Bio.kek(prf,new Uint8Array(ub64(conf.prfSalt)));const wrapped=await Crypto.decrypt(key,conf.box);if(!wrapped?.raw)throw Error('échec biométrique');const raw=new Uint8Array(ub64(wrapped.raw));const vault=await DB.kvGet('vault');const vaultKey=await crypto.subtle.importKey('raw',raw,'AES-GCM',false,['encrypt','decrypt']);raw.fill(0);const me=await Crypto.decrypt(vaultKey,vault.box);if(!me||!Safe.PUB(me.pub)||!(/^[0-9a-f]{64}$/i.test(me.priv))||Secp.getPub(me.priv)!==me.pub)throw Error('coffre biométrique invalide');Vault.key=vaultKey;Vault.salt=new Uint8Array(ub64(vault.salt));Vault.kdf=vault.kdf;Vault.params=vault.params||Vault.params;S.localKey=vaultKey;await Vault.success();Vault.arm();return me},
-  async remove(){await DB.kvSet('biometric',null);toast('>> DEVERROUILLAGE BIOMETRIQUE SUPPRIME')}
+  async remove(){await DB.kvSet('biometric',null);toast('>> DEVERROUILLAGE BIOMETRIQUE SUPPRIME')},
+  async offer(){if(!(await Bio.capability())||await Bio.config()||await DB.kvGet('bioOfferSeen'))return;await DB.kvSet('bioOfferSeen',true);setTimeout(()=>{Modal.open('// PROTEGER LE COFFRE AVEC FACE ID / EMPREINTE','<p class="dim" style="font-size:.72rem;line-height:1.7">VOTRE APPAREIL PROPOSE UN DEVERROUILLAGE BIOMETRIQUE. ACTIVEZ-LE MAINTENANT OU PLUS TARD DANS [CFG].</p><button id="bio-offer-enable" style="width:100%">[ ACTIVER FACE ID / EMPREINTE ]</button><button id="bio-offer-later" class="btn-sm" style="width:100%;margin-top:8px">[ PLUS TARD ]</button>');$('#bio-offer-enable').onclick=async()=>{try{await Bio.enroll();Modal.close()}catch(e){toast('!! '+String(e.message||'BIOMETRIE INDISPONIBLE').toUpperCase())}};$('#bio-offer-later').onclick=()=>Modal.close()},600)}
 };
 const Gate={
   async show(){const bio=await Bio.config();const g=document.createElement('div');g.className='lock-gate';g.id='lock-gate';g.innerHTML=`<div class="lock-panel"><h2>COFFRE VERROUILLE</h2><p>Votre identité est chiffrée localement. ${bio?'Utilisez votre biométrie ou votre phrase secrète.':'Utilisez votre phrase secrète pour continuer.'}</p>${bio?'<button id="gate-bio">[ FACE ID / EMPREINTE ]</button>':''}<button id="gate-pass">[ PHRASE SECRETE ]</button></div>`;document.body.appendChild(g);const open=async fn=>{try{S.me=await fn();g.remove();await enterApp()}catch(e){toast('!! '+String(e.message||'DEVERROUILLAGE IMPOSSIBLE').toUpperCase())}};$('#gate-pass').onclick=()=>open(Vault.unlock);$('#gate-bio')?.addEventListener('click',()=>open(Bio.unlock))},
@@ -3438,7 +3456,9 @@ const Notif={enabled:true,prefs:{sound:true,volume:35,tone:'tick',vibrate:true},
   async ask(){try{if(Notification.permission==='default')await Notification.requestPermission()}catch(e){}},
   beep(){if(!Notif.prefs.sound)return;try{const a=Notif.ctx||(Notif.ctx=new(window.AudioContext||window.webkitAudioContext)());if(a.state==='suspended')a.resume();const o=a.createOscillator(),g=a.createGain(),freq={tick:740,soft:520,alert:880}[Notif.prefs.tone]||740;o.type=Notif.prefs.tone==='soft'?'sine':'square';o.frequency.value=freq;g.gain.value=Math.max(0,Math.min(100,Notif.prefs.volume))/100*.055;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+.075)}catch(e){}},
   blink(){if(Notif.blinkT)return;let on=false;Notif.blinkT=setInterval(()=>{document.title=(on=!on)?'█ NOUVEAU MESSAGE █':Notif.baseTitle},900);window.addEventListener('focus',()=>{clearInterval(Notif.blinkT);Notif.blinkT=null;document.title=Notif.baseTitle},{once:true})},
-  show(title,body,chatId,isActive){if(!Notif.enabled)return;if(isActive){Notif.beep();if(Notif.prefs.vibrate)navigator.vibrate?.(20);return}if(Notif.prefs.vibrate)navigator.vibrate?.([25,35,25]);if(document.hidden)Notif.blink();if(Notification.permission==='granted'){try{const n=new Notification('▣ '+String(title).toUpperCase(),{body:String(body).slice(0,120),tag:chatId,silent:true,renotify:false});n.onclick=()=>{window.focus();UI.openChat(chatId);n.close()}}catch(e){}}}
+  offer(){const strip=$('#notif-permission');if(!strip)return;if(!('Notification' in window)||Notification.permission!=='default')return;strip.classList.remove('hidden')},
+  async request(){await Notif.ask();if(Notification.permission==='granted'){toast('>> NOTIFICATIONS ACTIVEES');$('#notif-permission')?.classList.add('hidden')}else toast('!! AUTORISATION DE NOTIFICATION REFUSEE OU INDISPONIBLE')},
+  show(title,body,chatId,isActive){if(!Notif.enabled)return;if(isActive){Notif.beep();if(Notif.prefs.vibrate)navigator.vibrate?.(20);toast('>> NOUVEAU MESSAGE — '+String(title).toUpperCase());return}if(Notif.prefs.vibrate)navigator.vibrate?.([25,35,25]);if(document.hidden)Notif.blink();if('Notification' in window&&Notification.permission==='granted'){try{const n=new Notification('▣ '+String(title).toUpperCase(),{body:String(body).slice(0,120),tag:chatId,silent:true,renotify:false});n.onclick=()=>{window.focus();UI.openChat(chatId);n.close()}}catch(e){}}}
 };
 const PWA={init(){
   const icon='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#060606"/><text x="50" y="64" font-size="40" fill="#d8cfae" font-family="monospace" text-anchor="middle">▣</text></svg>');
@@ -3593,8 +3613,7 @@ const UI={
   msgMenu(e,m){
     $('.msg-menu')?.remove();
     const menu=document.createElement('div');menu.className='msg-menu';
-    menu.style.left=Math.min(e.clientX,innerWidth-220)+'px';
-    menu.style.top=Math.min(e.clientY,innerHeight-230)+'px';
+    menu.style.left='-9999px';menu.style.top='-9999px';
     menu.innerHTML=`<div class="emoji-row">${EMOJIS.map(x=>`<span data-em="${x}">${x}</span>`).join('')}</div>
       <button data-a="reply">↳ REPONDRE</button>
       <button data-a="copy">▤ COPIER</button>
@@ -3602,6 +3621,9 @@ const UI={
       <button data-a="delme">✕ SUPPRIMER POUR MOI</button>
       ${m.from===S.me.pub?'<button data-a="delall" style="color:var(--red)">✕✕ SUPPRIMER POUR TOUS</button>':''}`;
     document.body.appendChild(menu);
+    const rect=menu.getBoundingClientRect(),headBottom=$('.chat-head')?.getBoundingClientRect().bottom||0;
+    menu.style.left=Math.max(8,Math.min(e.clientX-rect.width+42,innerWidth-rect.width-8))+'px';
+    menu.style.top=Math.max(headBottom+8,Math.min(e.clientY+10,innerHeight-rect.height-8))+'px';
     menu.querySelectorAll('[data-em]').forEach(s=>s.onclick=()=>{menu.remove();MSG.react(m.id,s.dataset.em)});
     menu.onclick=ev=>{const a=ev.target.dataset.a;if(!a)return;menu.remove();
       if(a==='reply'){S.replyTo={mid:m.id,text:m.text};
@@ -3925,7 +3947,7 @@ const Modal={
         <p class="dim" style="font-size:.64rem">>> CONTIENT VOTRE CLE PRIVEE SECP256K1 + CONTACTS + GROUPES. A PROTEGER.</p></details>
       <details><summary>⚙ PREFERENCES</summary>
         <label class="check-row"><input type="checkbox" id="set-notif" ${Notif.enabled?'checked':''}>NOTIFICATIONS SYSTEME</label><label class="check-row"><input type="checkbox" id="set-notif-sound" ${Notif.prefs.sound?'checked':''}>SIGNAL SONORE DANS L’APPLICATION</label><label class="check-row"><input type="checkbox" id="set-notif-vibrate" ${Notif.prefs.vibrate?'checked':''}>VIBRATION COURTE</label><div class="range-row"><label>VOLUME</label><input id="set-notif-volume" type="range" min="0" max="100" value="${Notif.prefs.volume}"><output id="notif-volume-out">${Notif.prefs.volume}</output></div><div class="field"><label>SON</label><select id="set-notif-tone"><option value="tick" ${Notif.prefs.tone==='tick'?'selected':''}>TICK</option><option value="soft" ${Notif.prefs.tone==='soft'?'selected':''}>DOUX</option><option value="alert" ${Notif.prefs.tone==='alert'?'selected':''}>ALERTE</option></select></div><button class="btn-sm" id="notif-test" style="width:100%">[TESTER LE SIGNAL]</button><label class="check-row"><input type="checkbox" id="set-p2p" ${S.allowP2P?'checked':''}>AUTORISER LE P2P / APPELS DIRECTS (VOTRE IP PEUT ETRE VISIBLE PAR LE PAIR)</label><button class="btn-sm" id="ask-notif" style="width:100%">[AUTORISER LES NOTIFICATIONS SYSTEME]</button><p class="dim" style="font-size:.62rem;line-height:1.6">Le son d’une notification système est contrôlé par Android/iOS. Ici, vous réglez seulement le signal de l’application au premier plan ; les alertes système sont silencieuses pour ne pas apparaître comme de la musique.</p></details>
-      <details><summary>▣ DEVERROUILLAGE BIOMETRIQUE</summary><p class="dim" style="font-size:.64rem;line-height:1.6">Face ID / empreinte requiert HTTPS, un authentificateur de plateforme et l’extension PRF. La phrase secrète reste toujours disponible en secours.</p><button class="btn-sm" id="bio-enroll" style="width:100%">[ ACTIVER FACE ID / EMPREINTE ]</button><button class="btn-sm btn-danger" id="bio-remove" style="width:100%;margin-top:8px">[ SUPPRIMER LA BIOMETRIE ]</button></details>
+      <details><summary>▣ DEVERROUILLAGE BIOMETRIQUE</summary><p class="dim" id="bio-status" style="font-size:.64rem;line-height:1.6">VERIFICATION DE LA COMPATIBILITE BIOMETRIQUE…</p><button class="btn-sm" id="bio-enroll" style="width:100%">[ ACTIVER FACE ID / EMPREINTE ]</button><button class="btn-sm btn-danger" id="bio-remove" style="width:100%;margin-top:8px">[ SUPPRIMER LA BIOMETRIE ]</button></details>
       <details><summary style="color:var(--red)">⚠ ZONE DE DESTRUCTION</summary>
         <button class="btn-sm btn-danger" style="width:100%" id="nuke">[ DETRUIRE L'IDENTITE &amp; TOUTES LES DONNEES ]</button></details>`);
     $('#set-save').onclick=async()=>{
@@ -3936,7 +3958,7 @@ const Modal={
       for(const[cid]of S.contacts){const r=await sendPayload(cid,{t:'profile',...MYPROFILE()});
         if(!r)Outbox.add(cid,{t:'profile',...MYPROFILE()})}
       toast('>> PROFIL PROPAGE');Modal.close()};
-    $('#turn-save').onclick=()=>ICECFG.save($('#turn-urls').value,$('#turn-user').value,$('#turn-cred').value);$('#bio-enroll').onclick=async()=>{try{await Bio.enroll();Modal.settings()}catch(e){toast('!! '+String(e.message||'BIOMETRIE INDISPONIBLE').toUpperCase())}};$('#bio-remove').onclick=()=>Bio.remove();
+    $('#turn-save').onclick=()=>ICECFG.save($('#turn-urls').value,$('#turn-user').value,$('#turn-cred').value);$('#bio-enroll').onclick=async()=>{try{await Bio.enroll();Modal.settings()}catch(e){toast('!! '+String(e.message||'BIOMETRIE INDISPONIBLE').toUpperCase())}};$('#bio-remove').onclick=()=>Bio.remove();Bio.capability().then(ok=>{const st=$('#bio-status');if(st)st.textContent=ok?'COMPATIBLE : ACTIVEZ FACE ID / EMPREINTE POUR CE COFFRE.':'BIOMETRIE INDISPONIBLE ICI : OUVREZ L’APP EN HTTPS DANS CHROME ANDROID OU SAFARI IOS.'});
     $$('[data-rdel]').forEach(b=>b.onclick=async()=>{
       const r=Nostr.relays.get(b.dataset.rdel);
       if(r){r.removed=true;try{r.ws?.close()}catch(e){}}
@@ -4080,8 +4102,8 @@ async function enterApp(){
   Nostr.init();
   NET.startHeartbeat();
   Discovery.start();
-  // Les notifications sont actives dans l’application ; le navigateur conserve le consentement système.
-  Notif.ask();
+  // L’autorisation système doit être déclenchée par un tap/clic ; la bannière visible le demande.
+  Notif.offer();Bio.offer();
   setInterval(()=>MSG.purgeExpired(),60000);
   setInterval(()=>Outbox.flush(),20000);
   setInterval(()=>{ // purge du cache anti-doublons (>48h)
@@ -4109,7 +4131,7 @@ function bindEvents(){
   $('#search').oninput=()=>UI.renderChatList();
   $('#btn-add-contact').onclick=()=>Modal.addContact();
   $('#btn-new-group').onclick=()=>Modal.newGroup();
-  $('#btn-settings').onclick=()=>Modal.settings();
+  $('#btn-settings').onclick=()=>Modal.settings();$('#btn-notif-permission').onclick=()=>Notif.request();$('#btn-notif-dismiss').onclick=()=>$('#notif-permission').classList.add('hidden');
   $('#open-profile').onclick=()=>Modal.settings();
   $('#fab-status').onclick=()=>Modal.newStatus();
   $('#back-btn').onclick=()=>{$('#main').classList.remove('open');S.activeChat=null};
@@ -4166,8 +4188,8 @@ function bindEvents(){
     let data='';for(const[max,q]of targets){data=await compressImage(file,max,q);if(data.length<=cap)return {data,relaySafe:!p2p||data.length<=720000}}
     return {data,relaySafe:false};
   }
-  $('#btn-attach').onclick=()=>$('#file-input').click();
-  $('#file-input').onchange=async e=>{
+  $('#btn-attach').onclick=()=>{if(!S.activeChat)return;S.fileDialog=true;Vault.pause();$('#file-input').click()};
+  $('#file-input').onchange=async e=>{S.fileDialog=false;Vault.touch();
     const P2P_RAW_MAX=8*1048576,RELAY_DATA_MAX=720000;
     for(const f of e.target.files){
       if(!S.activeChat)break;
