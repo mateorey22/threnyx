@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-K+Rvr1lELmthjTXgMNQyp1QMZmEvjBa/gnTltZlbfqA=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob: mediastream:; connect-src wss: https: blob:; worker-src 'self' blob:; manifest-src 'self' blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Aeg/k7J7gzAeDOR9Ue/gZdy1Gk9jCgl6TkK/OAYc7iY=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob: mediastream:; connect-src wss: https: blob:; worker-src 'self' blob:; manifest-src 'self' blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
 <meta name="theme-color" content="#060606">
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="application-name" content="Threnyx">
@@ -199,7 +199,7 @@ details>*:not(summary){margin-top:10px}
 #remote-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
 #remote-audio{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 .lock-gate{position:fixed;inset:0;z-index:500;background:#060606;display:flex;align-items:center;justify-content:center;padding:20px}.lock-panel{width:min(100%,430px);border:2px solid var(--beige);background:var(--panel);padding:22px;text-align:center}.lock-panel h2{letter-spacing:3px;font-size:1rem;margin-bottom:10px}.lock-panel p{font-size:.7rem;line-height:1.65;color:var(--dim);margin:10px 0 18px}.lock-panel button{width:100%;margin-top:9px;padding:13px}
-.security-alert{border:1px solid var(--red);color:var(--red);background:rgba(190,45,45,.08);padding:10px 12px;font-size:.68rem;line-height:1.6;margin:10px 0;letter-spacing:.6px}.security-alert b{color:#ff7777}.range-row{display:flex;align-items:center;gap:10px;font-size:.68rem}.range-row input{flex:1}.range-row output{width:32px;color:var(--beige);text-align:right}
+.security-alert{border:1px solid var(--red);color:var(--red);background:rgba(190,45,45,.08);padding:10px 12px;font-size:.68rem;line-height:1.6;margin:10px 0;letter-spacing:.6px}.security-alert b{color:#ff7777}.security-strip{border:1px solid var(--border);color:var(--beige);padding:8px 10px;font-size:.68rem;letter-spacing:.7px;margin:10px 0}.range-row{display:flex;align-items:center;gap:10px;font-size:.68rem}.range-row input{flex:1}.range-row output{width:32px;color:var(--beige);text-align:right}
 .voice-player{display:flex;align-items:center;gap:10px;min-width:220px;max-width:320px;border:1px solid var(--dim);background:#000;padding:9px 10px;margin-bottom:5px}.voice-player audio{display:none}.voice-play{width:34px;height:34px;padding:0;border:1px solid var(--beige);background:#080808;color:transparent;font-size:0;line-height:1;display:grid;place-items:center;flex-shrink:0}.voice-play::before{content:'▶';color:var(--beige);font-size:14px;line-height:1;transform:translateX(1px)}.voice-play.playing::before{content:'Ⅱ';font-size:13px;transform:none}.voice-play:disabled{opacity:.45}.voice-wave{flex:1;height:6px;background:var(--dim2);position:relative;cursor:pointer;min-width:72px}.voice-wave i{display:block;height:100%;width:0;background:var(--beige);pointer-events:none}.voice-time{font-size:.64rem;color:var(--dim);white-space:nowrap;min-width:36px;text-align:right}
 #local-video{position:absolute;bottom:110px;right:16px;width:110px;border:1px solid var(--beige);z-index:2;background:#111}
 #call-info{z-index:2;text-align:center}
@@ -2876,7 +2876,18 @@ const DB={db:null,
   async byIndex(s,i,k){const raw=await new Promise((res,rej)=>{const q=DB.tx(s).index(i).getAll(k);q.onsuccess=()=>res(q.result||[]);q.onerror=()=>rej(q.error)});return (await Promise.all(raw.map(v=>DB.openRecord(s,v)))).filter(Boolean)},
   kvSet:(k,v)=>DB.put('kv',{id:k,v}),
   kvGet:async k=>(await DB.get('kv',k))?.v,
-  async wipe(){DB.db.close();await new Promise(r=>{indexedDB.deleteDatabase('threnyx_secure_v3').onsuccess=r})}
+  async wipe(){DB.db.close();await new Promise(r=>{indexedDB.deleteDatabase('threnyx_secure_v3').onsuccess=r})},
+  async panicWipe(){
+    try{
+      for(const[,p]of S.peers){try{p.pc?.close()}catch(e){}}
+      S.peers.clear();
+      for(const r of Nostr.relays.values()){try{r.removed=true;r.ws?.close()}catch(e){}}
+      Nostr.relays.clear();
+      _pk.clear();
+      Vault.key=null;Vault.salt=null;S.localKey=null;S.me=null;
+      await DB.wipe();
+    }finally{location.reload()}
+  }
 };
 
 /* ---------------- ÉTAT GLOBAL ---------------- */
@@ -2951,7 +2962,24 @@ const Invite={
     if(!Safe.CAP(S.me.inviteCap)){S.me.inviteCap=uid();await Vault.save(S.me)}
     const existing=await DB.get('invites',S.me.inviteCap);
     if(!existing||existing.expiresAt<=now())await DB.put('invites',{id:S.me.inviteCap,createdAt:now(),expiresAt:now()+30*86400000,uses:0,maxUses:1});
+  },
+  async groupCard(g,maxUses=1){if(!g||!g.admins.includes(S.me.pub))throw Error('ADMIN REQUIS');const quota=Math.max(1,Math.min(20,Number(maxUses)||1)),cap=uid(),id='group:'+cap;await DB.put('invites',{id,kind:'group',groupId:g.id,adminPub:S.me.pub,createdAt:now(),expiresAt:now()+30*86400000,uses:0,maxUses:quota,joined:[],revoked:false});return{cap,card:`GC1:${g.id}:${cap}:${S.me.pub}`,maxUses:quota}},
+  parseGroup(raw){const m=String(raw||'').trim().match(/^GC1:(g_[0-9a-f]{32}):([0-9a-f]{32}):([0-9a-f]{64})$/i);return m?{kind:'group',groupId:m[1],cap:m[2].toLowerCase(),adminPub:m[3].toLowerCase()}:null}
+};
+const Fingerprint={
+  normalize(raw){return String(raw||'').trim().toLowerCase().replace(/[^0-9a-f]/g,'')},
+  groups(pub){const x=this.normalize(pub);return x.match(/.{1,4}/g)?.join(' ')||x},
+  async open(cid){const c=S.contacts.get(cid);if(!c||!Safe.PUB(c.fingerprint))return toast('!! EMPREINTE INDISPONIBLE');
+    Modal.open('// VERIFIER LA SECURITE',`<p class="dim" style="font-size:.7rem;line-height:1.6">Comparez cette empreinte avec l’autre personne par un canal de confiance. Un match réduit le risque de substitution de clé, mais ne remplace pas votre jugement.</p><div class="code-box" style="line-height:1.9;word-break:break-word">${esc(this.groups(c.fingerprint))}</div><canvas id="fingerprint-qr" aria-label="QR de l’empreinte de sécurité"></canvas><p class="dim" style="font-size:.66rem">${c.verified?'✓ VERIFIE LE '+new Date(c.verifiedAt||0).toLocaleDateString('fr'):'NON VERIFIE'}</p><button class="btn-sm" id="scan-fingerprint" style="width:100%">[ SCANNER LE CODE DE L’AUTRE ]</button>`);
+    QR.draw($('#fingerprint-qr'),c.fingerprint);
+    $('#scan-fingerprint').onclick=async()=>{try{Modal.open('// SCANNER L’EMPREINTE',`<video id="qr-scan-video" autoplay playsinline muted></video><button class="btn-sm" id="qr-scan-cancel" style="width:100%;margin-top:10px">[ANNULER]</button>`);$('#qr-scan-cancel').onclick=()=>Modal.close();await QRScan.start(async raw=>{QRScan.stop();Modal.close();const ok=this.normalize(raw)===this.normalize(c.fingerprint);c.verified=ok;c.verifiedAt=ok?now():0;if(!ok)c.keyAlert={ts:now(),reason:'FINGERPRINT_MISMATCH',observed:String(raw||'').slice(0,80)};await DB.put('contacts',c);UI.renderChatList();UI.refreshChatHead();toast(ok?'✓ EMPREINTE VERIFIEE':'✗ EMPREINTE DIFFERENTE — CONTACTEZ LA PERSONNE AUTREMENT')})}catch(e){toast('!! SCAN EMPREINTE IMPOSSIBLE')}};
   }
+};
+const GC1={
+  async all(){return(await DB.kvGet('gc1Requests'))||{}},
+  async put(req,state,reason=''){const all=await GC1.all();all[req.rid]={...req,state,reason,updatedAt:now()};await DB.kvSet('gc1Requests',all);return all[req.rid]},
+  async statusFor(pub){const all=await GC1.all();return Object.values(all).filter(x=>x.to===pub||x.adminPub===pub).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0)).slice(0,8)},
+  label(x){return x.state==='accepted'?'✓ ACCEPTEE':x.state==='rejected'?'✗ REFUSEE':x.state==='queued'?'◌ EN FILE':'→ ENVOYEE'}
 };
 const NFC={
   controller:null,token:0,
@@ -2979,7 +3007,7 @@ const NFC={
     if(!NFC.supported())throw Error('NFC INDISPONIBLE : UTILISEZ LE QR');
     NFC.stop();const token=++NFC.token;const controller=new AbortController();NFC.controller=controller;const ndef=new NDEFReader();
     ndef.onreadingerror=()=>{if(NFC.token===token)toast('!! TAG NFC NON LISIBLE OU NON NDEF')};
-    ndef.onreading=e=>{if(NFC.token!==token)return;try{for(const r of e.message.records){if(r.recordType!=='url'&&r.recordType!=='text')continue;const raw=new TextDecoder(r.encoding||'utf-8').decode(r.data);if(Invite.parse(raw)){NFC.stop();navigator.vibrate?.([18,35,18]);onInvite(raw);return}}toast('!! CARTE NFC THRENYX INVALIDE')}catch(err){toast('!! LECTURE NFC INVALIDE')}};
+    ndef.onreading=e=>{if(NFC.token!==token)return;try{for(const r of e.message.records){if(r.recordType!=='url'&&r.recordType!=='text')continue;const raw=new TextDecoder(r.encoding||'utf-8').decode(r.data);if(Invite.parse(raw)||Invite.parseGroup(raw)){NFC.stop();navigator.vibrate?.([18,35,18]);onInvite(raw);return}}toast('!! CARTE NFC THRENYX INVALIDE')}catch(err){toast('!! LECTURE NFC INVALIDE')}};
     try{await ndef.scan({signal:controller.signal})}catch(err){if(!(NFC.token!==token&&err?.name==='AbortError'))throw err}
   },
   async scanRecovery(onCard){
@@ -3360,7 +3388,7 @@ const Discovery={
    ROUTAGE DES CHARGES UTILES
    ================================================================ */
 const KeyGuard={
-  async flag(c,reason,observed){if(c.keyAlert)return; c.keyAlert={ts:now(),reason,observed};await DB.put('contacts',c);toast('⚠ CLE DE CONTACT MODIFIEE — VERIFICATION LOCALE REQUISE');if(S.activeChat===c.id)UI.refreshChatHead()},
+  async flag(c,reason,observed){if(c.keyAlert)return; c.keyAlert={ts:now(),reason,observed};c.verified=false;c.verifiedAt=0;await DB.put('contacts',c);toast('⚠ CLE DE CONTACT MODIFIEE — VERIFICATION LOCALE REQUISE');if(S.activeChat===c.id)UI.refreshChatHead()},
   async profile(c,from,profile){if(!c.fingerprint)c.fingerprint=c.id; if(c.fingerprint!==from||profile.fingerprint&&profile.fingerprint!==from)await KeyGuard.flag(c,'FINGERPRINT_INCOHERENT',profile.fingerprint||from);}
 };
 const ROUTE={
@@ -3372,7 +3400,7 @@ const ROUTE={
       const invitation=await DB.get('invites',p.cap);
       if(invitation&&invitation.expiresAt>now()&&invitation.uses===0&&invitation.maxUses===1){const profile=Safe.profile(p.profile);if(!profile)return;
         const protocols=Array.isArray(p.protocols)?p.protocols.filter(v=>v==='legacy'||v==='nip17').slice(0,2):['legacy'];
-        const c0={id:from,name:profile.name||('NODE_'+from.slice(0,8).toUpperCase()),localName:'',bio:profile.bio,avatar:profile.avatar,lastSeen:0,relaySeen:now(),unread:0,lastMsg:'',lastTs:0,pin:false,expire:0,fingerprint:from,keyAlert:null,protocols:protocols.length?protocols:['legacy']};
+        const c0={id:from,name:profile.name||('NODE_'+from.slice(0,8).toUpperCase()),localName:'',bio:profile.bio,avatar:profile.avatar,lastSeen:0,relaySeen:now(),unread:0,lastMsg:'',lastTs:0,pin:false,expire:0,fingerprint:from,keyAlert:null,verified:false,verifiedAt:0,protocols:protocols.length?protocols:['legacy']};
         S.contacts.set(from,c0);await DB.put('contacts',c0);invitation.uses=1;await DB.put('invites',invitation);known=true;toast('>> PAIR AJOUTE VIA CARTE QR');UI.renderChatList();
       }
     }
@@ -3393,6 +3421,8 @@ const ROUTE={
         await DB.put('contacts',c);UI.renderChatList();UI.refreshChatHead();
         if(!p.ack){sendPayload(from,{t:'hello',ack:true,profile:MYPROFILE(),protocols:NOSTR_PROTOCOLS()});toast('>> PAIR VERIFIE: '+String(c.name).toUpperCase())}
         LINK.ensure(from);break}
+      case 'groupJoin':{const rid=Safe.ID(p.rid)?p.rid:'';const ack=async(status,reason)=>{if(!rid)return;const a={t:'groupAck',rid,status,reason};const sent=await sendPayload(from,a,{eph:false});if(!sent)await Outbox.add(from,a)};let reason='';if(!/^g_[0-9a-f]{32}$/i.test(p.gid)||!Safe.CAP(p.gcap))reason='INVITATION_INVALIDE';const invite=reason?null:await DB.get('invites','group:'+p.gcap);if(!reason&&(!invite||invite.kind!=='group'||invite.groupId!==p.gid||invite.adminPub!==S.me.pub))reason='INVITATION_INVALIDE';else if(!reason&&invite.revoked)reason='INVITATION_REVOQUEE';else if(!reason&&invite.expiresAt<=now())reason='INVITATION_EXPIREE';else if(!reason&&invite.maxUses>0&&invite.uses>=invite.maxUses)reason='QUOTA_ATTEINT';const g=reason?null:S.groups.get(p.gid);if(!reason&&(!g||!g.admins.includes(S.me.pub)))reason='ADMIN_INDISPONIBLE';if(reason){await ack('rejected',reason);toast('!! GC1 REFUSEE: '+reason);break}if(g.members.includes(from)){await ack('accepted','DEJA_MEMBRE');break}invite.uses++;invite.joined=[...new Set([...(invite.joined||[]),from])];await DB.put('invites',invite);g.members=[...new Set([...g.members,from])];g.lamport++;await DB.put('groups',g);await GRP.broadcast(g);await ack('accepted','AJOUTE_AU_GROUPE');toast('>> NOUVEAU MEMBRE VIA GC1');UI.renderChatList();UI.renderCommList();break}
+      case 'groupAck':{if(!Safe.ID(p.rid)||!['accepted','rejected'].includes(p.status))break;const all=await GC1.all(),req=all[p.rid];if(!req||req.adminPub!==from)break;await GC1.put(req,p.status,p.reason||'');toast((p.status==='accepted'?'✓ GC1 ACCEPTEE: ':'✗ GC1 REFUSEE: ')+(p.reason||''));break}
       case 'presence':if(S.allowP2P)LINK.ensure(from);UI.refreshChatHead();break;
       case 'typing':if(S.allowP2P)S.typing.set(from,p.on===true?now():0);UI.refreshChatHead();break;
       case 'profile':{const profile=Safe.profile(p);if(!profile)return;await KeyGuard.profile(c,from,profile);Object.assign(c,{name:profile.name||c.name,bio:profile.bio,avatar:profile.avatar});
@@ -3720,7 +3750,7 @@ const UI={
         ${UI.avatarHtml(isG?{name:c.name,avatar:c.avatar}:c)}
         <div class="info">
           <div class="name"><span>${c.pin?'▲ ':''}${isG?'[G] ':''}${upName(c.localName||c.name)}</span><span class="time">${c.lastTs?fmtTime(c.lastTs):''}</span></div>
-          <div class="sub"><span>${isG?'◆ ':st===2?'● ':st===1?'◐ ':'○ '}${esc((c.lastMsg||(isG?'CANAL DE GROUPE':'CANAL DIRECT')).slice(0,42))}</span>${c.unread?`<span class="badge">${c.unread}</span>`:''}</div>
+          <div class="sub"><span>${isG?'◆ ':st===2?'● ':st===1?'◐ ':'○ '}${esc((c.lastMsg||(isG?'CANAL DE GROUPE':'CANAL DIRECT')).slice(0,42))}</span>${c.unread?`<span class="badge">${c.unread}</span>`:''}${!isG&&c.verified?'<span class="badge" title="Contact vérifié">✓</span>':''}</div>
         </div></div>`}).join('');
     $$('#list-chats .row').forEach(r=>r.onclick=()=>UI.openChat(r.dataset.chat));
     const tot=items.reduce((s,c)=>s+(c.unread||0),0);
@@ -3750,7 +3780,7 @@ const UI={
   refreshChatHead(){
     const id=S.activeChat;if(!id)return;
     const isG=id.startsWith('g_'),c=isG?S.groups.get(id):S.contacts.get(id);if(!c)return;
-    $('#ch-name').textContent=(c.localName||c.name).toUpperCase()+(c.expire?' ⏱':'');
+    $('#ch-name').textContent=(c.localName||c.name).toUpperCase()+(c.verified?' ✓':'')+(c.expire?' ⏱':'');
     {const avatar=Safe.image(c.avatar);$('#ch-avatar').innerHTML=avatar?`<img src="${esc(avatar)}" alt="">`:esc((c.localName||c.name)[0].toUpperCase());}
     const p=$('#ch-presence');p.className='presence';
     if(isG)p.textContent=c.members.length+' MEMBRES // ETAT REPLIQUE LAMPORT#'+c.lamport;
@@ -3956,6 +3986,8 @@ const Modal={
       <p class="qr-help"><strong>À retenir :</strong> l’autre personne doit aussi scanner votre QR, ouvrir votre lien ou lire votre tag. Vous obtenez ainsi chacun le contact de l’autre. Le QR contient une capacité à usage unique côté destinataire ; les messages d’inconnus restent bloqués.</p>`);
     QR.draw($('#qr-canvas'),invite);
     const accept=async raw=>{
+      const group=Invite.parseGroup(raw);
+      if(group){if(group.adminPub===S.me.pub)return toast('!! INVITATION DE VOTRE PROPRE GROUPE');await addPeer(group.adminPub,'GROUP_ADMIN_'+group.adminPub.slice(0,8),'');const req={t:'groupJoin',rid:uid(),gid:group.groupId,gcap:group.cap,to:group.adminPub,adminPub:group.adminPub};await GC1.put(req,'queued');const sent=await sendPayload(group.adminPub,req,{eph:false});if(sent){await GC1.put(req,'sent')}else await Outbox.add(group.adminPub,req);Modal.close();return toast(sent?'>> DEMANDE GC1 ENVOYEE — EN ATTENTE DE L’ADMIN':'>> DEMANDE GC1 HORS-LIGNE — MISE EN FILE') }
       const parsed=Invite.parse(raw);let pub='',name='',cap='';
       if(parsed){({pub,name,cap}=parsed)}else pub=String(raw||'').trim().toLowerCase();
       const alias=Safe.text(($('#peer-alias').value||'').trim(),30);
@@ -4013,7 +4045,7 @@ const Modal={
         <div class="stat-card"><b>${g.members.length}</b><span>MEMBRES</span></div>
         <div class="stat-card"><b>L#${g.lamport}</b><span>HORLOGE LAMPORT</span></div></div>
       <h4>MEMBRES</h4>${rows}
-      ${admin?`<details><summary>+ AJOUTER UN MEMBRE</summary>
+      ${admin?`<button class="btn-sm" id="g-invite" style="width:100%;margin-top:10px">[ INVITER PAR NFC / QR ]</button><details><summary>+ AJOUTER UN MEMBRE</summary>
         ${addable.map(c=>`<label class="check-row"><input type="checkbox" value="${c.id}">${esc((c.localName||c.name).toUpperCase())}</label>`).join('')||'<p class="dim" style="font-size:.7rem">TOUS VOS CONTACTS SONT DEJA MEMBRES.</p>'}
         <button class="btn-sm" id="g-add-do" style="width:100%">[AJOUTER — INVITATION LIVREE MEME HORS-LIGNE]</button></details>
       <details><summary>⏱ MESSAGES EPHEMERES</summary>
@@ -4030,6 +4062,7 @@ const Modal={
     $$('[data-gadm]').forEach(b=>b.onclick=()=>{
       GRP.op(gid,g2=>{const m=b.dataset.gadm;
         g2.admins=g2.admins.includes(m)?g2.admins.filter(x=>x!==m):[...g2.admins,m]});Modal.close()});
+    $('#g-invite')?.addEventListener('click',async()=>{try{const raw=prompt('Nombre maximal d’utilisations pour cette invitation GC1 (1-20) :','1'),quota=Math.max(1,Math.min(20,Number(raw)||1)),invite=await Invite.groupCard(g,quota);Modal.open('// INVITATION GROUPE GC1',`<p class="qr-help">Cette carte ajoute directement la personne au groupe après validation par l’administrateur. Elle est distincte d’une carte MC1 de contact et d’une clé TCV1. Elle expire dans 30 jours et accepte ${invite.maxUses} utilisation(s).</p><canvas id="group-qr" aria-label="QR d’invitation groupe"></canvas><div class="code-box">${invite.card}</div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn-sm" id="group-copy">[COPIER]</button><button class="btn-sm" id="group-nfc">[ECRIRE NFC]</button><button class="btn-sm btn-danger" id="group-revoke">[REVOQUER]</button></div>`);QR.draw($('#group-qr'),invite.card);$('#group-copy').onclick=()=>{navigator.clipboard?.writeText(invite.card);toast('>> INVITATION GC1 COPIEE')};$('#group-nfc').onclick=async()=>{try{await NFC.write(invite.card);toast('>> INVITATION GC1 ECRITE')}catch(e){toast('!! '+NFC.explain(e,'write'))}};$('#group-revoke').onclick=async()=>{const row=await DB.get('invites','group:'+invite.cap);if(row){row.revoked=true;await DB.put('invites',row)}toast('>> INVITATION GC1 REVOQUEE');Modal.close()}}catch(e){toast('!! INVITATION GROUPE IMPOSSIBLE')}});
     $('#g-add-do')?.addEventListener('click',()=>{
       const sel=$$('#modal details input:checked').map(i=>i.value);
       if(sel.length){GRP.op(gid,g2=>{g2.members=[...new Set([...g2.members,...sel])]});Modal.close()}});
@@ -4047,16 +4080,16 @@ const Modal={
     };
   },
 
-  contactInfo(cid){
+  async contactInfo(cid){
     const c=S.contacts.get(cid);if(!c)return;
-    const st=onlineState(cid);
+    const st=onlineState(cid),gcStates=await GC1.statusFor(cid);
     Modal.open('// PAIR: '+esc((c.localName||c.name).toUpperCase()),`
       <div style="display:flex;gap:14px;align-items:center">
         ${UI.avatarHtml(c,'lg')}
         <div><div style="font-size:.9rem;letter-spacing:2px">${upName(c.name)}</div>
         <div class="dim" style="font-size:.7rem;margin-top:6px">${esc(c.bio||'AUCUNE BIO')}</div>
         <div style="font-size:.66rem;margin-top:8px;color:var(--beige)">${st===2?'● LIEN P2P DIRECT ACTIF':st===1?'◐ JOIGNABLE VIA RELAIS':'○ HORS LIGNE — LIVRAISON DIFFEREE'}</div></div></div>
-      ${c.keyAlert?`<div class="security-alert"><b>⚠ ALERTE CLE MODIFIEE</b><br>Une clé ou un alias incohérent a été observé localement. Empreinte connue: ${esc((c.fingerprint||cid).slice(0,16))}…</div>`:''}<h4>MESH ID</h4><div class="code-box">${cid}</div>
+      ${c.keyAlert?`<div class="security-alert"><b>⚠ ALERTE CLE MODIFIEE</b><br>Une clé ou un alias incohérent a été observé localement. Empreinte connue: ${esc((c.fingerprint||cid).slice(0,16))}…</div>`:''}${gcStates.length?`<div class="security-strip">GC1 : ${gcStates.slice(0,3).map(x=>`${GC1.label(x)} ${esc(x.reason||'')} · ${fmtTime(x.updatedAt)}`).join('<br>')}</div>`:''}<div class="security-strip">${c.verified?'✓ CONTACT VERIFIE':'⌁ CONTACT NON VERIFIE'}</div><h4>MESH ID</h4><div class="code-box">${cid}</div>
       <div class="field" style="margin-top:12px"><label>ALIAS LOCAL</label>
         <input id="c-alias" maxlength="30" value="${esc(c.localName||'')}" placeholder="${esc(c.name)}"></div>
       <details><summary>⏱ MESSAGES EPHEMERES (SYNC BILATERAL)</summary>
@@ -4066,6 +4099,7 @@ const Modal={
           <option value="86400000" ${c.expire===86400000?'selected':''}>24 HEURES</option>
           <option value="604800000" ${c.expire===604800000?'selected':''}>7 JOURS</option></select></details>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <button class="btn-sm" id="c-verify">[⌁ VERIFIER LA SECURITE]</button>
         <button class="btn-sm" id="c-pin">[${c.pin?'DESEPINGLER':'EPINGLER'}]</button>
         <button class="btn-sm" id="c-export">[EXPORTER LA CONVERSATION]</button>
         <button class="btn-sm btn-danger" id="c-del">[SUPPRIMER LE PAIR]</button></div>`);
@@ -4073,6 +4107,7 @@ const Modal={
       UI.renderChatList();UI.refreshChatHead()};
     $('#c-expire').onchange=async e=>{c.expire=+e.target.value;await DB.put('contacts',c);
       sendPayload(cid,{t:'expire',ms:c.expire});toast('>> MINUTEUR: '+UI.expireLabel(c.expire))};
+    $('#c-verify').onclick=()=>Fingerprint.open(cid);
     $('#c-pin').onclick=async()=>{c.pin=!c.pin;await DB.put('contacts',c);UI.renderChatList();Modal.close()};
     $('#c-export').onclick=async()=>{
       const msgs=(await DB.byIndex('messages','chat',cid)).sort((a,b)=>a.ts-b.ts);
@@ -4193,7 +4228,7 @@ async function addPeer(pub,name,alias,cap=''){
     const norm=String(alias||name||'').trim().toLowerCase();const prior=[...S.contacts.values()].find(x=>x.id!==pub&&norm&&String(x.localName||x.name||'').trim().toLowerCase()===norm);
     if(prior)await KeyGuard.flag(prior,'MEME_ALIAS_NOUVELLE_CLE',pub);
     const c={id:pub,name,localName:alias||'',bio:'',avatar:'',lastSeen:0,relaySeen:0,
-      unread:0,lastMsg:'',lastTs:0,pin:false,expire:0,fingerprint:pub,keyAlert:null};
+      unread:0,lastMsg:'',lastTs:0,pin:false,expire:0,fingerprint:pub,keyAlert:null,verified:false,verifiedAt:0};
     S.contacts.set(pub,c);await DB.put('contacts',c);
   }else if(alias){const c=S.contacts.get(pub);c.localName=alias;await DB.put('contacts',c)}
   UI.renderChatList();
@@ -4209,7 +4244,7 @@ const PWA={
   standalone(){return matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true},
   async init(){
     if(!('serviceWorker' in navigator)||!window.isSecureContext)return;
-    try{PWA.registration=await navigator.serviceWorker.register('./service-worker.js?v=18',{scope:'./',updateViaCache:'none'});await PWA.registration.update();await navigator.serviceWorker.ready;let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!reloaded){reloaded=true;location.reload()}})}catch(e){}
+    try{PWA.registration=await navigator.serviceWorker.register('./service-worker.js?v=19',{scope:'./',updateViaCache:'none'});await PWA.registration.update();await navigator.serviceWorker.ready;let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!reloaded){reloaded=true;location.reload()}})}catch(e){}
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();PWA.deferred=e;PWA.refreshUI()});
     window.addEventListener('appinstalled',()=>{PWA.deferred=null;PWA.refreshUI();toast('>> THRENYX INSTALLE COMME APPLICATION')});
   },
@@ -4325,6 +4360,11 @@ async function enterApp(){
   Notif.enabled=(await DB.kvGet('notif'))??true;
   await Notif.load();
   await Invite.ensure();
+  if(!enterApp._panicBound){
+    enterApp._panicBound=true;let taps=[],panicTimer;
+    const panicTap=()=>{const t=now();taps=taps.filter(x=>t-x<600);taps.push(t);if(taps.length===1){$('#topbar').dataset.panic='·';$('#open-profile').dataset.panic='·';clearTimeout(panicTimer);panicTimer=setTimeout(()=>{taps=[];delete $('#topbar').dataset.panic;delete $('#open-profile').dataset.panic},600)}if(taps.length>=3){taps=[];clearTimeout(panicTimer);delete $('#topbar').dataset.panic;delete $('#open-profile').dataset.panic;Vault.panicWipe()}};
+    $('#topbar').addEventListener('pointerup',panicTap);$('#open-profile').addEventListener('pointerup',panicTap);
+  }
   UI.renderChatList();UI.renderCommList();UI.renderCallList();UI.renderStatusList();
   startSyncLines();
   await ICECFG.load();
