@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-YBBZa0JgZ/Z2S/7RuqVobNinhD/iDpaPB6Nn7rj469w=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob: mediastream:; connect-src wss: https: blob:; worker-src 'self' blob:; manifest-src 'self' blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-d9inI5sYfNk4tQsq2E3qTSoV/CCd1xh1WQuzT6c5iDs=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob: mediastream:; connect-src wss: https: blob:; worker-src 'self' blob:; manifest-src 'self' blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
 <meta name="theme-color" content="#060606">
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="application-name" content="Threnyx">
@@ -279,6 +279,7 @@ html[data-theme="light"] .nfc-card{background:linear-gradient(135deg,rgba(81,70,
       <div class="ob-avatar-row"><div id="ob-ascii">⌁</div><div style="flex:1"><label>AJOUTER UN PORTRAIT <small>Facultatif · traité uniquement sur cet appareil</small></label></div><label class="ob-file-btn" for="ob-avatar">CHOISIR</label><input type="file" id="ob-avatar" accept="image/*"></div>
       <div class="ob-actions"><button class="primary" id="ob-next-profile">CONTINUER <span>→</span></button></div>
       <button class="ob-import-link" id="ob-import">J’ai déjà une sauvegarde Threnyx</button>
+      <button class="ob-import-link" id="ob-recover-nfc">J’ai une clé NFC de récupération Threnyx</button>
     </section>
     <section class="ob-step" data-step="2">
       <div class="ob-kicker"><i></i> ÉTAPE 2 SUR 3</div>
@@ -2935,6 +2936,98 @@ const NFC={
     ndef.onreadingerror=()=>{if(NFC.token===token)toast('!! TAG NFC NON LISIBLE OU NON NDEF')};
     ndef.onreading=e=>{if(NFC.token!==token)return;try{for(const r of e.message.records){if(r.recordType!=='url'&&r.recordType!=='text')continue;const raw=new TextDecoder(r.encoding||'utf-8').decode(r.data);if(Invite.parse(raw)){NFC.stop();navigator.vibrate?.([18,35,18]);onInvite(raw);return}}toast('!! CARTE NFC THRENYX INVALIDE')}catch(err){toast('!! LECTURE NFC INVALIDE')}};
     try{await ndef.scan({signal:controller.signal})}catch(err){if(!(NFC.token!==token&&err?.name==='AbortError'))throw err}
+  },
+  async scanRecovery(onCard){
+    if(!NFC.supported())throw Error('NFC INDISPONIBLE : UTILISEZ UNE SAUVEGARDE CHIFFREE');
+    NFC.stop();const token=++NFC.token;const controller=new AbortController();NFC.controller=controller;const ndef=new NDEFReader();
+    ndef.onreadingerror=()=>{if(NFC.token===token)toast('!! CLE NFC NON LISIBLE OU NON NDEF')};
+    ndef.onreading=e=>{if(NFC.token!==token)return;try{for(const r of e.message.records){if(r.recordType!=='url'&&r.recordType!=='text')continue;const raw=new TextDecoder(r.encoding||'utf-8').decode(r.data);if(/^TCV1\./.test(raw)){NFC.stop();navigator.vibrate?.([25,45,25]);onCard(raw);return}}toast('!! CLE DE RECUPERATION THRENYX INVALIDE')}catch(err){toast('!! LECTURE NFC INVALIDE')}};
+    try{await ndef.scan({signal:controller.signal})}catch(err){if(!(NFC.token!==token&&err?.name==='AbortError'))throw err}
+  }
+};
+
+/* ================================================================
+   CONSTELLATION VAULT : SNAPSHOTS CHIFFRES MULTI-RELAIS
+   Les relais ne reçoivent que des fragments AES-GCM et des signatures
+   de synchronisation distinctes de la cle de messagerie.
+   ================================================================ */
+const Constellation={
+  V:1,NS:'threnyx-cv-v1',TAG:'TCV1',PART:30000,MAX_PARTS:40,
+  valid(c){return !!c&&c.v===1&&/^[0-9a-f]{64}$/i.test(c.syncPriv||'')&&typeof c.recoveryKey==='string'&&Number.isSafeInteger(c.epoch)},
+  b64url(bytes){return b64(bytes).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')},
+  fromB64url(text){const s=String(text||'').replace(/-/g,'+').replace(/_/g,'/');return new Uint8Array(ub64(s+'='.repeat((4-s.length%4)%4)))},
+  async derive(root,info){const base=await crypto.subtle.importKey('raw',root,'HKDF',false,['deriveKey']);const salt=await sha256(enc8('threnyx/constellation/v1'));return crypto.subtle.deriveKey({name:'HKDF',hash:'SHA-256',salt,info:enc8(info)},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])},
+  async ensure(){
+    let c=S.me?.constellation;
+    if(Constellation.valid(c))return c;
+    const epoch=new DataView(crypto.getRandomValues(new Uint8Array(4)).buffer).getUint32(0)||1;
+    c={v:1,syncPriv:Secp.genPriv(),recoveryKey:b64(crypto.getRandomValues(new Uint8Array(32))),epoch,head:null};
+    S.me.constellation=c;await Vault.save(S.me);return c;
+  },
+  card(){
+    const c=S.me?.constellation;if(!Constellation.valid(c))throw Error('INITIALISEZ D’ABORD CONSTELLATION');
+    const raw=new Uint8Array(69),view=new DataView(raw.buffer);raw[0]=1;view.setUint32(1,c.epoch);raw.set(Hex.from(c.syncPriv),5);raw.set(new Uint8Array(ub64(c.recoveryKey)),37);
+    const card=Constellation.TAG+'.'+Constellation.b64url(raw);raw.fill(0);return card;
+  },
+  parseCard(value){
+    const m=String(value||'').trim().match(/^TCV1\.([A-Za-z0-9_-]{80,120})$/);if(!m)throw Error('CLE NFC CONSTELLATION INVALIDE');
+    const raw=Constellation.fromB64url(m[1]);if(raw.length!==69||raw[0]!==1)throw Error('FORMAT DE CLE NFC INVALIDE');
+    const view=new DataView(raw.buffer),syncPriv=Hex.to(raw.slice(5,37)),recoveryKey=b64(raw.slice(37,69)),epoch=view.getUint32(1);
+    raw.fill(0);if(!/^[0-9a-f]{64}$/i.test(syncPriv)||!epoch)throw Error('CLE NFC CORROMPUE');return {v:1,syncPriv,recoveryKey,epoch,head:null};
+  },
+  status(){const c=S.me?.constellation;return Constellation.valid(c)?(c.head?`SNAPSHOT ${c.head.parts} FRAGMENT(S) · EPOQUE ${c.epoch}`:'PRETE — AUCUN SNAPSHOT PUBLIE'): 'NON INITIALISEE'},
+  async bundle(c){
+    const stores=['contacts','groups','messages','statuses','calls','invites'];const data={};
+    for(const store of stores)data[store]=await DB.all(store);
+    const prefs={};for(const key of ['relays','theme','notif','notifPrefs','allowP2P'])prefs[key]=await DB.kvGet(key);
+    const me={...S.me,constellation:c};
+    return {v:1,type:'threnyx-constellation-snapshot',createdAt:now(),me,data,prefs};
+  },
+  async snapshot(){
+    if(Nostr.okCount()<2)throw Error('AU MOINS DEUX RELAIS NOSTR ACTIFS SONT REQUIS');
+    const c=await Constellation.ensure(),root=new Uint8Array(ub64(c.recoveryKey)),syncPub=Secp.getPub(c.syncPriv),snapshot=uid(),bundle=await Constellation.bundle(c),text=JSON.stringify(bundle),bytes=enc8(text),parts=Math.ceil(bytes.length/Constellation.PART);
+    if(!parts||parts>Constellation.MAX_PARTS)throw Error('SNAPSHOT TROP VOLUMINEUX POUR LA REPLICATION MANUELLE (MAX ~1,2 MO)');
+    const digest=Hex.to(await sha256(bytes));
+    try{
+      for(let i=0;i<parts;i++){
+        const key=await Constellation.derive(root,`part/${snapshot}/${i}`),box=await Crypto.encrypt(key,{part:text.slice(i*Constellation.PART,(i+1)*Constellation.PART)});
+        const ev=await Nostr.event(78,[['t',Constellation.NS],['s',snapshot],['i',String(i)],['epoch',String(c.epoch)]],JSON.stringify(box),c.syncPriv,syncPub);
+        if(!(await Nostr.publishReplicated(ev,2,15000)))throw Error('REPLICATION INSUFFISANTE DU FRAGMENT '+(i+1)+'/'+parts);
+      }
+      const head={v:1,type:'threnyx-cv-head',snapshot,parts,digest,epoch:c.epoch,createdAt:now(),version:(c.head?.version||0)+1};
+      const headKey=await Constellation.derive(root,'head/v1'),headBox=await Crypto.encrypt(headKey,head),headEv=await Nostr.event(30078,[['d',Constellation.NS],['t',Constellation.NS],['epoch',String(c.epoch)],['s',snapshot]],JSON.stringify(headBox),c.syncPriv,syncPub);
+      if(!(await Nostr.publishReplicated(headEv,2,15000)))throw Error('MANIFESTE NON CONFIRME PAR DEUX RELAIS');
+      c.head=head;S.me.constellation=c;await Vault.save(S.me);return head;
+    }finally{root.fill(0)}
+  },
+  async query(filter,timeout=9000){
+    const urls=[...(await DB.kvGet('relays')||Nostr.DEFAULTS)].filter(u=>/^wss:\/\/.{1,180}$/.test(u)).slice(0,6),all=[];
+    await Promise.all(urls.map(url=>new Promise(resolve=>{let ws,done=false;const finish=()=>{if(done)return;done=true;try{ws?.close()}catch(e){}resolve()};try{ws=new WebSocket(url);const timer=setTimeout(finish,timeout);ws.onopen=()=>ws.send(JSON.stringify(['REQ','cv-'+uid().slice(0,10),filter]));ws.onmessage=e=>{try{const m=JSON.parse(e.data);if(m[0]==='EVENT')all.push(m[2]);if(m[0]==='EOSE'){clearTimeout(timer);finish()}}catch(e){}};ws.onerror=finish}catch(e){finish()}})));
+    return all;
+  },
+  async verifyEvent(ev,pub){
+    try{if(!ev||ev.pubkey!==pub||typeof ev.id!=='string'||typeof ev.sig!=='string'||!Number.isSafeInteger(ev.created_at)||!Array.isArray(ev.tags)||typeof ev.content!=='string')return false;const serial=JSON.stringify([0,ev.pubkey,ev.created_at,ev.kind,ev.tags,ev.content]),id=Hex.to(await sha256(enc8(serial)));return ev.id===id&&await Secp.verify(Hex.from(id),ev.sig,pub)}catch(e){return false}
+  },
+  async findHead(c){
+    const pub=Secp.getPub(c.syncPriv),root=new Uint8Array(ub64(c.recoveryKey)),events=await Constellation.query({kinds:[30078],authors:[pub],'#d':[Constellation.NS],limit:20});let best=null;
+    try{const key=await Constellation.derive(root,'head/v1');for(const ev of events){if(!(await Constellation.verifyEvent(ev,pub)))continue;let box,head;try{box=JSON.parse(ev.content);head=await Crypto.decrypt(key,box)}catch(e){continue}if(!head||head.type!=='threnyx-cv-head'||head.epoch!==c.epoch||!Number.isInteger(head.parts)||head.parts<1||head.parts>Constellation.MAX_PARTS||!/^[0-9a-f]{64}$/i.test(head.digest||''))continue;if(!best||head.version>best.version||head.createdAt>best.createdAt)best=head}return best}finally{root.fill(0)}
+  },
+  async recover(card){
+    if(await DB.kvGet('vault'))throw Error('RECUPERATION NFC DISPONIBLE UNIQUEMENT AVANT LA CREATION D’UN COFFRE');
+    const c=Constellation.parseCard(card),head=await Constellation.findHead(c);if(!head)throw Error('AUCUN SNAPSHOT VALIDE TROUVE SUR LES RELAIS');
+    const pub=Secp.getPub(c.syncPriv),root=new Uint8Array(ub64(c.recoveryKey)),events=await Constellation.query({kinds:[78],authors:[pub],'#t':[Constellation.NS],'#s':[head.snapshot],limit:head.parts+12}),pieces=new Array(head.parts);
+    try{
+      for(const ev of events){if(!(await Constellation.verifyEvent(ev,pub)))continue;const i=Number(ev.tags?.find(t=>t?.[0]==='i')?.[1]);if(!Number.isInteger(i)||i<0||i>=head.parts||pieces[i])continue;try{const key=await Constellation.derive(root,`part/${head.snapshot}/${i}`),opened=await Crypto.decrypt(key,JSON.parse(ev.content));if(typeof opened?.part==='string')pieces[i]=opened.part}catch(e){}}
+      if(pieces.some(p=>typeof p!=='string'))throw Error('SNAPSHOT INCOMPLET — REESSAYEZ AVEC UNE MEILLEURE CONNEXION');
+      const text=pieces.join('');if(Hex.to(await sha256(enc8(text)))!==head.digest)throw Error('INTEGRITE DU SNAPSHOT INVALIDE');
+      const bundle=JSON.parse(text);if(!bundle||bundle.type!=='threnyx-constellation-snapshot'||!bundle.me||!Safe.PUB(bundle.me.pub)||!(/^[0-9a-f]{64}$/i.test(bundle.me.priv))||Secp.getPub(bundle.me.priv)!==bundle.me.pub)throw Error('SNAPSHOT DE RECUPERATION INVALIDE');
+      bundle.me.constellation={...c,head};S.me=bundle.me;
+      if(await Bio.capability()&&confirm('CREER FACE ID / EMPREINTE SUR CE NOUVEL APPAREIL ?')){const raw=crypto.getRandomValues(new Uint8Array(32));try{await Bio.enrollRaw(raw,S.me);await Vault.createDeviceOnly(S.me,raw)}finally{raw.fill(0)}}
+      else {const pass=prompt('Choisissez une phrase secrète locale (12 caractères minimum) :'),confirmPass=prompt('Confirmez la phrase secrète :');if(!pass||pass.length<12||pass!==confirmPass)throw Error('PHRASE SECRETE INVALIDE');await Vault.create(S.me,pass)}
+      for(const [store,items] of Object.entries(bundle.data||{}))if(['contacts','groups','messages','statuses','calls','invites'].includes(store)&&Array.isArray(items))for(const item of items)if(item?.id)await DB.put(store,item);
+      for(const [key,val] of Object.entries(bundle.prefs||{}))if(['relays','theme','notif','notifPrefs','allowP2P'].includes(key))await DB.kvSet(key,val);
+      await Vault.save(S.me);return bundle;
+    }finally{root.fill(0)}
   }
 };
 const QR={
@@ -2992,6 +3085,18 @@ const Nostr={
   publish(ev){let n=0;const s=JSON.stringify(['EVENT',ev]);
     for(const r of Nostr.relays.values())if(r.ws?.readyState===1){try{r.ws.send(s);n++}catch(e){}}
     return n},
+  async publishReplicated(ev,quorum=2,timeout=15000){
+    const ready=[...Nostr.relays.values()].filter(r=>r.ws?.readyState===1);if(ready.length<quorum)return false;
+    const payload=JSON.stringify(['EVENT',ev]);let accepted=0,settled=false;
+    return new Promise(resolve=>{
+      const done=ok=>{if(settled)return;settled=true;clearTimeout(timer);for(const {r,on} of listeners)try{r.ws.removeEventListener('message',on)}catch(e){}resolve(ok)};
+      const listeners=[];const timer=setTimeout(()=>done(false),timeout);
+      for(const r of ready){
+        const on=e=>{try{const m=JSON.parse(e.data);if(m[0]==='OK'&&m[1]===ev.id&&m[2]===true){accepted++;if(accepted>=quorum)done(true)}}catch(err){}};
+        listeners.push({r,on});try{r.ws.addEventListener('message',on);r.ws.send(payload)}catch(e){}
+      }
+    })
+  },
   async event(kind,tags,content,priv,pub,ts){
     const ev={pubkey:pub,created_at:ts??Math.floor(now()/1000),kind,tags,content};
     const ser=JSON.stringify([0,ev.pubkey,ev.created_at,ev.kind,ev.tags,ev.content]);
@@ -3973,6 +4078,11 @@ const Modal={
       <details><summary>▤ SAUVEGARDE / MIGRATION</summary>
         <button class="btn-sm" id="exp-keys" style="width:100%">[ EXPORT ACCOUNT KEYS ]</button>
         <p class="dim" style="font-size:.64rem">>> CONTIENT VOTRE CLE PRIVEE SECP256K1 + CONTACTS + GROUPES. A PROTEGER.</p></details>
+      <details><summary>✥ CONSTELLATION — RECUPERATION MULTI-APPAREILS</summary>
+        <p class="dim" id="cv-status" style="font-size:.64rem;line-height:1.65">${Constellation.status()}</p>
+        <button class="btn-sm" id="cv-snapshot" style="width:100%">[ PUBLIER UN SNAPSHOT CHIFFRE ]</button>
+        <button class="btn-sm" id="cv-write" style="width:100%;margin-top:8px">[ ECRIRE MA CLE NFC DE RECUPERATION ]</button>
+        <p class="dim" style="font-size:.61rem;line-height:1.65;margin-top:9px">La publication est manuelle dans cette première version. Les relais ne reçoivent que des fragments chiffrés. Une clé NFC NDEF est un objet à protéger : elle peut être copiée et ne doit jamais être partagée.</p></details>
       <details open><summary>⚙ PREFERENCES D’INTERFACE</summary>
         <div class="field"><label>APPARENCE</label><div class="theme-switch"><button type="button" class="${Theme.mode==='dark'?'active':''}" id="theme-dark">◐ SOMBRE</button><button type="button" class="${Theme.mode==='light'?'active':''}" id="theme-light">☼ CLAIR</button></div></div>
         <label class="check-row"><input type="checkbox" id="set-notif" ${Notif.enabled?'checked':''}>NOTIFICATIONS SYSTEME</label><label class="check-row"><input type="checkbox" id="set-notif-sound" ${Notif.prefs.sound?'checked':''}>SIGNAL SONORE DANS L’APPLICATION</label><label class="check-row"><input type="checkbox" id="set-notif-vibrate" ${Notif.prefs.vibrate?'checked':''}>VIBRATION COURTE</label><div class="range-row"><label>VOLUME</label><input id="set-notif-volume" type="range" min="0" max="100" value="${Notif.prefs.volume}"><output id="notif-volume-out">${Notif.prefs.volume}</output></div><div class="field"><label>SON</label><select id="set-notif-tone"><option value="tick" ${Notif.prefs.tone==='tick'?'selected':''}>TICK</option><option value="soft" ${Notif.prefs.tone==='soft'?'selected':''}>DOUX</option><option value="alert" ${Notif.prefs.tone==='alert'?'selected':''}>ALERTE</option></select></div><button class="btn-sm" id="notif-test" style="width:100%">[TESTER LE SIGNAL]</button><label class="check-row"><input type="checkbox" id="set-p2p" ${S.allowP2P?'checked':''}>AUTORISER LE P2P / APPELS DIRECTS (VOTRE IP PEUT ETRE VISIBLE PAR LE PAIR)</label><button class="btn-sm" id="ask-notif" style="width:100%">[AUTORISER LES NOTIFICATIONS SYSTEME]</button><button class="btn-sm" id="install-pwa" style="width:100%;margin-top:8px">[ INSTALLER THRENYX SUR CET APPAREIL ]</button><p class="dim" id="pwa-status" style="font-size:.62rem;line-height:1.6;margin-top:8px"></p><p class="dim" style="font-size:.62rem;line-height:1.6">Le son d’une notification système est contrôlé par Android/iOS. Ici, vous réglez seulement le signal de l’application au premier plan ; les alertes système sont silencieuses pour ne pas apparaître comme de la musique.</p></details>
@@ -4007,6 +4117,8 @@ const Modal={
       a.href=URL.createObjectURL(new Blob([JSON.stringify(encrypted)],{type:'application/json'}));
       a.download='threnyx_backup_chiffree_'+S.me.pub.slice(0,8)+'.json';a.click();URL.revokeObjectURL(a.href);
       toast('>> SAUVEGARDE CHIFFREE GENEREE')};
+    $('#cv-snapshot').onclick=async e=>{const b=e.currentTarget;b.disabled=true;try{toast('>> CONSTELLATION : CHIFFREMENT ET REPLICATION EN COURS');const head=await Constellation.snapshot();toast('>> SNAPSHOT CONFIRME — '+head.parts+' FRAGMENT(S) SUR PLUSIEURS RELAIS');Modal.settings()}catch(err){toast('!! '+String(err.message||'ECHEC CONSTELLATION').toUpperCase())}finally{b.disabled=false}};
+    $('#cv-write').onclick=async e=>{const b=e.currentTarget;b.disabled=true;try{if(!S.me.constellation?.head)throw Error('PUBLIEZ D’ABORD UN SNAPSHOT CHIFFRE');if(!confirm('Cette clé NFC peut restaurer votre identité. Gardez-la hors de portée et ne la partagez jamais. Continuer ?'))return;toast('>> APPROCHEZ LE TAG NFC — SON CONTENU SERA REMPLACE');await NFC.write(Constellation.card());navigator.vibrate?.([25,45,25]);toast('>> CLE NFC CONSTELLATION ECRITE')}catch(err){toast('!! '+NFC.explain(err,'write'))}finally{b.disabled=false}};
     $('#theme-dark').onclick=async()=>{await Theme.set('dark');Modal.settings()};$('#theme-light').onclick=async()=>{await Theme.set('light');Modal.settings()};
     $('#set-notif').onchange=e=>{Notif.enabled=e.target.checked;DB.kvSet('notif',Notif.enabled)};$('#set-notif-sound').onchange=e=>{Notif.prefs.sound=e.target.checked;Notif.save()};$('#set-notif-vibrate').onchange=e=>{Notif.prefs.vibrate=e.target.checked;Notif.save()};$('#set-notif-volume').oninput=e=>{$('#notif-volume-out').textContent=e.target.value;Notif.prefs.volume=+e.target.value;Notif.save()};$('#set-notif-tone').onchange=e=>{Notif.prefs.tone=e.target.value;Notif.save()};$('#notif-test').onclick=()=>{Notif.beep();if(Notif.prefs.vibrate)navigator.vibrate?.(20)};
     $('#set-p2p').onchange=e=>{S.allowP2P=e.target.checked;DB.kvSet('allowP2P',S.allowP2P);if(!S.allowP2P){for(const[,p]of S.peers)try{p.pc.close()}catch(err){};toast('>> P2P DESACTIVE — RELAIS UNIQUEMENT')}};
@@ -4041,7 +4153,7 @@ const PWA={
   standalone(){return matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true},
   async init(){
     if(!('serviceWorker' in navigator)||!window.isSecureContext)return;
-    try{PWA.registration=await navigator.serviceWorker.register('./service-worker.js?v=13',{scope:'./',updateViaCache:'none'});await PWA.registration.update();await navigator.serviceWorker.ready;let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!reloaded){reloaded=true;location.reload()}})}catch(e){}
+    try{PWA.registration=await navigator.serviceWorker.register('./service-worker.js?v=14',{scope:'./',updateViaCache:'none'});await PWA.registration.update();await navigator.serviceWorker.ready;let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!reloaded){reloaded=true;location.reload()}})}catch(e){}
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();PWA.deferred=e;PWA.refreshUI()});
     window.addEventListener('appinstalled',()=>{PWA.deferred=null;PWA.refreshUI();toast('>> THRENYX INSTALLE COMME APPLICATION')});
   },
@@ -4131,6 +4243,13 @@ function initOnboard(){
       }catch(err){toast('!! SAUVEGARDE CHIFFREE INVALIDE OU PHRASE INCORRECTE')}
     };
     inp.click();
+  };
+  $('#ob-recover-nfc').onclick=async()=>{
+    try{
+      Modal.open('// RECUPERATION PAR CLE NFC',`<div class="nfc-scan-stage"><div><div class="nfc-wave"><span></span><span></span><span></span><span></span><span></span></div><h4>APPROCHEZ VOTRE CLE NFC</h4><p class="qr-help">Threnyx cherchera un snapshot chiffré sur plusieurs relais, vérifiera son intégrité, puis vous demandera de protéger la copie restaurée sur cet appareil.</p></div></div><button class="btn-sm" id="nfc-recovery-cancel" style="width:100%;margin-top:10px">[ ANNULER ]</button>`);
+      $('#nfc-recovery-cancel').onclick=()=>{NFC.stop();Modal.close()};
+      await NFC.scanRecovery(async card=>{Modal.close();try{toast('>> CLE LUE — RECHERCHE DES FRAGMENTS CHIFFRES');await Constellation.recover(card);toast('>> IDENTITE RESTAUREE — PROTECTION LOCALE ACTIVEE');await enterApp()}catch(err){toast('!! '+String(err.message||'RECUPERATION IMPOSSIBLE').toUpperCase())}});
+    }catch(err){toast('!! '+NFC.explain(err))}
   };
 }
 
