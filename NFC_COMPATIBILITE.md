@@ -13,3 +13,7 @@ La PWA peut toutefois offrir deux opérations pratiques : **écrire ma carte** s
 ## Vérification de l’implémentation
 
 La version locale avec parcours NFC, repli QR et iconographie modernisée passe la vérification de syntaxe JavaScript, la vérification du hash CSP et le chargement navigateur sans erreur de console. Le test matériel NFC reste à effectuer sur Chrome Android, avec NFC activé et une carte/tag NDEF compatible.
+
+La première vérification publique après le commit NFC a encore détecté la version précédente : ni le module NFC ni les nouveaux contrôles n’étaient présents. La construction GitHub Pages doit être contrôlée puis la page rechargée après propagation.
+
+La vérification publique finale de `https://mateorey22.github.io/zenithchat/` confirme la présence du module NFC, des contrôles « ÉCRIRE MA CARTE » et de l’iconographie de contact modernisée. Le service worker de la PWA reste actif.
