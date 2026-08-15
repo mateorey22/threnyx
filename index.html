@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-4ymH4Tc+2qvwGdcJKpU+SARGGkaPoZuvs64Yz+977bE=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob: mediastream:; connect-src wss: https: blob:; worker-src blob:; manifest-src blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-rvVA3wyglrvBdEhoOoLuZfC8t0VQrkarT9JKztB2iEo=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob: mediastream:; connect-src wss: https: blob:; worker-src blob:; manifest-src blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
 <meta name="theme-color" content="#060606">
 <title>MESHCHAT // TERMINAL NOSTR-MESH</title>
 <style>
@@ -2883,7 +2883,18 @@ const Bio={
   async offer(){if(!(await Bio.capability())||await Bio.config()||await DB.kvGet('bioOfferSeen'))return;await DB.kvSet('bioOfferSeen',true);setTimeout(()=>{Modal.open('// PROTEGER LE COFFRE AVEC FACE ID / EMPREINTE','<p class="dim" style="font-size:.72rem;line-height:1.7">VOTRE APPAREIL PROPOSE UN DEVERROUILLAGE BIOMETRIQUE. ACTIVEZ-LE MAINTENANT OU PLUS TARD DANS [CFG].</p><button id="bio-offer-enable" style="width:100%">[ ACTIVER FACE ID / EMPREINTE ]</button><button id="bio-offer-later" class="btn-sm" style="width:100%;margin-top:8px">[ PLUS TARD ]</button>');$('#bio-offer-enable').onclick=async()=>{try{await Bio.enroll();Modal.close()}catch(e){toast('!! '+String(e.message||'BIOMETRIE INDISPONIBLE').toUpperCase())}};$('#bio-offer-later').onclick=()=>Modal.close()},600)}
 };
 const Gate={
-  async show(){const bio=await Bio.config();const g=document.createElement('div');g.className='lock-gate';g.id='lock-gate';g.innerHTML=`<div class="lock-panel"><h2>COFFRE VERROUILLE</h2><p>Votre identité est chiffrée localement. ${bio?'Utilisez votre biométrie ou votre phrase secrète.':'Utilisez votre phrase secrète pour continuer.'}</p>${bio?'<button id="gate-bio">[ FACE ID / EMPREINTE ]</button>':''}<button id="gate-pass">[ PHRASE SECRETE ]</button></div>`;document.body.appendChild(g);const open=async fn=>{try{S.me=await fn();g.remove();await enterApp()}catch(e){toast('!! '+String(e.message||'DEVERROUILLAGE IMPOSSIBLE').toUpperCase())}};$('#gate-pass').onclick=()=>open(Vault.unlock);$('#gate-bio')?.addEventListener('click',()=>open(Bio.unlock))},
+  async show(){
+    const bio=await Bio.config();
+    if(bio){
+      try{S.me=await Bio.unlock();await enterApp();return}
+      catch(e){} // Annulation ou indisponibilité : présenter immédiatement les secours.
+    }
+    const g=document.createElement('div');g.className='lock-gate';g.id='lock-gate';
+    g.innerHTML=`<div class="lock-panel"><h2>COFFRE VERROUILLE</h2><p>Votre identité est chiffrée localement. ${bio?'La biométrie a été interrompue. Réessayez ou utilisez votre phrase secrète.':'Utilisez votre phrase secrète pour continuer.'}</p>${bio?'<button id="gate-bio">[ FACE ID / EMPREINTE ]</button>':''}<button id="gate-pass">[ PHRASE SECRETE ]</button></div>`;
+    document.body.appendChild(g);
+    const open=async fn=>{try{S.me=await fn();g.remove();await enterApp()}catch(e){toast('!! '+String(e.message||'DEVERROUILLAGE IMPOSSIBLE').toUpperCase())}};
+    $('#gate-pass').onclick=()=>open(Vault.unlock);$('#gate-bio')?.addEventListener('click',()=>open(Bio.unlock));
+  },
 };
 const MYPROFILE=()=>({name:S.me.name,bio:S.me.bio,avatar:Safe.image(S.me.avatar),fingerprint:S.me.pub});
 const onlineState=id=>S.allowP2P&&S.peers.has(id)?2:(now()-(S.contacts.get(id)?.relaySeen||0)<75000?1:0);
@@ -3454,11 +3465,11 @@ const Notif={enabled:true,prefs:{sound:true,volume:35,tone:'tick',vibrate:true},
   async load(){const p=await DB.kvGet('notifPrefs');if(p&&typeof p==='object')Notif.prefs={...Notif.prefs,...p}},
   async save(){await DB.kvSet('notifPrefs',Notif.prefs)},
   async ask(){try{if(Notification.permission==='default')await Notification.requestPermission()}catch(e){}},
-  beep(){if(!Notif.prefs.sound)return;try{const a=Notif.ctx||(Notif.ctx=new(window.AudioContext||window.webkitAudioContext)());if(a.state==='suspended')a.resume();const o=a.createOscillator(),g=a.createGain(),freq={tick:740,soft:520,alert:880}[Notif.prefs.tone]||740;o.type=Notif.prefs.tone==='soft'?'sine':'square';o.frequency.value=freq;g.gain.value=Math.max(0,Math.min(100,Notif.prefs.volume))/100*.055;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+.075)}catch(e){}},
+  beep(urgent=false){if(!Notif.prefs.sound)return;try{const a=Notif.ctx||(Notif.ctx=new(window.AudioContext||window.webkitAudioContext)());if(a.state==='suspended')a.resume();const base={tick:740,soft:520,alert:880}[Notif.prefs.tone]||740,vol=Math.max(0,Math.min(100,Notif.prefs.volume))/100*.16;[0,1].forEach(i=>{const o=a.createOscillator(),g=a.createGain(),at=a.currentTime+i*.18;o.type=Notif.prefs.tone==='soft'?'sine':'square';o.frequency.setValueAtTime(i?base*1.22:base,at);g.gain.setValueAtTime(0.0001,at);g.gain.exponentialRampToValueAtTime(vol,at+.018);g.gain.exponentialRampToValueAtTime(0.0001,at+(urgent?.15:.10));o.connect(g);g.connect(a.destination);o.start(at);o.stop(at+(urgent?.16:.11))})}catch(e){}},
   blink(){if(Notif.blinkT)return;let on=false;Notif.blinkT=setInterval(()=>{document.title=(on=!on)?'█ NOUVEAU MESSAGE █':Notif.baseTitle},900);window.addEventListener('focus',()=>{clearInterval(Notif.blinkT);Notif.blinkT=null;document.title=Notif.baseTitle},{once:true})},
   offer(){const strip=$('#notif-permission');if(!strip)return;if(!('Notification' in window)||Notification.permission!=='default')return;strip.classList.remove('hidden')},
-  async request(){await Notif.ask();if(Notification.permission==='granted'){toast('>> NOTIFICATIONS ACTIVEES');$('#notif-permission')?.classList.add('hidden')}else toast('!! AUTORISATION DE NOTIFICATION REFUSEE OU INDISPONIBLE')},
-  show(title,body,chatId,isActive){if(!Notif.enabled)return;if(isActive){Notif.beep();if(Notif.prefs.vibrate)navigator.vibrate?.(20);toast('>> NOUVEAU MESSAGE — '+String(title).toUpperCase());return}if(Notif.prefs.vibrate)navigator.vibrate?.([25,35,25]);if(document.hidden)Notif.blink();if('Notification' in window&&Notification.permission==='granted'){try{const n=new Notification('▣ '+String(title).toUpperCase(),{body:String(body).slice(0,120),tag:chatId,silent:true,renotify:false});n.onclick=()=>{window.focus();UI.openChat(chatId);n.close()}}catch(e){}}}
+  async request(){await Notif.ask();if(Notification.permission==='granted'){Notif.beep(true);toast('>> NOTIFICATIONS ACTIVEES — SIGNAL DE TEST EMIS');$('#notif-permission')?.classList.add('hidden')}else toast('!! AUTORISATION DE NOTIFICATION REFUSEE OU INDISPONIBLE : VERIFIEZ LES REGLAGES DU NAVIGATEUR')},
+  show(title,body,chatId,isActive){if(!Notif.enabled)return;const visible=document.visibilityState==='visible';if(visible){Notif.beep(true);if(Notif.prefs.vibrate)navigator.vibrate?.([30,45,30]);toast('>> NOUVEAU MESSAGE — '+String(title).toUpperCase())}else{if(Notif.prefs.vibrate)navigator.vibrate?.([30,45,30]);Notif.blink()}if('Notification' in window&&Notification.permission==='granted'){try{const n=new Notification('▣ '+String(title).toUpperCase(),{body:String(body).slice(0,120),tag:chatId,renotify:true,silent:false});n.onclick=()=>{window.focus();UI.openChat(chatId);n.close()}}catch(e){if(!visible)toast('>> NOUVEAU MESSAGE — '+String(title).toUpperCase())}}}
 };
 const PWA={init(){
   const icon='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#060606"/><text x="50" y="64" font-size="40" fill="#d8cfae" font-family="monospace" text-anchor="middle">▣</text></svg>');
