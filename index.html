@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-rvVA3wyglrvBdEhoOoLuZfC8t0VQrkarT9JKztB2iEo=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob: mediastream:; connect-src wss: https: blob:; worker-src blob:; manifest-src blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-mvxyiIG4g+724mG7y6mfLs3f69VhtlKLHOLfNUipuRw=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob: mediastream:; connect-src wss: https: blob:; worker-src blob:; manifest-src blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
 <meta name="theme-color" content="#060606">
 <title>MESHCHAT // TERMINAL NOSTR-MESH</title>
 <style>
@@ -47,7 +47,7 @@ pre{white-space:pre-wrap;word-break:break-word}
 .ob-demo .l{margin:7px 0;line-height:1.5}
 .ob-demo .in2{color:var(--beige)}.ob-demo .out2{text-align:right;color:var(--bright)}
 .ob-demo .meta2{font-size:.62rem;color:var(--dim)}
-#ob-mesh{width:100%;height:220px;border:2px solid var(--ink);background:#060606;display:block}
+#ob-mesh{width:100%;height:220px;border:2px solid var(--ink);background:#060606;display:block;border-radius:16px;box-shadow:10px 10px 0 rgba(0,0,0,.12);animation:terminalFloat 5s ease-in-out infinite}
 .ob-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
 @media(max-width:560px){.ob-grid{grid-template-columns:1fr}}
 .ob-grid div{border:1px solid var(--ink);padding:10px;font-size:.74rem;line-height:1.55}
@@ -219,6 +219,30 @@ details>*:not(summary){margin-top:10px}
 @media(max-width:560px){#msgs{padding:14px 10px;gap:10px}.bubble{max-width:94%;padding:13px 52px 12px 13px;border-radius:13px!important}.msg-menu{min-width:min(250px,calc(100vw - 16px))}.bubble .actions{top:8px;right:8px;min-width:37px;min-height:37px}.compose{padding:8px 8px}.icon-btn{min-height:35px}.chat-head{padding:8px}.chat-head .avatar{width:34px;height:34px}}
 
 .qr-help{font-size:.66rem;color:var(--dim);line-height:1.65;margin-top:10px}
+/* ===== INTERFACE MODERNE / TERMINAL PARCHEMIN ===== */
+:root{--radius-sm:9px;--radius-md:15px;--radius-lg:22px;--shadow:0 16px 42px rgba(0,0,0,.28);--glass:rgba(16,15,12,.78)}
+html[data-theme="light"]{--black:#ece5d6;--panel:#f7f1e4;--panel2:#e6ddcc;--bright:#231e15;--beige:#514632;--dim:#756b5b;--dim2:#b9ad96;--border:1px solid #c7bba5;--glass:rgba(247,241,228,.86);--shadow:0 16px 42px rgba(67,55,36,.16)}
+html[data-theme="light"] #topbar,html[data-theme="light"] .sb-head,html[data-theme="light"] .tabs,html[data-theme="light"] .chat-head,html[data-theme="light"] #chat-search,html[data-theme="light"] #reply-bar,html[data-theme="light"] .compose,html[data-theme="light"] .msg-menu,html[data-theme="light"] .voice-player,html[data-theme="light"] .toast,html[data-theme="light"] .modal-head,html[data-theme="light"] .code-box{background:#f8f2e6;color:#231e15}
+html[data-theme="light"] input,html[data-theme="light"] textarea,html[data-theme="light"] select,html[data-theme="light"] .bubble.in,html[data-theme="light"] .bubble.out,html[data-theme="light"] .voice-play{background:#fffaf0;color:#231e15}
+html[data-theme="light"] #msgs{background-color:#ede5d5;background-image:radial-gradient(rgba(50,40,25,.10) 1px,transparent 1px)}
+html[data-theme="light"] .bubble .actions,html[data-theme="light"] .reacts span{background:#f8f2e6;color:#231e15}
+html[data-theme="light"] .tab.active{background:#332b20;color:#fff9eb}
+button,.avatar,.row,.modal,.bubble,.voice-player,.stat-card,details{border-radius:var(--radius-sm)!important}
+button{min-height:38px;border-color:var(--dim2);font-weight:700;letter-spacing:.7px;transition:transform .16s ease,background .16s,color .16s,border-color .16s,box-shadow .16s}
+button:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(0,0,0,.16)}button:active{transform:translateY(0) scale(.98);box-shadow:none}
+.icon-btn{border:1px solid transparent;border-radius:9px!important;min-width:34px;display:inline-flex;align-items:center;justify-content:center}.icon-btn:hover{border-color:var(--dim2)}
+#topbar{background:linear-gradient(90deg,#050505,#14120d,#050505);padding:9px 15px;font-size:.65rem;letter-spacing:1.15px}
+#sidebar{background:linear-gradient(180deg,var(--panel),var(--black));box-shadow:10px 0 34px rgba(0,0,0,.12);z-index:3}.sb-head{padding:13px 14px;background:var(--glass);backdrop-filter:blur(12px)}
+#my-name{font-size:.79rem!important;font-weight:800;letter-spacing:1.4px!important}.avatar{border-radius:13px!important;background:linear-gradient(145deg,#1c1a14,#070706);box-shadow:inset 0 0 0 1px rgba(255,255,255,.03);transition:transform .28s ease,box-shadow .28s ease}.row:hover .avatar{transform:rotateY(10deg) rotateX(-4deg) scale(1.04);box-shadow:0 8px 20px rgba(0,0,0,.28)}
+.tabs{padding:7px 8px;gap:5px;background:transparent;border-bottom:none}.tab{border:1px solid transparent;border-radius:9px!important;padding:9px 5px;font-weight:700;transition:.18s}.tab:hover{background:var(--panel2);color:var(--bright)}.tab.active{box-shadow:0 4px 15px rgba(0,0,0,.16)}
+.search-bar{padding:8px 13px;border-bottom:none}.search-bar input{border-radius:10px!important;background:rgba(0,0,0,.22)}.row{margin:2px 7px;padding:12px 10px;border-bottom:none;transition:background .18s,transform .18s}.row:hover{transform:translateX(2px);background:var(--panel2)}.row .name{font-size:.85rem;font-weight:800;letter-spacing:1.05px}.row .sub{font-size:.7rem;margin-top:5px}
+#net-panel{display:none!important}#main{background:radial-gradient(circle at 78% 12%,rgba(216,207,174,.07),transparent 28%),var(--black)}#main-empty{animation:terminalFloat 6s ease-in-out infinite}.chat-head{padding:12px 15px;background:var(--glass);backdrop-filter:blur(14px);box-shadow:0 6px 18px rgba(0,0,0,.11)}.chat-head .name{font-size:.94rem;font-weight:850;letter-spacing:1.6px}.chat-head .presence{font-size:.66rem;margin-top:4px}.compose{padding:11px 13px calc(11px + env(safe-area-inset-bottom));background:var(--glass);backdrop-filter:blur(14px)}.compose textarea{border-radius:14px!important;min-height:42px;padding:11px 13px}.send-btn{border-radius:12px!important;background:var(--beige);color:var(--black);border-color:var(--beige);min-width:70px}.send-btn:hover{background:var(--bright);border-color:var(--bright)}
+.modal-bg{backdrop-filter:blur(7px)}.modal{border-radius:var(--radius-lg)!important;border-color:var(--beige);box-shadow:var(--shadow)}.modal-head{border-radius:var(--radius-lg)!important}.modal-body{padding:18px}.stat-card{background:rgba(255,255,255,.025);transition:transform .2s,background .2s}.stat-card:hover{transform:translateY(-2px);background:var(--panel2)}details{border-color:var(--dim2);background:rgba(255,255,255,.018)}summary{padding:2px 0;font-weight:700}
+.theme-switch{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:7px;background:var(--panel2);border-radius:12px!important}.theme-switch button{min-height:38px;font-size:.68rem;border-radius:8px!important;color:var(--dim);border-color:transparent}.theme-switch button.active{background:var(--beige);color:var(--black);box-shadow:0 3px 12px rgba(0,0,0,.18)}
+@keyframes terminalFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}@keyframes terminalIn{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}@keyframes pulseRing{0%,100%{box-shadow:0 0 0 0 rgba(216,207,174,.0)}50%{box-shadow:0 0 0 5px rgba(216,207,174,.10)}}
+#chat-view:not(.hidden){animation:terminalIn .24s ease both}.avatar.lg{animation:pulseRing 3s ease infinite}.fab{border-radius:13px!important;box-shadow:var(--shadow)}
+@media(max-width:760px){#topbar{display:none}#sidebar{min-width:0}.sb-head{padding:11px 12px;position:sticky;top:0;z-index:4}.tabs{position:sticky;top:60px;z-index:3;background:var(--panel)}#main{inset:0;top:0;z-index:50;transition:transform .26s cubic-bezier(.2,.8,.2,1)}#main.open{box-shadow:-14px 0 38px rgba(0,0,0,.28)}.chat-head{padding:10px 11px}.chat-head .name{font-size:.84rem}.chat-head .icon-btn{padding:6px;min-width:32px}.row{margin:3px 6px;padding:12px 9px}.compose{gap:6px;padding:9px 9px calc(9px + env(safe-area-inset-bottom))}.compose .prompt{display:none}.compose textarea{font-size:.88rem}.send-btn{min-width:54px;padding:10px 8px}.modal-bg{padding:9px}.modal{max-height:94vh}.modal-body{padding:14px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
 </style>
 </head>
 <body>
@@ -3956,7 +3980,8 @@ const Modal={
       <details><summary>▤ SAUVEGARDE / MIGRATION</summary>
         <button class="btn-sm" id="exp-keys" style="width:100%">[ EXPORT ACCOUNT KEYS ]</button>
         <p class="dim" style="font-size:.64rem">>> CONTIENT VOTRE CLE PRIVEE SECP256K1 + CONTACTS + GROUPES. A PROTEGER.</p></details>
-      <details><summary>⚙ PREFERENCES</summary>
+      <details open><summary>⚙ PREFERENCES D’INTERFACE</summary>
+        <div class="field"><label>APPARENCE</label><div class="theme-switch"><button type="button" class="${Theme.mode==='dark'?'active':''}" id="theme-dark">◐ SOMBRE</button><button type="button" class="${Theme.mode==='light'?'active':''}" id="theme-light">☼ CLAIR</button></div></div>
         <label class="check-row"><input type="checkbox" id="set-notif" ${Notif.enabled?'checked':''}>NOTIFICATIONS SYSTEME</label><label class="check-row"><input type="checkbox" id="set-notif-sound" ${Notif.prefs.sound?'checked':''}>SIGNAL SONORE DANS L’APPLICATION</label><label class="check-row"><input type="checkbox" id="set-notif-vibrate" ${Notif.prefs.vibrate?'checked':''}>VIBRATION COURTE</label><div class="range-row"><label>VOLUME</label><input id="set-notif-volume" type="range" min="0" max="100" value="${Notif.prefs.volume}"><output id="notif-volume-out">${Notif.prefs.volume}</output></div><div class="field"><label>SON</label><select id="set-notif-tone"><option value="tick" ${Notif.prefs.tone==='tick'?'selected':''}>TICK</option><option value="soft" ${Notif.prefs.tone==='soft'?'selected':''}>DOUX</option><option value="alert" ${Notif.prefs.tone==='alert'?'selected':''}>ALERTE</option></select></div><button class="btn-sm" id="notif-test" style="width:100%">[TESTER LE SIGNAL]</button><label class="check-row"><input type="checkbox" id="set-p2p" ${S.allowP2P?'checked':''}>AUTORISER LE P2P / APPELS DIRECTS (VOTRE IP PEUT ETRE VISIBLE PAR LE PAIR)</label><button class="btn-sm" id="ask-notif" style="width:100%">[AUTORISER LES NOTIFICATIONS SYSTEME]</button><p class="dim" style="font-size:.62rem;line-height:1.6">Le son d’une notification système est contrôlé par Android/iOS. Ici, vous réglez seulement le signal de l’application au premier plan ; les alertes système sont silencieuses pour ne pas apparaître comme de la musique.</p></details>
       <details><summary>▣ DEVERROUILLAGE BIOMETRIQUE</summary><p class="dim" id="bio-status" style="font-size:.64rem;line-height:1.6">VERIFICATION DE LA COMPATIBILITE BIOMETRIQUE…</p><button class="btn-sm" id="bio-enroll" style="width:100%">[ ACTIVER FACE ID / EMPREINTE ]</button><button class="btn-sm btn-danger" id="bio-remove" style="width:100%;margin-top:8px">[ SUPPRIMER LA BIOMETRIE ]</button></details>
       <details><summary style="color:var(--red)">⚠ ZONE DE DESTRUCTION</summary>
@@ -3989,6 +4014,7 @@ const Modal={
       a.href=URL.createObjectURL(new Blob([JSON.stringify(encrypted)],{type:'application/json'}));
       a.download='meshchat_backup_chiffree_'+S.me.pub.slice(0,8)+'.json';a.click();URL.revokeObjectURL(a.href);
       toast('>> SAUVEGARDE CHIFFREE GENEREE')};
+    $('#theme-dark').onclick=async()=>{await Theme.set('dark');Modal.settings()};$('#theme-light').onclick=async()=>{await Theme.set('light');Modal.settings()};
     $('#set-notif').onchange=e=>{Notif.enabled=e.target.checked;DB.kvSet('notif',Notif.enabled)};$('#set-notif-sound').onchange=e=>{Notif.prefs.sound=e.target.checked;Notif.save()};$('#set-notif-vibrate').onchange=e=>{Notif.prefs.vibrate=e.target.checked;Notif.save()};$('#set-notif-volume').oninput=e=>{$('#notif-volume-out').textContent=e.target.value;Notif.prefs.volume=+e.target.value;Notif.save()};$('#set-notif-tone').onchange=e=>{Notif.prefs.tone=e.target.value;Notif.save()};$('#notif-test').onclick=()=>{Notif.beep();if(Notif.prefs.vibrate)navigator.vibrate?.(20)};
     $('#set-p2p').onchange=e=>{S.allowP2P=e.target.checked;DB.kvSet('allowP2P',S.allowP2P);if(!S.allowP2P){for(const[,p]of S.peers)try{p.pc.close()}catch(err){};toast('>> P2P DESACTIVE — RELAIS UNIQUEMENT')}};
     $('#ask-notif').onclick=()=>Notif.ask();
@@ -4017,6 +4043,12 @@ async function addPeer(pub,name,alias,cap=''){
   toast(r?'>> INVITATION EMISE VIA '+(r==='p2p'?'P2P':'RELAIS'):'>> INVITATION EN FILE — LIVREE A SA CONNEXION');
   UI.openChat(pub);
 }
+const Theme={
+  mode:'dark',
+  apply(mode){Theme.mode=mode==='light'?'light':'dark';document.documentElement.dataset.theme=Theme.mode;const meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.content=Theme.mode==='light'?'#ece5d6':'#060606'},
+  async load(){Theme.apply((await DB.kvGet('theme'))||'dark')},
+  async set(mode){Theme.apply(mode);await DB.kvSet('theme',Theme.mode)}
+};
 function renderMe(){
   {const avatar=Safe.image(S.me.avatar);$('#my-avatar').innerHTML=avatar?`<img src="${esc(avatar)}" alt="">`:esc(S.me.name[0].toUpperCase());}
   $('#my-name').textContent=S.me.name.toUpperCase();
@@ -4095,6 +4127,7 @@ function initOnboard(){
    APP PRINCIPALE
    ================================================================ */
 async function enterApp(){
+  await Theme.load();
   $('#onboard').classList.add('hidden');
   $('#app').classList.remove('hidden');
   renderMe();
@@ -4107,7 +4140,6 @@ async function enterApp(){
   await Notif.load();
   await Invite.ensure();
   UI.renderChatList();UI.renderCommList();UI.renderCallList();UI.renderStatusList();
-  startMesh($('#mesh-canvas'),()=>S.peers.size);
   startSyncLines();
   await ICECFG.load();
   Nostr.init();
