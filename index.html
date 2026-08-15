@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-uG+c7vK5Rf6WZpu1vKqY6p+sY+o+a3FJCXdTnF0zcMA=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob: mediastream:; connect-src wss: https: blob:; worker-src 'self' blob:; manifest-src 'self' blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-RUx7W99ym7w7JWdjg0GDqRiWdUyrFJqALTLqxbmu8xs=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob: mediastream:; connect-src wss: https: blob:; worker-src 'self' blob:; manifest-src 'self' blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
 <meta name="theme-color" content="#060606">
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="application-name" content="MeshChat">
@@ -250,6 +250,15 @@ button:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(0,0,0,.16)}bu
 #chat-view:not(.hidden){animation:terminalIn .24s ease both}.avatar.lg{animation:pulseRing 3s ease infinite}.fab{border-radius:13px!important;box-shadow:var(--shadow)}
 @media(max-width:760px){#topbar{display:none}#sidebar{min-width:0}.sb-head{padding:11px 12px;position:sticky;top:0;z-index:4}.tabs{position:sticky;top:60px;z-index:3;background:var(--panel)}#main{inset:0;top:0;z-index:50;transition:transform .26s cubic-bezier(.2,.8,.2,1)}#main.open{box-shadow:-14px 0 38px rgba(0,0,0,.28)}.chat-head{padding:10px 11px}.chat-head .name{font-size:.84rem}.chat-head .icon-btn{padding:6px;min-width:32px}.row{margin:3px 6px;padding:12px 9px}.compose{gap:6px;padding:9px 9px calc(9px + env(safe-area-inset-bottom))}.compose .prompt{display:none}.compose textarea{font-size:.88rem}.send-btn{min-width:54px;padding:10px 8px}.modal-bg{padding:9px}.modal{max-height:94vh}.modal-body{padding:14px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+/* ===== CARTES NFC + DETAILS D’INTERFACE ===== */
+.nav-action{gap:6px;padding:7px 9px!important;font-size:.62rem!important;min-width:auto!important}.nav-action span{font-size:1rem;line-height:1;color:var(--beige);transition:transform .22s ease}.nav-action b{font-weight:800;letter-spacing:.7px}.nav-action:hover span{transform:rotate(18deg) scale(1.13)}.nav-contact{border-color:rgba(216,207,174,.28)!important;background:rgba(216,207,174,.055)}
+.chat-action{width:37px;height:37px;padding:0!important;font-size:1.15rem!important;border-radius:12px!important;background:rgba(216,207,174,.045)}.compose-action{width:42px;height:42px;padding:0!important;font-size:1.25rem!important;border-radius:13px!important;background:rgba(216,207,174,.07)}
+.online-dot.p2p{box-shadow:0 0 0 3px rgba(244,238,218,.12),0 0 16px rgba(244,238,218,.52);animation:meshPulse 1.9s ease-in-out infinite}.online-dot.relay{box-shadow:0 0 11px rgba(216,207,174,.28)}
+.nfc-card{position:relative;overflow:hidden;border:1px solid var(--beige);border-radius:18px!important;background:linear-gradient(135deg,rgba(216,207,174,.11),rgba(7,7,6,.36));padding:16px;margin:12px 0;box-shadow:inset 0 1px 0 rgba(255,255,255,.07)}.nfc-card::before{content:'';position:absolute;width:145px;height:145px;border:1px solid rgba(216,207,174,.18);border-radius:50%;right:-52px;top:-63px;box-shadow:0 0 0 15px rgba(216,207,174,.025),0 0 0 30px rgba(216,207,174,.018)}.nfc-card h4{margin:0 0 6px!important;position:relative}.nfc-card p{position:relative;font-size:.67rem;line-height:1.6;color:var(--dim);max-width:360px}.nfc-actions{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.nfc-actions button{min-height:48px;border-radius:12px!important;font-size:.69rem}.nfc-actions .nfc-write{background:var(--beige);color:var(--black);border-color:var(--beige)}.nfc-chip{display:inline-flex;gap:7px;align-items:center;border:1px solid var(--dim2);border-radius:999px!important;padding:4px 9px;color:var(--beige);font-size:.58rem;letter-spacing:.7px;margin-top:6px}.nfc-chip i{width:7px;height:7px;background:var(--beige);border-radius:50%;box-shadow:0 0 10px var(--beige)}
+.nfc-scan-stage{display:flex;min-height:205px;align-items:center;justify-content:center;text-align:center;border:1px dashed var(--dim);border-radius:16px!important;background:radial-gradient(circle,rgba(216,207,174,.1),transparent 60%);padding:22px}.nfc-wave{display:flex;gap:6px;justify-content:center;margin:11px 0}.nfc-wave span{width:4px;height:22px;border-radius:6px;background:var(--beige);animation:nfcWave 1s ease-in-out infinite}.nfc-wave span:nth-child(2){animation-delay:.12s;height:34px}.nfc-wave span:nth-child(3){animation-delay:.24s;height:46px}.nfc-wave span:nth-child(4){animation-delay:.36s;height:34px}.nfc-wave span:nth-child(5){animation-delay:.48s}
+@keyframes meshPulse{50%{transform:scale(1.18);box-shadow:0 0 0 5px rgba(244,238,218,0),0 0 20px rgba(244,238,218,.68)}}@keyframes nfcWave{50%{transform:scaleY(.35);opacity:.35}}
+html[data-theme="light"] .nfc-card{background:linear-gradient(135deg,rgba(81,70,50,.11),rgba(255,250,240,.75))}html[data-theme="light"] .chat-action,html[data-theme="light"] .compose-action{background:rgba(81,70,50,.08)}
+@media(max-width:760px){.nav-action{width:37px;height:37px;padding:0!important}.nav-action b{display:none}.nav-action span{font-size:1.05rem}.nfc-actions{grid-template-columns:1fr}.nfc-card{padding:14px}.chat-action{width:35px;height:35px;font-size:1.05rem!important}}
 </style>
 </head>
 <body>
@@ -352,9 +361,9 @@ KEY STORAGE ...... COFFRE CHIFFRE LOCAL (INDEXEDDB) — JAMAIS TRANSMIS</pre>
           <div class="avatar" id="my-avatar">?</div>
           <div style="font-size:.72rem;letter-spacing:1px;overflow:hidden;text-overflow:ellipsis" id="my-name"></div>
         </div>
-        <button class="icon-btn" id="btn-add-contact">[+PEER]</button>
-        <button class="icon-btn" id="btn-new-group">[+GRP]</button>
-        <button class="icon-btn" id="btn-settings">[CFG]</button>
+        <button class="icon-btn nav-action nav-contact" id="btn-add-contact" title="Ajouter un contact" aria-label="Ajouter un contact"><span aria-hidden="true">✦</span><b>CONTACT</b></button>
+        <button class="icon-btn nav-action" id="btn-new-group" title="Créer un groupe" aria-label="Créer un groupe"><span aria-hidden="true">◈</span><b>GROUPE</b></button>
+        <button class="icon-btn nav-action" id="btn-settings" title="Ouvrir les réglages" aria-label="Ouvrir les réglages"><span aria-hidden="true">⚙</span><b>RÉGLAGES</b></button>
       </div>
       <div class="tabs">
         <div class="tab active" data-tab="chats">MSG<span class="cnt hidden" id="cnt-chats"></span></div>
@@ -390,15 +399,15 @@ KEY STORAGE ...... COFFRE CHIFFRE LOCAL (INDEXEDDB) — JAMAIS TRANSMIS</pre>
           <button class="icon-btn" id="back-btn">[&lt;]</button>
           <div class="avatar" id="ch-avatar">?</div>
           <div class="info" id="ch-info"><div class="name" id="ch-name"></div><div class="presence" id="ch-presence"></div></div>
-          <button class="icon-btn" id="btn-find">[FND]</button>
-          <button class="icon-btn" id="btn-call-audio">[TEL]</button>
-          <button class="icon-btn" id="btn-call-video">[VID]</button>
+          <button class="icon-btn chat-action" id="btn-find" title="Rechercher" aria-label="Rechercher">⌕</button>
+          <button class="icon-btn chat-action" id="btn-call-audio" title="Appel audio" aria-label="Appel audio">☎</button>
+          <button class="icon-btn chat-action" id="btn-call-video" title="Appel vidéo" aria-label="Appel vidéo">◉</button>
         </div>
         <div id="chat-search" class="hidden"><input id="cs-input" placeholder="> FILTRER LES MESSAGES_"><span id="cs-count"></span><button class="icon-btn" id="cs-close">[X]</button></div>
         <div id="msgs"></div>
         <div id="reply-bar" class="hidden"><div class="quote" id="reply-quote"></div><button class="icon-btn" id="reply-cancel">[X]</button></div>
         <div class="compose">
-          <button class="icon-btn" id="btn-attach">[FILE]</button>
+          <button class="icon-btn compose-action" id="btn-attach" title="Joindre un fichier" aria-label="Joindre un fichier">＋</button>
           <input type="file" id="file-input" class="hidden" multiple>
           <span class="prompt" id="prompt-char">&gt;</span>
           <textarea id="msg-input" rows="1" maxlength="5000" placeholder="MESSAGE_ (*gras* _italique_ ~barre~)"></textarea>
@@ -2944,6 +2953,24 @@ const Invite={
     if(!existing||existing.expiresAt<=now())await DB.put('invites',{id:S.me.inviteCap,createdAt:now(),expiresAt:now()+30*86400000,uses:0,maxUses:1});
   }
 };
+const NFC={
+  controller:null,
+  supported(){return window.isSecureContext&&'NDEFReader' in window},
+  stop(){try{NFC.controller?.abort()}catch(e){}NFC.controller=null},
+  explain(err){const name=String(err?.name||'');if(name==='NotAllowedError')return 'NFC REFUSE : ACTIVEZ NFC ET AUTORISEZ CHROME';if(name==='NotSupportedError')return 'NFC INDISPONIBLE SUR CET APPAREIL';if(name==='AbortError')return 'LECTURE NFC ANNULEE';return 'OPERATION NFC IMPOSSIBLE'},
+  async write(invite){
+    if(!NFC.supported())throw Error('NFC INDISPONIBLE : UTILISEZ LE QR');
+    NFC.stop();const ndef=new NDEFReader();
+    await ndef.write({records:[{recordType:'url',data:invite}]});
+  },
+  async scan(onInvite){
+    if(!NFC.supported())throw Error('NFC INDISPONIBLE : UTILISEZ LE QR');
+    NFC.stop();const controller=new AbortController();NFC.controller=controller;const ndef=new NDEFReader();
+    ndef.onreadingerror=()=>toast('!! TAG NFC NON LISIBLE OU NON NDEF');
+    ndef.onreading=e=>{try{for(const r of e.message.records){if(r.recordType!=='url'&&r.recordType!=='text')continue;const raw=new TextDecoder(r.encoding||'utf-8').decode(r.data);if(Invite.parse(raw)){NFC.stop();navigator.vibrate?.([18,35,18]);onInvite(raw);return}}toast('!! CARTE NFC MESHCHAT INVALIDE')}catch(err){toast('!! LECTURE NFC INVALIDE')}};
+    await ndef.scan({signal:controller.signal});
+  }
+};
 const QR={
   draw(canvas,value){
     const code=qrcode(0,'M');code.addData(value,'Byte');code.make();
@@ -3780,7 +3807,7 @@ const Modal={
     bg.onclick=e=>{if(e.target===bg)Modal.close()};
     return bg;
   },
-  close(){QRScan.stop();$('#modal')?.remove()},
+  close(){QRScan.stop();try{NFC.stop()}catch(e){}$('#modal')?.remove()},
 
   addContact(){
     const invite=Invite.url();
@@ -3792,7 +3819,8 @@ const Modal={
         <button class="btn-sm" id="copy-id">[COPIER MON ID]</button>
         <button class="btn-sm" id="copy-invite">[COPIER MA CARTE]</button>
         <button class="btn-sm" id="scan-qr">[SCANNER UN QR]</button></div>
-      <h4>2 · COLLER UNE CARTE OU UN MESH ID</h4>
+      <div class="nfc-card"><h4>2 · CARTE NFC</h4><p>Écrivez votre carte de contact sur un tag NFC, ou lisez une carte NFC existante. Chaque carte utilise la même capacité limitée que le QR.</p><div class="nfc-chip"><i></i>NFC NDEF · CHROME ANDROID · HTTPS</div><div class="nfc-actions"><button class="nfc-write" id="write-nfc">⌁ ÉCRIRE MA CARTE</button><button id="scan-nfc">⌁ LIRE UNE CARTE</button></div></div>
+      <h4>3 · COLLER UNE CARTE OU UN MESH ID</h4>
       <input id="peer-id-in" autocomplete="off" placeholder="QR, lien #invite=… ou 64 caracteres hex">
       <div class="field" style="margin-top:10px"><label>ALIAS LOCAL (OPTIONNEL)</label>
         <input id="peer-alias" maxlength="30" placeholder="EX: AGENT_BRAVO"></div>
@@ -3809,6 +3837,8 @@ const Modal={
     };
     $('#copy-id').onclick=()=>{navigator.clipboard?.writeText(S.me.pub);toast('>> ID COPIE')};
     $('#copy-invite').onclick=()=>{navigator.clipboard?.writeText(invite);toast('>> CARTE QR COPIEE')};
+    $('#write-nfc').onclick=async()=>{try{toast('>> APPROCHEZ UN TAG NFC NDEF');await NFC.write(invite);navigator.vibrate?.([25,45,25]);toast('>> CARTE MESHCHAT ECRITE SUR LE TAG NFC')}catch(err){toast('!! '+NFC.explain(err))}};
+    $('#scan-nfc').onclick=async()=>{try{Modal.open('// LIRE UNE CARTE NFC',`<div class="nfc-scan-stage"><div><div class="nfc-wave"><span></span><span></span><span></span><span></span><span></span></div><h4>APPROCHEZ LA CARTE NFC</h4><p class="qr-help">Gardez MeshChat ouvert et rapprochez un tag NFC NDEF. Le QR reste disponible pour l’échange immédiat entre deux téléphones.</p></div></div><button class="btn-sm" id="nfc-cancel" style="width:100%;margin-top:10px">[ANNULER]</button>`);$('#nfc-cancel').onclick=()=>Modal.close();await NFC.scan(value=>{Modal.close();Modal.addContact();setTimeout(()=>accept(value),30)})}catch(err){toast('!! '+NFC.explain(err))}};
     $('#do-add').onclick=()=>accept($('#peer-id-in').value);
     $('#scan-qr').onclick=async()=>{
       try{
