@@ -18,7 +18,7 @@ La première livraison doit synchroniser **l’identité, les contacts, les grou
 
 Les fragments sont chiffrés individuellement avec AES-GCM, à partir d’une sous-clé dérivée par HKDF de la clé de reprise, de l’identifiant de snapshot et du numéro de fragment. Chaque manifeste est signé par la clé de synchronisation. Ainsi, un relais ne peut ni lire un bloc ni fabriquer un manifeste valide ; il peut néanmoins supprimer, retenir ou rejouer des blocs, raison pour laquelle Threnyx requiert plusieurs destinations et vérifie les numéros de version.
 
-La logique de convergence est volontairement simple pour la première version : un appareil produit un snapshot immuable numéroté et n’écrase jamais ses fragments. Le manifeste adressable désigne la dernière version observée. Les conflits sont détectés lorsque deux manifestes valides ont le même parent et sont alors présentés comme deux branches à choisir, jamais fusionnés silencieusement. Cette approche évite de prétendre offrir un CRDT complet alors que les médias, suppressions et clés exigent une politique de conflit explicite.
+La logique de convergence reste volontairement simple pour cette première version : un appareil publie des snapshots immuables numérotés et la récupération retient toujours la version la plus élevée ; l horodatage ne départage que deux manifestes de même version. Il n existe pas encore de détection de branches par parent ni de résolution de conflit interactive. Deux appareils publiant depuis des états périmés peuvent donc produire des snapshots concurrents : publiez depuis la copie la plus récente et considérez la synchronisation automatique multi-écrivains comme hors périmètre de cette version.
 
 ## Relais, IPFS et Hypercore
 
@@ -30,7 +30,7 @@ IPFS / Helia n’est pas retenu comme stockage de base : l’adressage de conten
 
 Le tag NDEF contient un paquet compact `TCV1` : version, pubkey de synchronisation, clé privée de synchronisation, clé de reprise et identifiant d’époque. Ce paquet ne contient ni messages ni contacts ni nom de l’utilisateur. Après scan, le nouvel appareil recherche les manifestes signés par la pubkey de synchronisation, télécharge les fragments chiffrés depuis plusieurs relais, les vérifie, restaure le coffre local puis demande la création d’une **nouvelle** protection biométrique.
 
-> Un tag NDEF grand public est un objet à possession : il peut être lu et cloné. La biométrie créée sur le nouveau téléphone protège seulement la copie restaurée ; elle ne rend pas le scan initial plus secret. Perdre ou faire copier cette clé équivaut à perdre une clé de récupération. La première version doit exiger une confirmation explicite et recommander deux tags conservés séparément, ainsi qu’une sauvegarde chiffrée hors NFC.
+> Un tag NDEF grand public est un objet à possession : il peut être lu et cloné. La biométrie créée sur le nouveau téléphone protège seulement la copie restaurée ; elle ne rend pas le scan initial plus secret. Perdre ou faire copier cette clé équivaut à perdre une clé de récupération. L écriture d une clé de récupération exige désormais une réauthentification locale puis une seconde pression dans une fenêtre courte. Conservez deux tags séparés et une sauvegarde chiffrée hors NFC.
 
 La rotation crée une nouvelle époque, une nouvelle paire de synchronisation et une nouvelle clé de reprise. Elle empêche toute lecture des snapshots futurs avec l’ancien tag, mais ne peut pas rendre illisibles les snapshots déjà récupérés par une personne ayant copié le tag. Une vraie révocation contre un vol ancien impose donc de changer d’identité ou d’accepter que les données publiées avant la rotation restent récupérables par l’ancienne clé.
 
@@ -55,7 +55,7 @@ La rotation crée une nouvelle époque, une nouvelle paire de synchronisation et
 | Quorum de réplication | Validé | Un fragment chiffré puis un manifeste ont reçu la confirmation demandée de plusieurs relais actifs. |
 | Recherche de manifeste | Validée | Le manifeste NIP-78 signé par la clé de synchronisation a été retrouvé et déchiffré à partir de la clé de reprise. |
 | Vérification de contenu | Validée | Le fragment récupéré a été déchiffré, recomposé et son SHA-256 correspondait à l’empreinte du manifeste. |
-| Paquet de clé NFC | Validé en simulation | Le paquet `TCV1` a une longueur de 97 caractères, a été reconstruit sans perte et a restitué la même clé de synchronisation. L’écriture/lecture d’un tag physique reste à valider sur Chrome Android. |
+| Paquet de clé NFC | Validé sur tag physique Chrome Android | Le paquet TCV1 de 97 caractères a été écrit, lu puis utilisé pour une restauration complète de bout en bout. |
 | Restauration nouvel appareil | Validée en simulation isolée | Une origine locale sans coffre a restauré l’identité de contrôle depuis les relais, créé un nouveau coffre protégé par phrase secrète et ouvert l’application restaurée. |
 | Clé de récupération altérée | Validée | Une clé de reprise aléatoire ne pouvait pas déchiffrer le manifeste pourtant retrouvé avec la même clé publique de synchronisation. |
 | Confidentialité de l’événement | Validée sur l’échantillon de contrôle | Les contenus Nostr récupérés ne contenaient pas en clair le nom de l’identité de contrôle ; ils étaient constitués des champs de boîte chiffrée. |
