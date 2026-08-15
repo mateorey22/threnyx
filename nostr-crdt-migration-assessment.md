@@ -4,6 +4,8 @@
 
 Threnyx utilise désormais **NIP-17** pour les nouveaux messages persistants. Cette construction standard associe une rumeur de kind 14, le chiffrement versionné de **NIP-44 v2**, un seal, puis un gift wrap de kind 1059 selon **NIP-59**. Le lecteur conserve le format chiffré historique en repli : les conversations existantes ne sont donc pas rendues illisibles par la mise à niveau. Les primitives `nip44` et `nip59` de `nostr-tools` 2.24.1 sont embarquées localement dans le script protégé par CSP ; aucun CDN ou script cryptographique distant n’est requis au moment de l’utilisation.[1] [2] [3] [4]
 
+L’envoi ne bascule pas aveuglément vers NIP-17. Les profils et messages `hello` des appareils v17 annoncent la capacité `nip17` en plus de `legacy`, dans des champs optionnels ignorables par les appareils précédents. Tant qu’un contact n’a pas annoncé `nip17`, Threnyx conserve l’enveloppe historique ; après une annonce réciproque, les nouveaux messages persistants utilisent NIP-17. Cette négociation progressive protège les contacts existants contre une migration unilatérale.
+
 | Élément | Comportement v17 | Limite à connaître |
 |---|---|---|
 | Nouveaux messages persistants | Écriture NIP-17/NIP-44/NIP-59 lorsque les primitives sont disponibles | L’interopérabilité dépend aussi des relais et clients du correspondant. |

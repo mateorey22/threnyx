@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-1hRkfYdjA37/ET9uFEvjvbrcwq0IjHu4YtEkzZo9X0w=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob: mediastream:; connect-src wss: https: blob:; worker-src 'self' blob:; manifest-src 'self' blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-K+Rvr1lELmthjTXgMNQyp1QMZmEvjBa/gnTltZlbfqA=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob: mediastream:; connect-src wss: https: blob:; worker-src 'self' blob:; manifest-src 'self' blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
 <meta name="theme-color" content="#060606">
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="application-name" content="Threnyx">
@@ -2931,7 +2931,8 @@ const Gate={
     $('#gate-pass')?.addEventListener('click',()=>open(Vault.unlock));$('#gate-bio')?.addEventListener('click',()=>open(Bio.unlock));
   },
 };
-const MYPROFILE=()=>({name:S.me.name,bio:S.me.bio,avatar:Safe.image(S.me.avatar),fingerprint:S.me.pub});
+const NOSTR_PROTOCOLS=()=>globalThis.ThrenyxNostr?.wrapManyEvents?['legacy','nip17']:['legacy'];
+const MYPROFILE=()=>({name:S.me.name,bio:S.me.bio,avatar:Safe.image(S.me.avatar),fingerprint:S.me.pub,protocols:NOSTR_PROTOCOLS()});
 const onlineState=id=>S.allowP2P&&S.peers.has(id)?2:(now()-(S.contacts.get(id)?.relaySeen||0)<75000?1:0);
 
 const Invite={
@@ -3152,7 +3153,8 @@ const Nostr={
   },
   /* MESSAGES PERSISTANTS : NIP-17 (NIP-44 v2 + NIP-59). Les appels temps réel conservent le format éphémère historique. */
   async wrapSend(toPub,payload,eph=false){
-    if(!eph&&globalThis.ThrenyxNostr?.wrapManyEvents){
+    const negotiated=S.contacts.get(toPub)?.protocols?.includes('nip17')===true;
+    if(!eph&&negotiated&&globalThis.ThrenyxNostr?.wrapManyEvents){
       const rumor={kind:14,tags:[['p',toPub]],content:JSON.stringify(payload)};
       const wraps=ThrenyxNostr.wrapManyEvents(rumor,Hex.from(S.me.priv),[toPub]);let sent=0;
       for(const wrap of wraps)sent=Math.max(sent,Nostr.publish(wrap));
@@ -3369,12 +3371,13 @@ const ROUTE={
     if(!known&&p.t==='hello'&&Safe.CAP(p.cap)){
       const invitation=await DB.get('invites',p.cap);
       if(invitation&&invitation.expiresAt>now()&&invitation.uses===0&&invitation.maxUses===1){const profile=Safe.profile(p.profile);if(!profile)return;
-        const c0={id:from,name:profile.name||('NODE_'+from.slice(0,8).toUpperCase()),localName:'',bio:profile.bio,avatar:profile.avatar,lastSeen:0,relaySeen:now(),unread:0,lastMsg:'',lastTs:0,pin:false,expire:0,fingerprint:from,keyAlert:null};
+        const protocols=Array.isArray(p.protocols)?p.protocols.filter(v=>v==='legacy'||v==='nip17').slice(0,2):['legacy'];
+        const c0={id:from,name:profile.name||('NODE_'+from.slice(0,8).toUpperCase()),localName:'',bio:profile.bio,avatar:profile.avatar,lastSeen:0,relaySeen:now(),unread:0,lastMsg:'',lastTs:0,pin:false,expire:0,fingerprint:from,keyAlert:null,protocols:protocols.length?protocols:['legacy']};
         S.contacts.set(from,c0);await DB.put('contacts',c0);invitation.uses=1;await DB.put('invites',invitation);known=true;toast('>> PAIR AJOUTE VIA CARTE QR');UI.renderChatList();
       }
     }
     if(!known)return;
-    const c=S.contacts.get(from);c.relaySeen=now();await DB.put('contacts',c);
+    const c=S.contacts.get(from);c.relaySeen=now();if(Array.isArray(p.protocols)){const protocols=p.protocols.filter(v=>v==='legacy'||v==='nip17').slice(0,2);if(protocols.length)c.protocols=protocols}await DB.put('contacts',c);
     switch(p.t){
       case 'chunk':{
         if(!/^[0-9a-f]{10}$/i.test(p.cid)||!Number.isInteger(p.i)||!Number.isInteger(p.n)||p.n<1||p.n>20||p.i<0||p.i>=p.n||typeof p.part!=='string'||p.part.length>45000)return;
@@ -3388,7 +3391,7 @@ const ROUTE={
         await KeyGuard.profile(c,from,profile);
         Object.assign(c,{name:profile.name||c.name,bio:profile.bio,avatar:profile.avatar});
         await DB.put('contacts',c);UI.renderChatList();UI.refreshChatHead();
-        if(!p.ack){sendPayload(from,{t:'hello',ack:true,profile:MYPROFILE()});toast('>> PAIR VERIFIE: '+String(c.name).toUpperCase())}
+        if(!p.ack){sendPayload(from,{t:'hello',ack:true,profile:MYPROFILE(),protocols:NOSTR_PROTOCOLS()});toast('>> PAIR VERIFIE: '+String(c.name).toUpperCase())}
         LINK.ensure(from);break}
       case 'presence':if(S.allowP2P)LINK.ensure(from);UI.refreshChatHead();break;
       case 'typing':if(S.allowP2P)S.typing.set(from,p.on===true?now():0);UI.refreshChatHead();break;
@@ -4147,8 +4150,8 @@ const Modal={
       const f=$('#set-avatar').files[0];
       if(f)S.me.avatar=await compressImage(f,140,.7);
       await Vault.save(S.me);renderMe();
-      for(const[cid]of S.contacts){const r=await sendPayload(cid,{t:'profile',...MYPROFILE()});
-        if(!r)Outbox.add(cid,{t:'profile',...MYPROFILE()})}
+      for(const[cid]of S.contacts){const profile={t:'profile',...MYPROFILE(),protocols:NOSTR_PROTOCOLS()},r=await sendPayload(cid,profile);
+        if(!r)Outbox.add(cid,profile)}
       toast('>> PROFIL PROPAGE');Modal.close()};
     $('#turn-save').onclick=()=>ICECFG.save($('#turn-urls').value,$('#turn-user').value,$('#turn-cred').value);$('#bio-enroll').onclick=async()=>{try{await Bio.enroll();Modal.settings()}catch(e){toast('!! '+String(e.message||'BIOMETRIE INDISPONIBLE').toUpperCase())}};$('#bio-remove').onclick=()=>Bio.remove();Bio.capability().then(ok=>{const st=$('#bio-status');if(st)st.textContent=ok?'COMPATIBLE : ACTIVEZ FACE ID / EMPREINTE POUR CE COFFRE.':'BIOMETRIE INDISPONIBLE ICI : OUVREZ L’APP EN HTTPS DANS CHROME ANDROID OU SAFARI IOS.'});
     $$('[data-rdel]').forEach(b=>b.onclick=async()=>{
@@ -4194,7 +4197,7 @@ async function addPeer(pub,name,alias,cap=''){
     S.contacts.set(pub,c);await DB.put('contacts',c);
   }else if(alias){const c=S.contacts.get(pub);c.localName=alias;await DB.put('contacts',c)}
   UI.renderChatList();
-  const hello={t:'hello',ack:false,profile:MYPROFILE(),cap:Safe.CAP(cap)?cap:undefined};
+  const hello={t:'hello',ack:false,profile:MYPROFILE(),protocols:NOSTR_PROTOCOLS(),cap:Safe.CAP(cap)?cap:undefined};
   const r=await sendPayload(pub,hello);
   if(!r)Outbox.add(pub,hello);
   sendPayload(pub,{t:'presence'},{eph:true});
@@ -4206,7 +4209,7 @@ const PWA={
   standalone(){return matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true},
   async init(){
     if(!('serviceWorker' in navigator)||!window.isSecureContext)return;
-    try{PWA.registration=await navigator.serviceWorker.register('./service-worker.js?v=17',{scope:'./',updateViaCache:'none'});await PWA.registration.update();await navigator.serviceWorker.ready;let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!reloaded){reloaded=true;location.reload()}})}catch(e){}
+    try{PWA.registration=await navigator.serviceWorker.register('./service-worker.js?v=18',{scope:'./',updateViaCache:'none'});await PWA.registration.update();await navigator.serviceWorker.ready;let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!reloaded){reloaded=true;location.reload()}})}catch(e){}
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();PWA.deferred=e;PWA.refreshUI()});
     window.addEventListener('appinstalled',()=>{PWA.deferred=null;PWA.refreshUI();toast('>> THRENYX INSTALLE COMME APPLICATION')});
   },
