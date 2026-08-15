@@ -25,6 +25,8 @@ La version 17 intègre **Yjs 13.6.32** sous forme de bundle local minifié d’e
 
 Lors d’une récupération NFC, Threnyx lit maintenant jusqu’à quatre manifestes distincts, télécharge les snapshots complets vérifiés, puis applique les updates Yjs de toutes les branches compatibles. Cette fusion concerne les contacts, groupes et préférences ; elle n’exige pas de serveur central et tolère l’arrivée des branches dans un ordre différent. Un test navigateur a confirmé la fusion d’un contact et d’un groupe créés sur deux branches concurrentes, avec un update final Yjs exploitable.
 
+Le test d’intégration local v18 couvre également le chemin de stockage : deux snapshots concurrents sont encodés avec Yjs, chiffrés par dérivation distincte de fragment, signés comme événements Nostr kind 78, vérifiés, relus avec `readBundle`, puis fusionnés. Il ne remplace pas une revalidation complète avec un tag NFC physique et plusieurs relais publics ; cette dernière reste un contrôle à effectuer avant d’élargir la promesse de récupération multi-branches.
+
 | Donnée | Politique v17 | Raisonnement |
 |---|---|---|
 | Contacts et groupes | Fusion CRDT Yjs par identifiant | Évite d’écraser les ajouts indépendants faits hors ligne. |
