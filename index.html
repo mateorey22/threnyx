@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-quFgEMPmiASAMr13cQVZoyfG2HPYSSgakuooVDNxNBo=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob: mediastream:; connect-src wss: https: blob:; worker-src 'self' blob:; manifest-src 'self' blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-cLClwzN3f63uV/MZ9wFqfi7RZDwiDV5CxAJs/EZgkYo=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob: mediastream:; connect-src wss: https: blob:; worker-src 'self' blob:; manifest-src 'self' blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
 <meta name="theme-color" content="#060606">
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="application-name" content="MeshChat">
@@ -2941,8 +2941,12 @@ const onlineState=id=>S.allowP2P&&S.peers.has(id)?2:(now()-(S.contacts.get(id)?.
 
 const Invite={
   url:()=>`${location.origin}${location.pathname}#invite=${S.me.pub}:${encodeURIComponent(S.me.name)}:${S.me.inviteCap}`,
+  // Format NDEF compact : environ 105 octets avec l’enveloppe texte, compatible avec les petits tags NTAG213 (144 octets utiles).
+  nfc:()=>`MC1:${S.me.pub}:${S.me.inviteCap}`,
   parse:raw=>{
     const val=String(raw||'').trim();
+    const compact=val.match(/^MC1:([0-9a-f]{64}):([0-9a-f]{32})$/i);
+    if(compact)return {pub:compact[1].toLowerCase(),name:'',cap:compact[2].toLowerCase()};
     const m=val.match(/#invite=([0-9a-f]{64})(?::([^:&\s]+))?(?::([0-9a-f]{32}))?/i);
     if(!m)return null;let name='';try{name=m[2]?decodeURIComponent(m[2]):''}catch(e){return null}
     return {pub:m[1].toLowerCase(),name:Safe.text(name,30),cap:(m[3]||'').toLowerCase()};
@@ -2954,21 +2958,33 @@ const Invite={
   }
 };
 const NFC={
-  controller:null,
+  controller:null,token:0,
   supported(){return window.isSecureContext&&'NDEFReader' in window},
-  stop(){try{NFC.controller?.abort()}catch(e){}NFC.controller=null},
-  explain(err){const name=String(err?.name||'');if(name==='NotAllowedError')return 'NFC REFUSE : ACTIVEZ NFC ET AUTORISEZ CHROME';if(name==='NotSupportedError')return 'NFC INDISPONIBLE SUR CET APPAREIL';if(name==='AbortError')return 'LECTURE NFC ANNULEE';return 'OPERATION NFC IMPOSSIBLE'},
-  async write(invite){
+  stop(){NFC.token++;try{NFC.controller?.abort()}catch(e){}NFC.controller=null},
+  explain(err,mode='scan'){
+    const name=String(err?.name||'');const write=mode==='write';
+    if(name==='NotAllowedError')return write?'ECRITURE REFUSEE : TAG VERROUILLE, PROTEGE OU ACCES NFC REFUSE':'NFC REFUSE : ACTIVEZ NFC ET AUTORISEZ CHROME';
+    if(name==='NotSupportedError')return write?'TAG OU ADAPTATEUR NON COMPATIBLE AVEC L’ECRITURE NDEF':'NFC INDISPONIBLE SUR CET APPAREIL';
+    if(name==='NotReadableError')return 'NFC OCCUPE : FERMEZ LES AUTRES APPLIS UTILISANT LE NFC';
+    if(name==='NetworkError')return write?'TAG RETIRE TROP VITE : GARDEZ-LE IMMOBILE UNE SECONDE':'CONNEXION NFC INTERROMPUE';
+    if(name==='DataError')return write?'TAG TROP PETIT OU FORMAT NDEF INVALIDE':'DONNEE NFC INVALIDE';
+    if(name==='AbortError')return write?'ECRITURE NFC ANNULEE — REESSAYEZ SANS QUITTER LA FENETRE':'LECTURE NFC ANNULEE';
+    return write?'ECRITURE NFC IMPOSSIBLE':'OPERATION NFC IMPOSSIBLE';
+  },
+  async write(card){
     if(!NFC.supported())throw Error('NFC INDISPONIBLE : UTILISEZ LE QR');
-    NFC.stop();const ndef=new NDEFReader();
-    await ndef.write({records:[{recordType:'url',data:invite}]});
+    // Annule une éventuelle écoute précédente ; cette écriture reste directement liée au clic utilisateur.
+    NFC.stop();const token=++NFC.token;const controller=new AbortController();NFC.controller=controller;const ndef=new NDEFReader();
+    try{
+      await ndef.write({records:[{recordType:'text',data:card,lang:'fr'}]},{overwrite:true,signal:controller.signal});
+    }finally{if(NFC.token===token)NFC.controller=null}
   },
   async scan(onInvite){
     if(!NFC.supported())throw Error('NFC INDISPONIBLE : UTILISEZ LE QR');
-    NFC.stop();const controller=new AbortController();NFC.controller=controller;const ndef=new NDEFReader();
-    ndef.onreadingerror=()=>toast('!! TAG NFC NON LISIBLE OU NON NDEF');
-    ndef.onreading=e=>{try{for(const r of e.message.records){if(r.recordType!=='url'&&r.recordType!=='text')continue;const raw=new TextDecoder(r.encoding||'utf-8').decode(r.data);if(Invite.parse(raw)){NFC.stop();navigator.vibrate?.([18,35,18]);onInvite(raw);return}}toast('!! CARTE NFC MESHCHAT INVALIDE')}catch(err){toast('!! LECTURE NFC INVALIDE')}};
-    await ndef.scan({signal:controller.signal});
+    NFC.stop();const token=++NFC.token;const controller=new AbortController();NFC.controller=controller;const ndef=new NDEFReader();
+    ndef.onreadingerror=()=>{if(NFC.token===token)toast('!! TAG NFC NON LISIBLE OU NON NDEF')};
+    ndef.onreading=e=>{if(NFC.token!==token)return;try{for(const r of e.message.records){if(r.recordType!=='url'&&r.recordType!=='text')continue;const raw=new TextDecoder(r.encoding||'utf-8').decode(r.data);if(Invite.parse(raw)){NFC.stop();navigator.vibrate?.([18,35,18]);onInvite(raw);return}}toast('!! CARTE NFC MESHCHAT INVALIDE')}catch(err){toast('!! LECTURE NFC INVALIDE')}};
+    try{await ndef.scan({signal:controller.signal})}catch(err){if(!(NFC.token!==token&&err?.name==='AbortError'))throw err}
   }
 };
 const QR={
@@ -3813,7 +3829,7 @@ const Modal={
     const invite=Invite.url();
     Modal.open('// AJOUTER UN PAIR',`
       <h4>1 · CARTE NFC OU QR</h4>
-      <div class="nfc-card nfc-priority"><h4>⌁ ÉCHANGE VIA CARTE NFC</h4><p>Posez une carte/tag NFC sur le téléphone pour l’écrire ou la lire. Le QR reste disponible juste en dessous.</p><div class="nfc-chip"><i></i>NFC NDEF · CHROME ANDROID · HTTPS</div><div class="nfc-actions"><button class="nfc-write" id="write-nfc">⌁ ÉCRIRE MA CARTE NFC</button><button id="scan-nfc">⌁ LIRE UNE CARTE NFC</button></div></div>
+      <div class="nfc-card nfc-priority"><h4>⌁ ÉCHANGE VIA CARTE NFC</h4><p>Écrivez une carte MeshChat compacte sur votre tag NFC ou lisez-en une. L’écriture remplace le lien déjà présent ; le QR reste disponible juste en dessous.</p><div class="nfc-chip"><i></i>NFC NDEF · CHROME ANDROID · HTTPS</div><div class="nfc-actions"><button class="nfc-write" id="write-nfc">⌁ ÉCRIRE MA CARTE NFC</button><button id="scan-nfc">⌁ LIRE UNE CARTE NFC</button></div></div>
       <canvas id="qr-canvas" aria-label="QR code de contact"></canvas>
       <div class="code-box" id="my-id-box">${S.me.pub}</div>
       <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
@@ -3837,7 +3853,7 @@ const Modal={
     };
     $('#copy-id').onclick=()=>{navigator.clipboard?.writeText(S.me.pub);toast('>> ID COPIE')};
     $('#copy-invite').onclick=()=>{navigator.clipboard?.writeText(invite);toast('>> CARTE QR COPIEE')};
-    $('#write-nfc').onclick=async()=>{try{toast('>> APPROCHEZ UN TAG NFC NDEF');await NFC.write(invite);navigator.vibrate?.([25,45,25]);toast('>> CARTE MESHCHAT ECRITE SUR LE TAG NFC')}catch(err){toast('!! '+NFC.explain(err))}};
+    $('#write-nfc').onclick=async e=>{const button=e.currentTarget;if(button.disabled)return;button.disabled=true;try{toast('>> APPROCHEZ LE TAG — LE LIEN ACTUEL SERA REMPLACE');await NFC.write(Invite.nfc());navigator.vibrate?.([25,45,25]);toast('>> CARTE MESHCHAT ECRITE SUR LE TAG')}catch(err){toast('!! '+NFC.explain(err,'write'))}finally{button.disabled=false}};
     $('#scan-nfc').onclick=async()=>{try{Modal.open('// LIRE UNE CARTE NFC',`<div class="nfc-scan-stage"><div><div class="nfc-wave"><span></span><span></span><span></span><span></span><span></span></div><h4>APPROCHEZ LA CARTE NFC</h4><p class="qr-help">Gardez MeshChat ouvert et rapprochez un tag NFC NDEF. Le QR reste disponible pour l’échange immédiat entre deux téléphones.</p></div></div><button class="btn-sm" id="nfc-cancel" style="width:100%;margin-top:10px">[ANNULER]</button>`);$('#nfc-cancel').onclick=()=>Modal.close();await NFC.scan(value=>{Modal.close();Modal.addContact();setTimeout(()=>accept(value),30)})}catch(err){toast('!! '+NFC.explain(err))}};
     $('#do-add').onclick=()=>accept($('#peer-id-in').value);
     $('#scan-qr').onclick=async()=>{
@@ -4074,7 +4090,7 @@ const PWA={
   standalone(){return matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true},
   async init(){
     if(!('serviceWorker' in navigator)||!window.isSecureContext)return;
-    try{PWA.registration=await navigator.serviceWorker.register('./service-worker.js?v=4',{scope:'./',updateViaCache:'none'});await PWA.registration.update();await navigator.serviceWorker.ready;let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!reloaded){reloaded=true;location.reload()}})}catch(e){}
+    try{PWA.registration=await navigator.serviceWorker.register('./service-worker.js?v=5',{scope:'./',updateViaCache:'none'});await PWA.registration.update();await navigator.serviceWorker.ready;let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!reloaded){reloaded=true;location.reload()}})}catch(e){}
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();PWA.deferred=e;PWA.refreshUI()});
     window.addEventListener('appinstalled',()=>{PWA.deferred=null;PWA.refreshUI();toast('>> MESHCHAT INSTALLE COMME APPLICATION')});
   },
