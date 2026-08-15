@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-cLClwzN3f63uV/MZ9wFqfi7RZDwiDV5CxAJs/EZgkYo=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob: mediastream:; connect-src wss: https: blob:; worker-src 'self' blob:; manifest-src 'self' blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-6WqoRhTcwI7jmI6PodkpSpClslIaT99nIVg+A38vh2s=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob: mediastream:; connect-src wss: https: blob:; worker-src 'self' blob:; manifest-src 'self' blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
 <meta name="theme-color" content="#060606">
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="application-name" content="MeshChat">
@@ -63,6 +63,9 @@ pre{white-space:pre-wrap;word-break:break-word}
 .field label{display:block;font-size:.68rem;letter-spacing:2px;margin-bottom:5px;text-transform:uppercase}
 .ob-profile{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
 .ob-profile .form{flex:1;min-width:240px}
+/* ===== ONBOARDING GUIDE — TERMINAL PARCHEMIN, PARCOURS EN CARTES ===== */
+#onboard{background:radial-gradient(circle at 82% 10%,rgba(216,207,174,.17),transparent 32%),var(--black);display:grid;place-items:center;padding:22px;overflow-y:auto}
+.ob-flow{width:min(100%,560px);margin:auto;color:var(--bright)}.ob-flow-head{display:flex;align-items:center;gap:12px;margin:0 0 24px}.ob-flow-mark{display:grid;place-items:center;width:44px;height:44px;border:1px solid var(--beige);border-radius:13px;color:var(--beige);font-size:1.25rem;background:rgba(216,207,174,.08);box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}.ob-flow-head b{font-size:.82rem;letter-spacing:2px}.ob-flow-head p{margin:3px 0 0;color:var(--dim);font-size:.58rem;letter-spacing:1px}.ob-progress{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:15px}.ob-progress span{height:4px;background:var(--dim2);border-radius:5px;transition:background .25s ease}.ob-progress span.active{background:var(--beige)}.ob-step{display:none;border:1px solid rgba(216,207,174,.35);border-radius:20px;background:linear-gradient(145deg,rgba(21,21,18,.98),rgba(9,9,8,.98));padding:clamp(23px,6vw,37px);box-shadow:0 22px 55px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.055)}.ob-step.active{display:block;animation:onboardIn .32s cubic-bezier(.23,1,.32,1) both}.ob-kicker{display:flex;align-items:center;gap:8px;color:var(--beige);font-size:.61rem;letter-spacing:1.3px}.ob-kicker i{width:25px;height:1px;background:var(--beige)}.ob-step h1{margin:17px 0 11px;font-size:clamp(1.72rem,7vw,2.55rem);line-height:1;letter-spacing:-1.5px}.ob-step>p{margin:0;color:var(--dim);font-size:.78rem;line-height:1.65}.ob-step .field{margin-top:20px}.ob-step input{min-height:47px;border-radius:11px!important;background:rgba(216,207,174,.06)!important;color:var(--bright)!important;border:1px solid var(--dim2)!important}.ob-step input:focus{outline:0;border-color:var(--beige)!important;box-shadow:0 0 0 3px rgba(216,207,174,.08)}.ob-avatar-row{display:flex;align-items:center;gap:13px;padding:13px;border:1px dashed var(--dim);border-radius:13px;margin-top:14px}.ob-avatar-row #ob-ascii{display:grid;place-items:center;width:40px;height:40px;overflow:hidden;border-radius:10px;background:var(--paper2);color:var(--ink);font-size:1rem}.ob-avatar-row #ob-ascii img{width:100%;height:100%;object-fit:cover}.ob-avatar-row label{display:block;color:var(--bright);font-size:.69rem;letter-spacing:.7px}.ob-avatar-row small{display:block;margin-top:4px;color:var(--dim);font-size:.6rem}.ob-avatar-row input{display:none}.ob-file-btn{display:inline-flex!important;align-items:center;justify-content:center;min-height:32px!important;padding:0 10px!important;border:1px solid var(--dim)!important;border-radius:8px!important;color:var(--beige)!important;font-size:.6rem!important;letter-spacing:.5px;white-space:nowrap}.ob-actions{display:flex;gap:9px;margin-top:28px}.ob-actions button{flex:1;min-height:48px;border-radius:12px!important;font-size:.68rem;letter-spacing:.5px}.ob-actions .primary{background:var(--beige);color:var(--black);border-color:var(--beige)}.ob-actions .back{flex:0 0 auto;width:48px;background:transparent;color:var(--beige);border-color:var(--dim)}.ob-choice{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;width:100%;margin-top:14px;padding:16px;border:1px solid var(--dim2);border-radius:14px;text-align:left;background:rgba(216,207,174,.025);color:var(--bright);transition:transform .18s ease,border-color .18s ease,background .18s ease}.ob-choice:hover{transform:translateY(-2px);border-color:var(--dim)}.ob-choice.selected{border-color:var(--beige);background:rgba(216,207,174,.09)}.ob-choice .choice-icon{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;background:rgba(216,207,174,.1);color:var(--beige);font-size:1rem}.ob-choice b{display:block;font-size:.76rem;letter-spacing:.4px}.ob-choice small{display:block;margin-top:4px;color:var(--dim);font-size:.6rem;line-height:1.45}.ob-choice .choice-state{width:11px;height:11px;border:1px solid var(--dim);border-radius:50%}.ob-choice.selected .choice-state{background:var(--beige);border-color:var(--beige);box-shadow:0 0 0 3px rgba(216,207,174,.12)}.ob-security-note{display:flex;gap:10px;margin-top:19px;padding:12px;border-left:2px solid var(--beige);background:rgba(216,207,174,.05);color:var(--dim);font-size:.64rem;line-height:1.55}.ob-security-note b{color:var(--bright)}.ob-import-link{display:block;width:max-content;max-width:100%;margin:18px auto 0;background:transparent!important;border:0!important;color:var(--dim)!important;font-size:.61rem!important;letter-spacing:.55px;text-decoration:underline;text-underline-offset:4px}.ob-import-link:hover{color:var(--beige)!important}.ob-device-note{margin-top:18px;padding:13px;border:1px solid var(--dim2);border-radius:12px;color:var(--dim);font-size:.63rem;line-height:1.55}.ob-device-note strong{color:var(--bright)}@keyframes onboardIn{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:none}}@media(max-width:560px){#onboard{padding:15px}.ob-step{padding:24px 19px}.ob-flow-head{margin-bottom:17px}.ob-step h1{font-size:1.8rem}.ob-choice{padding:13px}.ob-actions{margin-top:22px}}
 #ob-ascii{border:2px solid var(--ink);width:120px;height:120px;display:flex;align-items:center;justify-content:center;font-size:2.6rem;background:var(--paper2);overflow:hidden}
 #ob-ascii img{width:100%;height:100%;object-fit:cover;image-rendering:pixelated;filter:grayscale(.5) contrast(1.3)}
 
@@ -265,87 +268,32 @@ html[data-theme="light"] .nfc-card{background:linear-gradient(135deg,rgba(81,70,
 
 <!-- ==================== ONBOARDING ==================== -->
 <div id="onboard">
-  <div class="ob-wrap">
-    <header class="ob-banner">
-      <div style="font-size:.62rem;letter-spacing:2px">┌──────────────────────────────────────────┐</div>
-      <h1>UNCLASSIFIED MESH NETWORK GUIDE</h1>
-      <div class="sub">DOC-REF: MC-2077-R2 // PROTOCOLE: NOSTR-MESH + NIP-59 GIFT WRAP + WEBRTC P2P</div>
-      <div style="font-size:.62rem;letter-spacing:2px">└──────────────────────────────────────────┘</div>
-    </header>
-    <p class="ob-hint">▼ ▼ ▼ FAITES DEFILER POUR PARCOURIR LE PROTOCOLE ▼ ▼ ▼</p>
-
-    <section class="ob-sec vis">
-      <span class="led">01</span>
-      <h2>// PHASES D'INTEGRATION — TOUT EST AUTOMATIQUE</h2>
-      <pre>[1] RELAY BOOTSTRAP ....... CONNEXION A UN POOL DE RELAIS NOSTR PUBLICS
-[2] AUTO-DISCOVERY ........ PRESENCE CHIFFREE → LES PAIRS SE TROUVENT SEULS
-[3] KEY HANDSHAKE ......... ECDH SECP256K1 + HKDF (X3DH-LITE ASYNCHRONE)
-[4] P2P UPGRADE ........... LIEN DIRECT NEGOCIE SI AUTORISE PAR LES PAIRS
-[5] OFFLINE DELIVERY ...... GIFT WRAPS STOCKES PAR LES RELAIS, RECUPERES
-                            A LA RECONNEXION — MESSAGERIE ASYNCHRONE</pre>
-      <p>Les relais Nostr sont des <b>boîtes aux lettres aveugles</b> : ils routent des
-      enveloppes signées par des clés jetables sans jamais connaître l'expéditeur réel,
-      le contenu, ni l'heure exacte. <b>Aucun scan de QR code, aucun échange manuel par appareil</b> :
-      un identifiant collé une seule fois suffit, tout le reste se négocie seul.</p>
+  <div class="ob-flow">
+    <header class="ob-flow-head"><div class="ob-flow-mark">⌁</div><div><b>MESHCHAT ///</b><p>VOTRE IDENTITÉ RESTE SUR VOTRE APPAREIL</p></div></header>
+    <div class="ob-progress" aria-label="Progression de la création"><span class="active"></span><span></span><span></span></div>
+    <section class="ob-step active" data-step="1">
+      <div class="ob-kicker"><i></i> ÉTAPE 1 SUR 3</div>
+      <h1>Créez votre identité.</h1><p>Choisissez le nom que vos contacts verront. Aucun numéro de téléphone n’est nécessaire.</p>
+      <div class="field"><label>VOTRE NOM D’AGENT</label><input id="ob-name" maxlength="30" autocomplete="nickname" placeholder="EX. SAM, MAYA, ALEX"></div>
+      <div class="field"><label>STATUT (FACULTATIF)</label><input id="ob-bio" maxlength="80" placeholder="DISPONIBLE SUR LE MAILLAGE"></div>
+      <div class="ob-avatar-row"><div id="ob-ascii">⌁</div><div style="flex:1"><label>AJOUTER UN PORTRAIT <small>Facultatif · traité uniquement sur cet appareil</small></label></div><label class="ob-file-btn" for="ob-avatar">CHOISIR</label><input type="file" id="ob-avatar" accept="image/*"></div>
+      <div class="ob-actions"><button class="primary" id="ob-next-profile">CONTINUER <span>→</span></button></div>
+      <button class="ob-import-link" id="ob-import">J’ai déjà une sauvegarde MeshChat</button>
     </section>
-
-    <section class="ob-sec">
-      <span class="led">02</span>
-      <h2>// MESSAGERIE — APERCU DU TERMINAL</h2>
-      <div class="ob-demo">
-        <div class="l meta2">── AUJOURD'HUI ──</div>
-        <div class="l in2">┌ AGENT_BRAVO<br>| PAQUET RECU HORS-LIGNE VIA 4 RELAIS. 👍 2<br>| <span class="meta2">14:02 · GIFT WRAP · AES-256</span></div>
-        <div class="l out2">CONFIRMATION. LIEN P2P AUTO-ETABLI. |<br><span class="meta2">14:03 · (EDITE) · [VU] ─┘</span></div>
-        <div class="l in2">┌ AGENT_DELTA<br>| ◈ IMAGE_0417.JPG — EPHEMERE 24H ⏱<br>| <span class="meta2">14:05</span></div>
-        <div class="l meta2">AGENT_BRAVO ECRIT…█</div>
-      </div>
-      <p style="margin-top:12px">Texte enrichi, citations, <b>réactions emoji</b>, <b>édition</b>,
-      <b>messages éphémères</b> (1h/24h/7j), notes vocales, fichiers, recherche dans la
-      conversation, conversations épinglées, accusés <b>[--] → [OK] → [VU]</b>.</p>
+    <section class="ob-step" data-step="2">
+      <div class="ob-kicker"><i></i> ÉTAPE 2 SUR 3</div>
+      <h1>Protégez votre coffre.</h1><p>Le déverrouillage est local. Rien n’est envoyé à MeshChat.</p>
+      <button class="ob-choice selected" id="ob-pick-bio"><span class="choice-icon">◉</span><span><b>Face ID ou empreinte</b><small>Le moyen le plus rapide. Votre appareil vous reconnaît à chaque ouverture.</small></span><i class="choice-state"></i></button>
+      <button class="ob-choice" id="ob-pick-pass"><span class="choice-icon">⌘</span><span><b>Phrase secrète</b><small>À utiliser si votre appareil ne propose pas de biométrie ou si vous préférez une autre méthode.</small></span><i class="choice-state"></i></button>
+      <div class="ob-security-note" id="ob-method-note"><span>⌁</span><span><b>Biométrie par défaut.</b><br>Votre empreinte ou votre visage ne quitte jamais l’appareil. Créez une sauvegarde chiffrée plus tard si vous souhaitez déplacer votre identité.</span></div>
+      <div class="ob-actions"><button class="back" id="ob-back-profile">←</button><button class="primary" id="ob-next-protection">CONTINUER <span>→</span></button></div>
     </section>
-
-    <section class="ob-sec">
-      <span class="led">03</span>
-      <h2>// SECURE REGENERATIVE KEY SEED</h2>
-      <div class="gibber" id="ob-gibber"></div>
-      <pre style="margin-top:12px">IDENTITY ......... SECP256K1 + SIGNATURES SCHNORR (BIP-340)
-KEY AGREEMENT .... ECDH SECP256K1 → HKDF-SHA256 → AES-GCM 256
-METADATA SHIELD .. GIFT WRAP (NIP-59) : CLE EPHEMERE JETABLE PAR
-                   ENVELOPPE + HORODATAGE EXTERIEUR BROUILLE
-KEY STORAGE ...... COFFRE CHIFFRE LOCAL (INDEXEDDB) — JAMAIS TRANSMIS</pre>
-      <p>Votre <b>MESH ID</b> est votre clé publique. Les relais ne voient que des
-      enveloppes anonymes adressées à cette clé. <b>[ EXPORT ACCOUNT KEYS ]</b> permet
-      la migration vers un autre terminal.</p>
-    </section>
-
-    <section class="ob-sec">
-      <span class="led">04</span>
-      <h2>// TOPOLOGIE DU MAILLAGE — TEMPS REEL</h2>
-      <canvas id="ob-mesh"></canvas>
-      <div class="ob-grid">
-        <div><b>[AUTO] DECOUVERTE</b>Balises de présence chiffrées : dès que deux pairs sont en ligne, le lien P2P direct s'établit seul.</div>
-        <div><b>[TEL/VID] APPELS</b>Sonnerie déclenchée via relais, flux média en P2P direct chiffré DTLS-SRTP. Plus besoin de lien préexistant.</div>
-        <div><b>[OFF] HORS-LIGNE</b>Messages, statuts et clés de groupe livrés même si le destinataire est déconnecté, via le stockage des relais.</div>
-        <div><b>[GRP] GROUPES SOUVERAINS</b>Etat répliqué membre à membre, opérations admin ordonnées par horloge de Lamport.</div>
-      </div>
-    </section>
-
-    <section class="ob-sec" id="ob-final">
-      <span class="led">05</span>
-      <h2>// GENERATION DE L'IDENTITE SOUVERAINE</h2>
-      <div class="ob-profile">
-        <div id="ob-ascii">▓▒░</div>
-        <div class="form">
-          <div class="field"><label>CODENAME / NOM D'AGENT</label><input id="ob-name" maxlength="30" placeholder="EX: AGENT_ALPHA"></div>
-          <div class="field"><label>BIO // SIGNAL D'IDENTIFICATION</label><input id="ob-bio" maxlength="80" placeholder="DISPONIBLE SUR LE MAILLAGE"></div>
-          <div class="field"><label>PORTRAIT (OPTIONNEL)</label><input type="file" id="ob-avatar" accept="image/*"></div>
-        </div>
-      </div>
-      <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
-        <button id="ob-create">[ GENERER MES CLES &amp; REJOINDRE LE MAILLAGE ]</button>
-        <button id="ob-import">[ IMPORT ACCOUNT KEYS ]</button>
-      </div>
-      <p style="font-size:.68rem;margin-top:12px;opacity:.7">>> CLE PRIVEE CHIFFREE DANS LE COFFRE LOCAL ET PROTEGEE PAR VOTRE PHRASE SECRETE.</p>
+    <section class="ob-step" data-step="3">
+      <div class="ob-kicker"><i></i> ÉTAPE 3 SUR 3</div>
+      <h1>Vous êtes prêt.</h1><p>MeshChat va créer vos clés localement, puis vous laisser entrer dans le réseau.</p>
+      <div class="ob-device-note" id="ob-ready-note"><strong>FACE ID / EMPREINTE</strong><br>Vous confirmerez l’activation avec la protection de votre téléphone. Ensuite, l’ouverture sera immédiate.</div>
+      <div class="ob-security-note"><span>◈</span><span><b>Important.</b><br>Exportez une sauvegarde chiffrée depuis les réglages si vous souhaitez restaurer cette identité sur un autre téléphone.</span></div>
+      <div class="ob-actions"><button class="back" id="ob-back-protection">←</button><button class="primary" id="ob-create">CRÉER MON COMPTE <span>→</span></button></div>
     </section>
   </div>
 </div>
@@ -2898,6 +2846,7 @@ const Vault={
   async deriveArgon(password,salt,params=Vault.params){return crypto.subtle.importKey('raw',await Vault.rawArgon(password,salt,params),'AES-GCM',false,['encrypt','decrypt'])},
   async derive(password,salt,kdf='ARGON2ID',params={}){return kdf==='PBKDF2-SHA-256'?Vault.derivePbkdf2(password,salt,params.iter||Vault.PBKDF_ITER):Vault.deriveArgon(password,salt,{...Vault.params,...params})},
   async create(me,password){if(typeof password!=='string'||password.length<12)throw Error('phrase secrète trop courte');const salt=crypto.getRandomValues(new Uint8Array(16));Vault.key=await Vault.derive(password,salt);Vault.salt=salt;Vault.kdf='ARGON2ID';Vault.params={time:2,mem:19456,parallelism:1,hashLen:32};S.localKey=Vault.key;await Vault.save(me);Vault.arm()},
+  async createDeviceOnly(me,raw){if(!(raw instanceof Uint8Array)||raw.length<16)throw Error('secret biométrique invalide');Vault.key=await crypto.subtle.importKey('raw',raw,'AES-GCM',false,['encrypt','decrypt']);Vault.salt=crypto.getRandomValues(new Uint8Array(16));Vault.kdf='DEVICE-BIOMETRIC';Vault.params={v:1};S.localKey=Vault.key;await Vault.save(me);Vault.arm()},
   async save(me=S.me){if(!Vault.key||!Vault.salt)throw Error('coffre verrouille');const box=await Crypto.encrypt(Vault.key,me);await DB.kvSet('vault',{v:4,kdf:Vault.kdf,params:Vault.params,salt:b64(Vault.salt),box})},
   async lock(reason='VERROUILLE'){clearTimeout(Vault.timer);Vault.key=null;Vault.salt=null;S.localKey=null;S.me=null;try{for(const[,p]of S.peers)p.pc.close()}catch(e){};location.reload()},
   pause(){clearTimeout(Vault.timer);Vault.timer=null},
@@ -2906,7 +2855,7 @@ const Vault={
   async throttle(){const s=(await DB.kvGet('unlockState'))||{fails:0,until:0};if(s.until>now()){const seconds=Math.ceil((s.until-now())/1000);throw Error('attendez '+seconds+' seconde(s) avant de réessayer')}return s},
   async fail(s){const fails=Math.min(8,(s.fails||0)+1),delay=Math.min(300000,1000*2**Math.min(fails,8));await DB.kvSet('unlockState',{fails,until:now()+delay})},
   async success(){await DB.kvSet('unlockState',{fails:0,until:0})},
-  async unlock(){const vault=await DB.kvGet('vault');if(!vault||!vault.salt||!vault.box)throw Error('coffre invalide');const state=await Vault.throttle();const pass=prompt('Déverrouillez votre identité avec votre phrase secrète :');if(!pass)throw Error('déverrouillage annulé');try{const salt=new Uint8Array(ub64(vault.salt)),legacy=vault.v===3&&vault.kdf==='PBKDF2-SHA-256',key=await Vault.derive(pass,salt,legacy?'PBKDF2-SHA-256':vault.kdf,legacy?{iter:vault.iter}:{...vault.params});const me=await Crypto.decrypt(key,vault.box);if(!me||!Safe.PUB(me.pub)||!(/^[0-9a-f]{64}$/i.test(me.priv))||Secp.getPub(me.priv)!==me.pub)throw Error('phrase secrète ou coffre invalide');await Vault.success();if(legacy){Vault.salt=crypto.getRandomValues(new Uint8Array(16));Vault.key=await Vault.derive(pass,Vault.salt);Vault.kdf='ARGON2ID';Vault.params={time:2,mem:19456,parallelism:1,hashLen:32};S.localKey=Vault.key;await Vault.save(me)}else{Vault.key=key;Vault.salt=salt;Vault.kdf=vault.kdf;Vault.params=vault.params||Vault.params;S.localKey=key}Vault.arm();return me}catch(e){await Vault.fail(state);throw e}},
+  async unlock(){const vault=await DB.kvGet('vault');if(!vault||!vault.salt||!vault.box)throw Error('coffre invalide');if(vault.kdf==='DEVICE-BIOMETRIC')throw Error('ce coffre est protégé par la biométrie de cet appareil');const state=await Vault.throttle();const pass=prompt('Déverrouillez votre identité avec votre phrase secrète :');if(!pass)throw Error('déverrouillage annulé');try{const salt=new Uint8Array(ub64(vault.salt)),legacy=vault.v===3&&vault.kdf==='PBKDF2-SHA-256',key=await Vault.derive(pass,salt,legacy?'PBKDF2-SHA-256':vault.kdf,legacy?{iter:vault.iter}:{...vault.params});const me=await Crypto.decrypt(key,vault.box);if(!me||!Safe.PUB(me.pub)||!(/^[0-9a-f]{64}$/i.test(me.priv))||Secp.getPub(me.priv)!==me.pub)throw Error('phrase secrète ou coffre invalide');await Vault.success();if(legacy){Vault.salt=crypto.getRandomValues(new Uint8Array(16));Vault.key=await Vault.derive(pass,Vault.salt);Vault.kdf='ARGON2ID';Vault.params={time:2,mem:19456,parallelism:1,hashLen:32};S.localKey=Vault.key;await Vault.save(me)}else{Vault.key=key;Vault.salt=salt;Vault.kdf=vault.kdf;Vault.params=vault.params||Vault.params;S.localKey=key}Vault.arm();return me}catch(e){await Vault.fail(state);throw e}},
   async encryptBackup(bundle){const pass=prompt('Définissez une phrase secrète d’au moins 12 caractères pour le fichier de sauvegarde :');if(!pass||pass.length<12){toast('!! SAUVEGARDE ANNULEE — PHRASE SECRETE TROP COURTE');return null}const confirmPass=prompt('Confirmez la phrase secrète de sauvegarde :');if(pass!==confirmPass){toast('!! SAUVEGARDE ANNULEE — PHRASES DIFFERENTES');return null}const salt=crypto.getRandomValues(new Uint8Array(16)),params={time:2,mem:19456,parallelism:1,hashLen:32},key=await Vault.derive(pass,salt,'ARGON2ID',params),box=await Crypto.encrypt(key,bundle);return {v:4,type:'meshchat-encrypted-backup',kdf:'ARGON2ID',params,salt:b64(salt),box}},
   async decryptBackup(text){const wrapped=JSON.parse(text);if(!wrapped||!wrapped.type?.startsWith('meshchat-encrypted-backup')||!wrapped.salt||!wrapped.box)throw Error('sauvegarde chiffrée requise');const pass=prompt('Phrase secrète de la sauvegarde :');if(!pass)throw Error('import annulé');const legacy=wrapped.v===3&&wrapped.kdf==='PBKDF2-SHA-256',key=await Vault.derive(pass,new Uint8Array(ub64(wrapped.salt)),legacy?'PBKDF2-SHA-256':wrapped.kdf,legacy?{iter:wrapped.iter}:{...wrapped.params}),bundle=await Crypto.decrypt(key,wrapped.box);if(!bundle||!bundle.me||!Safe.PUB(bundle.me.pub)||!(/^[0-9a-f]{64}$/i.test(bundle.me.priv))||Secp.getPub(bundle.me.priv)!==bundle.me.pub)throw Error('sauvegarde invalide');return {bundle,password:pass}}
 };
@@ -2917,23 +2866,24 @@ const Bio={
   rand:n=>crypto.getRandomValues(new Uint8Array(n)),
   async kek(prf,salt){const master=await crypto.subtle.importKey('raw',prf,'HKDF',false,['deriveKey']);return crypto.subtle.deriveKey({name:'HKDF',hash:'SHA-256',salt,info:enc8('meshchat/webauthn-prf/v1')},master,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])},
   async prfGet(conf){const credential=await navigator.credentials.get({publicKey:{challenge:Bio.rand(32),rpId:location.hostname,allowCredentials:[{type:'public-key',id:new Uint8Array(ub64(conf.credId))}],userVerification:'required',timeout:60000,extensions:{prf:{eval:{first:new Uint8Array(ub64(conf.prfSalt))}}}}});const first=credential?.getClientExtensionResults?.()?.prf?.results?.first;if(!first)throw Error('PRF biométrique non disponible');return new Uint8Array(first)},
-  async enroll(){if(!Bio.ready())throw Error('HTTPS REQUIS ET BIOMETRIE INDISPONIBLE DANS CE NAVIGATEUR');if(!(await Bio.capability()))throw Error('AUCUN AUTHENTIFICATEUR DE PLATEFORME DISPONIBLE');const vault=await DB.kvGet('vault');if(!vault?.salt||!vault?.box)throw Error('coffre introuvable');const pass=prompt('Confirmez votre phrase secrète pour activer Face ID / empreinte :');if(!pass)throw Error('activation annulée');const legacy=vault.v===3&&vault.kdf==='PBKDF2-SHA-256';const salt=new Uint8Array(ub64(vault.salt));let raw;if(legacy){const base=await crypto.subtle.importKey('raw',enc8(pass),'PBKDF2',false,['deriveBits']);raw=new Uint8Array(await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt,iterations:vault.iter||Vault.PBKDF_ITER},base,256))}else raw=await Vault.rawArgon(pass,salt,vault.params||Vault.params);const check=await Crypto.decrypt(await crypto.subtle.importKey('raw',raw,'AES-GCM',false,['decrypt']),vault.box);if(!check?.priv)throw Error('phrase secrète invalide');const cred=await navigator.credentials.create({publicKey:{challenge:Bio.rand(32),rp:{id:location.hostname,name:'MeshChat Local Vault'},user:{id:enc8(S.me.pub),name:'meshchat-'+S.me.pub.slice(0,12),displayName:S.me.name||'MeshChat'},pubKeyCredParams:[{type:'public-key',alg:-7}],authenticatorSelection:{authenticatorAttachment:'platform',residentKey:'required',userVerification:'required'},timeout:60000,attestation:'none',extensions:{prf:{}}}});if(!cred)throw Error('création biométrique annulée');const conf={v:1,credId:b64(new Uint8Array(cred.rawId)),prfSalt:b64(Bio.rand(32))};const prf=await Bio.prfGet(conf);const key=await Bio.kek(prf,new Uint8Array(ub64(conf.prfSalt)));conf.box=await Crypto.encrypt(key,{raw:b64(raw)});raw.fill(0);await DB.kvSet('biometric',conf);toast('>> FACE ID / EMPREINTE ACTIVEE POUR CE COFFRE')},
+  async enrollRaw(raw,me=S.me){if(!Bio.ready())throw Error('HTTPS REQUIS ET BIOMETRIE INDISPONIBLE DANS CE NAVIGATEUR');if(!(await Bio.capability()))throw Error('AUCUN AUTHENTIFICATEUR DE PLATEFORME DISPONIBLE');const secret=raw instanceof Uint8Array?raw:new Uint8Array(raw);const cred=await navigator.credentials.create({publicKey:{challenge:Bio.rand(32),rp:{id:location.hostname,name:'MeshChat Local Vault'},user:{id:enc8(me.pub),name:'meshchat-'+me.pub.slice(0,12),displayName:me.name||'MeshChat'},pubKeyCredParams:[{type:'public-key',alg:-7}],authenticatorSelection:{authenticatorAttachment:'platform',residentKey:'required',userVerification:'required'},timeout:60000,attestation:'none',extensions:{prf:{}}}});if(!cred)throw Error('création biométrique annulée');const conf={v:1,credId:b64(new Uint8Array(cred.rawId)),prfSalt:b64(Bio.rand(32))};const prf=await Bio.prfGet(conf);const key=await Bio.kek(prf,new Uint8Array(ub64(conf.prfSalt)));conf.box=await Crypto.encrypt(key,{raw:b64(secret)});await DB.kvSet('biometric',conf)},
+  async enroll(){if(!Bio.ready())throw Error('HTTPS REQUIS ET BIOMETRIE INDISPONIBLE DANS CE NAVIGATEUR');const vault=await DB.kvGet('vault');if(!vault?.salt||!vault?.box)throw Error('coffre introuvable');if(vault.kdf==='DEVICE-BIOMETRIC')throw Error('biométrie déjà requise pour ce coffre');const pass=prompt('Confirmez votre phrase secrète pour activer Face ID / empreinte :');if(!pass)throw Error('activation annulée');const legacy=vault.v===3&&vault.kdf==='PBKDF2-SHA-256';const salt=new Uint8Array(ub64(vault.salt));let raw;if(legacy){const base=await crypto.subtle.importKey('raw',enc8(pass),'PBKDF2',false,['deriveBits']);raw=new Uint8Array(await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt,iterations:vault.iter||Vault.PBKDF_ITER},base,256))}else raw=await Vault.rawArgon(pass,salt,vault.params||Vault.params);try{const check=await Crypto.decrypt(await crypto.subtle.importKey('raw',raw,'AES-GCM',false,['decrypt']),vault.box);if(!check?.priv)throw Error('phrase secrète invalide');await Bio.enrollRaw(raw,S.me);toast('>> FACE ID / EMPREINTE ACTIVEE POUR CE COFFRE')}finally{raw?.fill?.(0)}},
   async unlock(){const conf=await Bio.config();if(!conf?.credId||!conf?.prfSalt||!conf?.box)throw Error('biométrie non configurée');const prf=await Bio.prfGet(conf);const key=await Bio.kek(prf,new Uint8Array(ub64(conf.prfSalt)));const wrapped=await Crypto.decrypt(key,conf.box);if(!wrapped?.raw)throw Error('échec biométrique');const raw=new Uint8Array(ub64(wrapped.raw));const vault=await DB.kvGet('vault');const vaultKey=await crypto.subtle.importKey('raw',raw,'AES-GCM',false,['encrypt','decrypt']);raw.fill(0);const me=await Crypto.decrypt(vaultKey,vault.box);if(!me||!Safe.PUB(me.pub)||!(/^[0-9a-f]{64}$/i.test(me.priv))||Secp.getPub(me.priv)!==me.pub)throw Error('coffre biométrique invalide');Vault.key=vaultKey;Vault.salt=new Uint8Array(ub64(vault.salt));Vault.kdf=vault.kdf;Vault.params=vault.params||Vault.params;S.localKey=vaultKey;await Vault.success();Vault.arm();return me},
   async remove(){await DB.kvSet('biometric',null);toast('>> DEVERROUILLAGE BIOMETRIQUE SUPPRIME')},
   async offer(){if(!(await Bio.capability())||await Bio.config()||await DB.kvGet('bioOfferSeen'))return;await DB.kvSet('bioOfferSeen',true);setTimeout(()=>{Modal.open('// PROTEGER LE COFFRE AVEC FACE ID / EMPREINTE','<p class="dim" style="font-size:.72rem;line-height:1.7">VOTRE APPAREIL PROPOSE UN DEVERROUILLAGE BIOMETRIQUE. ACTIVEZ-LE MAINTENANT OU PLUS TARD DANS [CFG].</p><button id="bio-offer-enable" style="width:100%">[ ACTIVER FACE ID / EMPREINTE ]</button><button id="bio-offer-later" class="btn-sm" style="width:100%;margin-top:8px">[ PLUS TARD ]</button>');$('#bio-offer-enable').onclick=async()=>{try{await Bio.enroll();Modal.close()}catch(e){toast('!! '+String(e.message||'BIOMETRIE INDISPONIBLE').toUpperCase())}};$('#bio-offer-later').onclick=()=>Modal.close()},600)}
 };
 const Gate={
   async show(){
-    const bio=await Bio.config();
+    const bio=await Bio.config(),vault=await DB.kvGet('vault'),deviceOnly=vault?.kdf==='DEVICE-BIOMETRIC';
     if(bio){
       try{S.me=await Bio.unlock();await enterApp();return}
       catch(e){} // Annulation ou indisponibilité : présenter immédiatement les secours.
     }
     const g=document.createElement('div');g.className='lock-gate';g.id='lock-gate';
-    g.innerHTML=`<div class="lock-panel"><h2>COFFRE VERROUILLE</h2><p>Votre identité est chiffrée localement. ${bio?'La biométrie a été interrompue. Réessayez ou utilisez votre phrase secrète.':'Utilisez votre phrase secrète pour continuer.'}</p>${bio?'<button id="gate-bio">[ FACE ID / EMPREINTE ]</button>':''}<button id="gate-pass">[ PHRASE SECRETE ]</button></div>`;
+    g.innerHTML=`<div class="lock-panel"><h2>COFFRE VERROUILLE</h2><p>Votre identité est chiffrée localement. ${deviceOnly?'Utilisez Face ID ou votre empreinte pour continuer.':bio?'La biométrie a été interrompue. Réessayez ou utilisez votre phrase secrète.':'Utilisez votre phrase secrète pour continuer.'}</p>${bio?'<button id="gate-bio">[ FACE ID / EMPREINTE ]</button>':''}${deviceOnly?'':'<button id="gate-pass">[ PHRASE SECRETE ]</button>'}</div>`;
     document.body.appendChild(g);
     const open=async fn=>{try{S.me=await fn();g.remove();await enterApp()}catch(e){toast('!! '+String(e.message||'DEVERROUILLAGE IMPOSSIBLE').toUpperCase())}};
-    $('#gate-pass').onclick=()=>open(Vault.unlock);$('#gate-bio')?.addEventListener('click',()=>open(Bio.unlock));
+    $('#gate-pass')?.addEventListener('click',()=>open(Vault.unlock));$('#gate-bio')?.addEventListener('click',()=>open(Bio.unlock));
   },
 };
 const MYPROFILE=()=>({name:S.me.name,bio:S.me.bio,avatar:Safe.image(S.me.avatar),fingerprint:S.me.pub});
@@ -4090,7 +4040,7 @@ const PWA={
   standalone(){return matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true},
   async init(){
     if(!('serviceWorker' in navigator)||!window.isSecureContext)return;
-    try{PWA.registration=await navigator.serviceWorker.register('./service-worker.js?v=5',{scope:'./',updateViaCache:'none'});await PWA.registration.update();await navigator.serviceWorker.ready;let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!reloaded){reloaded=true;location.reload()}})}catch(e){}
+    try{PWA.registration=await navigator.serviceWorker.register('./service-worker.js?v=6',{scope:'./',updateViaCache:'none'});await PWA.registration.update();await navigator.serviceWorker.ready;let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!reloaded){reloaded=true;location.reload()}})}catch(e){}
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();PWA.deferred=e;PWA.refreshUI()});
     window.addEventListener('appinstalled',()=>{PWA.deferred=null;PWA.refreshUI();toast('>> MESHCHAT INSTALLE COMME APPLICATION')});
   },
@@ -4147,28 +4097,23 @@ function startSyncLines(){
    ONBOARDING
    ================================================================ */
 function initOnboard(){
-  const gib=$('#ob-gibber');
-  const chars='ABCDEF0123456789▓▒░█◈▣';
-  const scramble=()=>{let s='';for(let i=0;i<420;i++)s+=chars[Math.random()*chars.length|0];gib.textContent=s};
-  scramble();setInterval(scramble,180);
-  const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('vis')}),{threshold:.15});
-  $$('.ob-sec').forEach(s=>io.observe(s));
-  startMesh($('#ob-mesh'),()=>3);
-  let obAvatar='';
-  $('#ob-avatar').onchange=async e=>{
-    const f=e.target.files[0];if(!f)return;
-    obAvatar=await compressImage(f,140,.7);
-    {const avatar=Safe.image(obAvatar);$('#ob-ascii').innerHTML=avatar?`<img src="${esc(avatar)}" alt="">`:'▓▒░';}
-  };
+  let obAvatar='',method='bio',stage=1;
+  const stages=$$('.ob-step'),bars=$$('.ob-progress span');
+  const show=n=>{stage=n;stages.forEach(s=>s.classList.toggle('active',Number(s.dataset.step)===n));bars.forEach((b,i)=>b.classList.toggle('active',i<n));$('#onboard').scrollTo({top:0,behavior:'smooth'})};
+  const choose=m=>{method=m;$('#ob-pick-bio').classList.toggle('selected',m==='bio');$('#ob-pick-pass').classList.toggle('selected',m==='pass');$('#ob-method-note').innerHTML=m==='bio'?'<span>⌁</span><span><b>Biométrie par défaut.</b><br>Votre empreinte ou votre visage ne quitte jamais l’appareil. Créez une sauvegarde chiffrée plus tard si vous souhaitez déplacer votre identité.</span>':'<span>⌘</span><span><b>Phrase secrète locale.</b><br>Elle ne sera demandée que lorsque vous choisissez cette méthode ou lors d’une restauration.</span>';$('#ob-ready-note').innerHTML=m==='bio'?'<strong>FACE ID / EMPREINTE</strong><br>Vous confirmerez l’activation avec la protection de votre téléphone. Ensuite, l’ouverture sera immédiate.':'<strong>PHRASE SECRÈTE</strong><br>Vous choisirez une phrase secrète locale pour chiffrer votre coffre.'};
+  $('#ob-avatar').onchange=async e=>{const f=e.target.files[0];if(!f)return;obAvatar=await compressImage(f,140,.7);const avatar=Safe.image(obAvatar);$('#ob-ascii').innerHTML=avatar?`<img src="${esc(avatar)}" alt="">`:'⌁'};
+  $('#ob-next-profile').onclick=()=>{const name=Safe.text(($('#ob-name').value||'').trim(),30);if(!name)return toast('!! NOM D’AGENT REQUIS');show(2)};
+  $('#ob-back-profile').onclick=()=>show(1);$('#ob-back-protection').onclick=()=>show(2);$('#ob-next-protection').onclick=()=>show(3);
+  $('#ob-pick-bio').onclick=()=>choose('bio');$('#ob-pick-pass').onclick=()=>choose('pass');
+  Bio.capability().then(ok=>{if(!ok){$('#ob-pick-bio').disabled=true;$('#ob-pick-bio').classList.remove('selected');choose('pass')}});
   $('#ob-create').onclick=async()=>{
-    const name=Safe.text(($('#ob-name').value||'').trim(),30);
-    if(!name)return toast('!! CODENAME REQUIS');
-    const pass=prompt('Choisissez une phrase secrète locale (12 caractères minimum) :');
-    const confirmPass=prompt('Confirmez la phrase secrète :');
-    if(!pass||pass.length<12||pass!==confirmPass)return toast('!! IDENTITE NON CREEE — PHRASE SECRETE INVALIDE');
-    const priv=Secp.genPriv();
-    S.me={priv,pub:Secp.getPub(priv),name,bio:Safe.text(($('#ob-bio').value||'').trim(),80),avatar:Safe.image(obAvatar),inviteCap:uid()};
-    Notif.ask();try{await Vault.create(S.me,pass);enterApp()}catch(e){toast('!! ECHEC DE CREATION DU COFFRE')}
+    const name=Safe.text(($('#ob-name').value||'').trim(),30);if(!name)return toast('!! NOM D’AGENT REQUIS');
+    const priv=Secp.genPriv();S.me={priv,pub:Secp.getPub(priv),name,bio:Safe.text(($('#ob-bio').value||'').trim(),80),avatar:Safe.image(obAvatar),inviteCap:uid()};
+    try{
+      if(method==='bio'){const raw=crypto.getRandomValues(new Uint8Array(32));try{await Bio.enrollRaw(raw,S.me);await Vault.createDeviceOnly(S.me,raw)}finally{raw.fill(0)}}
+      else {const pass=prompt('Choisissez une phrase secrète locale (12 caractères minimum) :'),confirmPass=prompt('Confirmez la phrase secrète :');if(!pass||pass.length<12||pass!==confirmPass)throw Error('phrase secrète invalide');await Vault.create(S.me,pass)}
+      Notif.ask();await enterApp();
+    }catch(e){await Bio.remove();toast('!! '+String(e.message||'ECHEC DE CREATION DU COFFRE').toUpperCase())}
   };
   $('#ob-import').onclick=()=>{
     const inp=document.createElement('input');inp.type='file';inp.accept='.json,application/json';
