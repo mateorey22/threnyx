@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-WBj19n1pA21XJSiqf8bUg8StjcIjXenF86f5rPtmnuc=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob: mediastream:; connect-src wss: https: blob:; worker-src 'self' blob:; manifest-src 'self' blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-xNrKyMeRVAqcdAYUGj2t6rzS8NL2h4Lj4Q+GbytYGu4=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob: mediastream:; connect-src wss: https: blob:; worker-src 'self' blob:; manifest-src 'self' blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
 <meta name="theme-color" content="#060606">
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="application-name" content="Threnyx">
@@ -17,9 +17,9 @@
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--paper:#e8dfc6;--paper2:#ded4b6;--ink:#16130e;--black:#060606;--panel:#0b0b09;--panel2:#111009;
  --beige:#d8cfae;--bright:#f4eeda;--dim:#6b6552;--dim2:#3a362b;--red:#ff5540;--border:1px solid #3a362b}
-html,body{height:100%;font-family:ui-monospace,'Cascadia Mono','JetBrains Mono','Courier New',monospace;background:var(--black);color:var(--bright)}
+html,body{height:100%;font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:var(--black);color:var(--bright)}
 body{overflow:hidden}
-button{font:inherit;cursor:pointer;border:var(--border);background:transparent;color:var(--beige);text-transform:uppercase;letter-spacing:1px;padding:8px 14px;transition:.12s}
+button,.tabs,.code-box,pre{font-family:ui-monospace,'SFMono-Regular','Cascadia Mono','JetBrains Mono',monospace}button{font:inherit;cursor:pointer;border:var(--border);background:transparent;color:var(--beige);text-transform:uppercase;letter-spacing:1px;padding:8px 14px;transition:.12s}
 button:hover{background:var(--beige);color:var(--black)}
 input,textarea,select{font:inherit;color:var(--bright);background:#000;border:var(--border);outline:none;padding:9px 12px;width:100%}
 input:focus,textarea:focus{border-color:var(--beige)}
@@ -29,6 +29,7 @@ select{appearance:none}
 .hidden{display:none!important}
 pre{white-space:pre-wrap;word-break:break-word}
 .dim{color:var(--dim)}
+body.panic-flame::before{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;background:radial-gradient(circle at 50% 105%,#ffcf65 0 6%,#ff6845 17%,rgba(255,46,20,.58) 35%,rgba(5,3,2,.95) 74%);animation:panicBurn .28s cubic-bezier(.2,.9,.3,1) forwards}body.panic-flame #app,body.panic-flame #onboard{filter:contrast(1.25) saturate(.45);animation:panicShake .22s linear both}@keyframes panicBurn{from{opacity:0;transform:scaleY(.2);transform-origin:bottom}to{opacity:1;transform:scaleY(1)}}@keyframes panicShake{0%,100%{transform:translate(0)}25%{transform:translate(5px,-2px)}75%{transform:translate(-4px,2px)}}@media(prefers-reduced-motion:reduce){body.panic-flame::before,body.panic-flame #app,body.panic-flame #onboard{animation:none}}
 
 /* ===== ONBOARDING PARCHEMIN ===== */
 #onboard{position:fixed;inset:0;z-index:200;overflow-y:auto;background:var(--paper);color:var(--ink);
@@ -85,7 +86,7 @@ pre{white-space:pre-wrap;word-break:break-word}
 .avatar{width:38px;height:38px;border:var(--border);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--beige);overflow:hidden;flex-shrink:0;position:relative;background:#000}
 .avatar img{width:100%;height:100%;object-fit:cover;image-rendering:pixelated;filter:grayscale(.35) contrast(1.15)}
 .avatar.lg{width:84px;height:84px;font-size:1.9rem}
-.icon-btn{border:none;padding:6px 8px;font-size:.7rem;letter-spacing:0}
+.icon-btn{border:none;padding:6px 8px;font-size:.7rem;letter-spacing:0}.panic-action{color:#ff825c!important;border:1px solid rgba(255,85,64,.42)!important;border-radius:9px;background:rgba(255,85,64,.06)!important}.panic-action:hover{background:var(--red)!important;color:var(--black)!important}.panic-action span{font-size:1rem;line-height:1}.panic-action b{display:block;font-size:.48rem;margin-top:2px;letter-spacing:.35px}
 .online-dot{position:absolute;bottom:0;right:0;width:9px;height:9px;border:1px solid #000}
 .online-dot.p2p{background:var(--bright)}
 .online-dot.relay{background:var(--dim)}
@@ -199,8 +200,8 @@ details>*:not(summary){margin-top:10px}
 #remote-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
 #remote-audio{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 .lock-gate{position:fixed;inset:0;z-index:500;background:#060606;display:flex;align-items:center;justify-content:center;padding:20px}.lock-panel{width:min(100%,430px);border:2px solid var(--beige);background:var(--panel);padding:22px;text-align:center}.lock-panel h2{letter-spacing:3px;font-size:1rem;margin-bottom:10px}.lock-panel p{font-size:.7rem;line-height:1.65;color:var(--dim);margin:10px 0 18px}.lock-panel button{width:100%;margin-top:9px;padding:13px}
-.security-alert{border:1px solid var(--red);color:var(--red);background:rgba(190,45,45,.08);padding:10px 12px;font-size:.68rem;line-height:1.6;margin:10px 0;letter-spacing:.6px}.security-alert b{color:#ff7777}.security-strip{border:1px solid var(--border);color:var(--beige);padding:8px 10px;font-size:.68rem;letter-spacing:.7px;margin:10px 0}.range-row{display:flex;align-items:center;gap:10px;font-size:.68rem}.range-row input{flex:1}.range-row output{width:32px;color:var(--beige);text-align:right}
-.voice-player{display:flex;align-items:center;gap:10px;min-width:220px;max-width:320px;border:1px solid var(--dim);background:#000;padding:9px 10px;margin-bottom:5px}.voice-player audio{display:none}.voice-play{width:34px;height:34px;padding:0;border:1px solid var(--beige);background:#080808;color:transparent;font-size:0;line-height:1;display:grid;place-items:center;flex-shrink:0}.voice-play::before{content:'▶';color:var(--beige);font-size:14px;line-height:1;transform:translateX(1px)}.voice-play.playing::before{content:'Ⅱ';font-size:13px;transform:none}.voice-play:disabled{opacity:.45}.voice-wave{flex:1;height:6px;background:var(--dim2);position:relative;cursor:pointer;min-width:72px}.voice-wave i{display:block;height:100%;width:0;background:var(--beige);pointer-events:none}.voice-time{font-size:.64rem;color:var(--dim);white-space:nowrap;min-width:36px;text-align:right}
+.security-alert{border:1px solid var(--red);color:var(--red);background:rgba(190,45,45,.08);padding:10px 12px;font-size:.68rem;line-height:1.6;margin:10px 0;letter-spacing:.6px}.security-alert b{color:#ff7777}.security-strip{border:1px solid var(--border);color:var(--beige);padding:8px 10px;font-size:.68rem;letter-spacing:.7px;margin:10px 0}.range-row{display:flex;align-items:center;gap:10px;font-size:.68rem}.range-row input{flex:1}.range-row output{width:32px;color:var(--beige);text-align:right}.file-picker{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding:11px 12px;border:1px dashed var(--dim);border-radius:10px;color:var(--beige);cursor:pointer;font-size:.68rem;letter-spacing:.7px}.file-picker:hover{border-color:var(--beige);background:rgba(216,207,174,.05)}.file-picker small{color:var(--dim);font-size:.6rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%}#set-avatar{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.voice-player{display:flex;align-items:center;gap:10px;min-width:220px;max-width:320px;border:1px solid var(--dim);background:#000;padding:9px 10px;margin-bottom:5px;border-radius:12px}.voice-player audio{display:none}.voice-play{appearance:none;width:34px;height:34px;padding:0!important;border:1px solid var(--beige);background:#080808;color:transparent;font-size:0;line-height:1;display:grid;place-items:center;place-content:center;flex-shrink:0;border-radius:50%}.voice-play::before{content:'▶';display:block;color:var(--beige);font-size:13px;line-height:1;transform:translateX(1px) translateY(0)}.voice-play.playing::before{content:'Ⅱ';font-size:13px;transform:translateY(-.5px)}.voice-play:disabled{opacity:.45}.voice-wave{flex:1;height:6px;background:var(--dim2);position:relative;cursor:pointer;min-width:72px;border-radius:999px;overflow:hidden}.voice-wave i{display:block;height:100%;width:0;background:var(--beige);pointer-events:none}.voice-time{font-size:.64rem;color:var(--dim);white-space:nowrap;min-width:36px;text-align:right}
 #local-video{position:absolute;bottom:110px;right:16px;width:110px;border:1px solid var(--beige);z-index:2;background:#111}
 #call-info{z-index:2;text-align:center}
 #call-info h2{font-size:1.1rem;letter-spacing:3px}
@@ -241,12 +242,12 @@ button,.avatar,.row,.modal,.bubble,.voice-player,.stat-card,details{border-radiu
 button{min-height:38px;border-color:var(--dim2);font-weight:700;letter-spacing:.7px;transition:transform .16s ease,background .16s,color .16s,border-color .16s,box-shadow .16s}
 button:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(0,0,0,.16)}button:active{transform:translateY(0) scale(.98);box-shadow:none}
 .icon-btn{border:1px solid transparent;border-radius:9px!important;min-width:34px;display:inline-flex;align-items:center;justify-content:center}.icon-btn:hover{border-color:var(--dim2)}
-#topbar{background:linear-gradient(90deg,#050505,#14120d,#050505);padding:9px 15px;font-size:.65rem;letter-spacing:1.15px}
+#topbar{background:linear-gradient(90deg,#050505,#14120d,#050505);padding:8px 14px;font-size:.62rem;letter-spacing:.8px}
 #sidebar{background:linear-gradient(180deg,var(--panel),var(--black));box-shadow:10px 0 34px rgba(0,0,0,.12);z-index:3}.sb-head{padding:13px 14px;background:var(--glass);backdrop-filter:blur(12px)}
 #my-name{font-size:.79rem!important;font-weight:800;letter-spacing:1.4px!important}.avatar{border-radius:13px!important;background:linear-gradient(145deg,#1c1a14,#070706);box-shadow:inset 0 0 0 1px rgba(255,255,255,.03);transition:transform .28s ease,box-shadow .28s ease}.row:hover .avatar{transform:rotateY(10deg) rotateX(-4deg) scale(1.04);box-shadow:0 8px 20px rgba(0,0,0,.28)}
 .tabs{padding:7px 8px;gap:5px;background:transparent;border-bottom:none}.tab{border:1px solid transparent;border-radius:9px!important;padding:9px 5px;font-weight:700;transition:.18s}.tab:hover{background:var(--panel2);color:var(--bright)}.tab.active{box-shadow:0 4px 15px rgba(0,0,0,.16)}
 .search-bar{padding:8px 13px;border-bottom:none}.search-bar input{border-radius:10px!important;background:rgba(0,0,0,.22)}.row{margin:2px 7px;padding:12px 10px;border-bottom:none;transition:background .18s,transform .18s}.row:hover{transform:translateX(2px);background:var(--panel2)}.row .name{font-size:.85rem;font-weight:800;letter-spacing:1.05px}.row .sub{font-size:.7rem;margin-top:5px}
-#net-panel{display:none!important}#main{background:radial-gradient(circle at 78% 12%,rgba(216,207,174,.07),transparent 28%),var(--black)}#main-empty{animation:terminalFloat 6s ease-in-out infinite}.chat-head{padding:12px 15px;background:var(--glass);backdrop-filter:blur(14px);box-shadow:0 6px 18px rgba(0,0,0,.11)}.chat-head .name{font-size:.94rem;font-weight:850;letter-spacing:1.6px}.chat-head .presence{font-size:.66rem;margin-top:4px}.compose{padding:11px 13px calc(11px + env(safe-area-inset-bottom));background:var(--glass);backdrop-filter:blur(14px)}.compose textarea{border-radius:14px!important;min-height:42px;padding:11px 13px}.send-btn{border-radius:12px!important;background:var(--beige);color:var(--black);border-color:var(--beige);min-width:70px}.send-btn:hover{background:var(--bright);border-color:var(--bright)}
+#net-panel{display:none!important}#main{background:radial-gradient(circle at 78% 12%,rgba(216,207,174,.07),transparent 28%),var(--black)}#main-empty{animation:terminalFloat 6s ease-in-out infinite}.chat-head{padding:12px 15px;background:var(--glass);backdrop-filter:blur(14px);box-shadow:0 6px 18px rgba(0,0,0,.11)}.chat-head .name{font-size:.94rem;font-weight:850;letter-spacing:1.6px}.chat-head .presence{font-size:.66rem;margin-top:4px}.compose{padding:11px 13px calc(11px + env(safe-area-inset-bottom));background:var(--glass);backdrop-filter:blur(14px)}.compose textarea{border-radius:14px!important;min-height:44px;padding:11px 13px;background:#10100d}.send-btn{border-radius:12px!important;background:var(--beige);color:var(--black);border-color:var(--beige);min-width:70px}.send-btn:hover{background:var(--bright);border-color:var(--bright)}
 .modal-bg{backdrop-filter:blur(7px)}.modal{border-radius:var(--radius-lg)!important;border-color:var(--beige);box-shadow:var(--shadow)}.modal-head{border-radius:var(--radius-lg)!important}.modal-body{padding:18px}.stat-card{background:rgba(255,255,255,.025);transition:transform .2s,background .2s}.stat-card:hover{transform:translateY(-2px);background:var(--panel2)}details{border-color:var(--dim2);background:rgba(255,255,255,.018)}summary{padding:2px 0;font-weight:700}
 .theme-switch{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:7px;background:var(--panel2);border-radius:12px!important}.theme-switch button{min-height:38px;font-size:.68rem;border-radius:8px!important;color:var(--dim);border-color:transparent}.theme-switch button.active{background:var(--beige);color:var(--black);box-shadow:0 3px 12px rgba(0,0,0,.18)}
 @keyframes terminalFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}@keyframes terminalIn{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}@keyframes pulseRing{0%,100%{box-shadow:0 0 0 0 rgba(216,207,174,.0)}50%{box-shadow:0 0 0 5px rgba(216,207,174,.10)}}
@@ -310,6 +311,7 @@ html[data-theme="light"] .nfc-card{background:linear-gradient(135deg,rgba(81,70,
           <div class="avatar" id="my-avatar">?</div>
           <div style="font-size:.72rem;letter-spacing:1px;overflow:hidden;text-overflow:ellipsis" id="my-name"></div>
         </div>
+        <button class="icon-btn nav-action panic-action hidden" id="btn-panic" title="Effacement local d’urgence" aria-label="Effacement local d’urgence"><span aria-hidden="true">♨</span><b>EFFACER</b></button>
         <button class="icon-btn nav-action nav-contact" id="btn-add-contact" title="Ajouter un contact" aria-label="Ajouter un contact"><span aria-hidden="true">✦</span><b>CONTACT</b></button>
         <button class="icon-btn nav-action" id="btn-new-group" title="Créer un groupe" aria-label="Créer un groupe"><span aria-hidden="true">◈</span><b>GROUPE</b></button>
         <button class="icon-btn nav-action" id="btn-settings" title="Ouvrir les réglages" aria-label="Ouvrir les réglages"><span aria-hidden="true">⚙</span><b>RÉGLAGES</b></button>
@@ -2879,6 +2881,8 @@ const DB={db:null,
   async wipe(){DB.db.close();await new Promise(r=>{indexedDB.deleteDatabase('threnyx_secure_v3').onsuccess=r})},
   async panicWipe(){
     try{
+      document.body.classList.add('panic-flame');
+      await new Promise(resolve=>setTimeout(resolve,280));
       for(const[,p]of S.peers){try{p.pc?.close()}catch(e){}}
       S.peers.clear();
       for(const r of Nostr.relays.values()){try{r.removed=true;r.ws?.close()}catch(e){}}
@@ -2893,7 +2897,7 @@ const DB={db:null,
 /* ---------------- ÉTAT GLOBAL ---------------- */
 const S={me:null,localKey:null,contacts:new Map(),groups:new Map(),peers:new Map(),seen:new Set(),
  typing:new Map(),activeChat:null,replyTo:null,editing:null,call:null,mediaRec:null,fileDialog:false,
- lastSync:0,allowP2P:true,bootTs:now()};
+  lastSync:0,allowP2P:true,panicEnabled:false,bootTs:now()};
 const Vault={
   key:null,salt:null,timer:null,armed:false,kdf:'ARGON2ID',params:{time:2,mem:19456,parallelism:1,hashLen:32},PBKDF_ITER:600000,
   async derivePbkdf2(password,salt,iter=Vault.PBKDF_ITER){const base=await crypto.subtle.importKey('raw',enc8(password),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',hash:'SHA-256',salt,iterations:iter},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])},
@@ -2913,6 +2917,7 @@ const Vault={
   async duressHash(code){return Hex.to(await sha256(enc8('threnyx/duress/v1:'+String(code))))},
   async setDuress(){const code=prompt('Code de détresse distinct de votre phrase secrète (8 caractères minimum) :');if(!code||code.length<8)throw Error('code trop court');const confirmCode=prompt('Confirmez le code de détresse :');if(code!==confirmCode)throw Error('codes différents');await DB.kvSet('duressHash',await Vault.duressHash(code));toast('>> CODE DE DETRESSE ARME — HASH LOCAL UNIQUEMENT')},
   async clearDuress(){await DB.kvSet('duressHash',null);toast('>> CODE DE DETRESSE SUPPRIME')},
+  async triggerDuress(){const expected=await DB.kvGet('duressHash');if(!expected)throw Error('code de détresse non configuré');const code=prompt('Saisissez le code de détresse :');if(!code)throw Error('action annulée');if((await Vault.duressHash(code))!==expected)throw Error('code invalide');await Vault.panicWipe();return null},
   async unlock(){const vault=await DB.kvGet('vault');if(!vault||!vault.salt||!vault.box)throw Error('coffre invalide');if(vault.kdf==='DEVICE-BIOMETRIC')throw Error('ce coffre est protégé par la biométrie de cet appareil');const state=await Vault.throttle();const pass=prompt('Déverrouillez votre identité avec votre phrase secrète :');if(!pass)throw Error('déverrouillage annulé');if((await DB.kvGet('duressHash'))===await Vault.duressHash(pass)){await Vault.panicWipe();return null}try{const salt=new Uint8Array(ub64(vault.salt)),legacy=vault.v===3&&vault.kdf==='PBKDF2-SHA-256',key=await Vault.derive(pass,salt,legacy?'PBKDF2-SHA-256':vault.kdf,legacy?{iter:vault.iter}:{...vault.params});const me=await Crypto.decrypt(key,vault.box);if(!me||!Safe.PUB(me.pub)||!(/^[0-9a-f]{64}$/i.test(me.priv))||Secp.getPub(me.priv)!==me.pub)throw Error('phrase secrète ou coffre invalide');await Vault.success();if(legacy){Vault.salt=crypto.getRandomValues(new Uint8Array(16));Vault.key=await Vault.derive(pass,Vault.salt);Vault.kdf='ARGON2ID';Vault.params={time:2,mem:19456,parallelism:1,hashLen:32};S.localKey=Vault.key;await Vault.save(me)}else{Vault.key=key;Vault.salt=salt;Vault.kdf=vault.kdf;Vault.params=vault.params||Vault.params;S.localKey=key}Vault.arm();return me}catch(e){await Vault.fail(state);throw e}},
   async approveRecoveryExport(){const vault=await DB.kvGet('vault'),expected=S.me?.pub;if((vault?.salt??null)===null||(vault?.box??null)===null||(expected??null)===null)throw Error('coffre introuvable');if(await Bio.config()){try{const me=await Bio.unlock();if(me?.pub===expected)return true;throw Error('identité biométrique invalide')}catch(e){if(vault.kdf==='DEVICE-BIOMETRIC')throw Error('confirmation biométrique requise')}}if(vault.kdf==='DEVICE-BIOMETRIC')throw Error('confirmation biométrique requise');const state=await Vault.throttle(),pass=prompt('Confirmez votre phrase secrète pour écrire une clé NFC de récupération :');if((pass??null)===null)throw Error('confirmation annulée');try{const salt=new Uint8Array(ub64(vault.salt)),legacy=vault.v===3&&vault.kdf==='PBKDF2-SHA-256',key=await Vault.derive(pass,salt,legacy?'PBKDF2-SHA-256':vault.kdf,legacy?{iter:vault.iter}:{...vault.params}),me=await Crypto.decrypt(key,vault.box);if(me?.pub===expected){await Vault.success();return true}throw Error('phrase secrète invalide')}catch(e){await Vault.fail(state);throw Error('phrase secrète invalide')}},
   async encryptBackup(bundle){const pass=prompt('Définissez une phrase secrète d’au moins 12 caractères pour le fichier de sauvegarde :');if(!pass||pass.length<12){toast('!! SAUVEGARDE ANNULEE — PHRASE SECRETE TROP COURTE');return null}const confirmPass=prompt('Confirmez la phrase secrète de sauvegarde :');if(pass!==confirmPass){toast('!! SAUVEGARDE ANNULEE — PHRASES DIFFERENTES');return null}const salt=crypto.getRandomValues(new Uint8Array(16)),params={time:2,mem:19456,parallelism:1,hashLen:32},key=await Vault.derive(pass,salt,'ARGON2ID',params),box=await Crypto.encrypt(key,bundle);return {v:4,type:'threnyx-encrypted-backup',kdf:'ARGON2ID',params,salt:b64(salt),box}},
@@ -2933,16 +2938,16 @@ const Bio={
 };
 const Gate={
   async show(){
-    const bio=await Bio.config(),vault=await DB.kvGet('vault'),deviceOnly=vault?.kdf==='DEVICE-BIOMETRIC';
-    if(bio){
+    const bio=await Bio.config(),vault=await DB.kvGet('vault'),duress=await DB.kvGet('duressHash'),deviceOnly=vault?.kdf==='DEVICE-BIOMETRIC';
+    if(bio&&!duress){
       try{S.me=await Bio.unlock();await enterApp();return}
       catch(e){} // Annulation ou indisponibilité : présenter immédiatement les secours.
     }
     const g=document.createElement('div');g.className='lock-gate';g.id='lock-gate';
-    g.innerHTML=`<div class="lock-panel"><h2>COFFRE VERROUILLE</h2><p>Votre identité est chiffrée localement. ${deviceOnly?'Utilisez Face ID ou votre empreinte pour continuer.':bio?'La biométrie a été interrompue. Réessayez ou utilisez votre phrase secrète.':'Utilisez votre phrase secrète pour continuer.'}</p>${bio?'<button id="gate-bio">[ FACE ID / EMPREINTE ]</button>':''}${deviceOnly?'':'<button id="gate-pass">[ PHRASE SECRETE ]</button>'}</div>`;
+    g.innerHTML=`<div class="lock-panel"><h2>COFFRE VERROUILLE</h2><p>Votre identité est chiffrée localement. ${duress?'Choisissez Face ID / empreinte ou le code de détresse.':deviceOnly?'Utilisez Face ID ou votre empreinte pour continuer.':bio?'La biométrie a été interrompue. Réessayez ou utilisez votre phrase secrète.':'Utilisez votre phrase secrète pour continuer.'}</p>${bio?'<button id="gate-bio">[ FACE ID / EMPREINTE ]</button>':''}${deviceOnly?'':'<button id="gate-pass">[ PHRASE SECRETE ]</button>'}${duress?'<button id="gate-duress" class="btn-danger">[ CODE DE DETRESSE ]</button>':''}</div>`;
     document.body.appendChild(g);
-    const open=async fn=>{try{S.me=await fn();g.remove();await enterApp()}catch(e){toast('!! '+String(e.message||'DEVERROUILLAGE IMPOSSIBLE').toUpperCase())}};
-    $('#gate-pass')?.addEventListener('click',()=>open(Vault.unlock));$('#gate-bio')?.addEventListener('click',()=>open(Bio.unlock));
+    const open=async fn=>{try{const me=await fn();if(!me)return;S.me=me;g.remove();await enterApp()}catch(e){toast('!! '+String(e.message||'DEVERROUILLAGE IMPOSSIBLE').toUpperCase())}};
+    $('#gate-pass')?.addEventListener('click',()=>open(Vault.unlock));$('#gate-bio')?.addEventListener('click',()=>open(Bio.unlock));$('#gate-duress')?.addEventListener('click',()=>open(Vault.triggerDuress));
   },
 };
 const NOSTR_PROTOCOLS=()=>globalThis.ThrenyxNostr?.wrapManyEvents?['legacy','nip17']:['legacy'];
@@ -3602,7 +3607,7 @@ const STATUS={TTL:24*3600e3,
    APPELS — signalisation via relais (plus besoin de lien préexistant)
    ================================================================ */
 const CALL={
-  pc:null,stream:null,remoteAudio:null,remoteVideo:null,pendingIce:[],earlyIce:new Map(),
+  pc:null,stream:null,remoteAudio:null,remoteVideo:null,pendingIce:[],earlyIce:new Map(),restartTimer:null,statsTimer:null,restarting:false,
   sig(pid,obj){sendPayload(pid,{t:'rtc',scope:'call',...obj},{eph:false})},
   async start(peerId,video){
     if(!S.allowP2P)return toast('!! APPELS DIRECTS DESACTIVES — ACTIVEZ-LES EXPLICITEMENT DANS CFG');
@@ -3612,7 +3617,6 @@ const CALL={
     try{CALL.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:video?{width:{ideal:640},height:{ideal:480}}:false})}
     catch(e){S.call=null;return toast('!! ACCES MICRO/CAMERA REFUSE')}
     CALL.setup(peerId);
-    CALL.pc.addTransceiver('audio',{direction:'sendrecv'});if(video)CALL.pc.addTransceiver('video',{direction:'sendrecv'});
     CALL.stream.getTracks().forEach(t=>CALL.pc.addTrack(t,CALL.stream));
     UI.showCall('SONNERIE VIA LE MAILLAGE…');
     if(video)$('#local-video').srcObject=CALL.stream;
@@ -3620,24 +3624,27 @@ const CALL={
     CALL.sig(peerId,{a:'offer',sdp:{type:of.type,sdp:of.sdp},video});
   },
   setup(peerId){
-    const pc=new RTCPeerConnection(NET.ICE);CALL.pc=pc;CALL.pendingIce=[];CALL.remoteAudio=new MediaStream();CALL.remoteVideo=new MediaStream();
+    const pc=new RTCPeerConnection(NET.ICE);CALL.pc=pc;CALL.pendingIce=[];CALL.restarting=false;CALL.remoteAudio=new MediaStream();CALL.remoteVideo=new MediaStream();clearInterval(CALL.statsTimer);CALL.statsTimer=setInterval(()=>CALL.probe(),2500);
     pc.onicecandidate=e=>{if(e.candidate)CALL.sig(peerId,{a:'ice',c:e.candidate.toJSON()})};
-    pc.oniceconnectionstatechange=async()=>{const cs=$('#call-status');if(cs)cs.textContent='ICE: '+pc.iceConnectionState.toUpperCase()+' // '+ICECFG.status();if(pc.iceConnectionState==='failed'&&S.call?.dir==='out'){try{const retry=await pc.createOffer({iceRestart:true});await pc.setLocalDescription(retry);CALL.sig(peerId,{a:'offer',sdp:{type:retry.type,sdp:retry.sdp},video:S.call.video,restart:true})}catch(e){CALL.end(false)}}else if(pc.iceConnectionState==='closed')CALL.end(false)};
+    pc.oniceconnectionstatechange=()=>{const cs=$('#call-status');if(cs)cs.textContent='ICE: '+pc.iceConnectionState.toUpperCase()+' // '+ICECFG.status();if(pc.iceConnectionState==='failed')CALL.restart(peerId);else if(pc.iceConnectionState==='disconnected'){clearTimeout(CALL.restartTimer);CALL.restartTimer=setTimeout(()=>{if(pc.iceConnectionState==='disconnected')CALL.restart(peerId)},4500)}else if(['connected','completed'].includes(pc.iceConnectionState)){clearTimeout(CALL.restartTimer);CALL.restarting=false}else if(pc.iceConnectionState==='closed')CALL.end(false)};
     pc.ontrack=e=>{
-      const ra=$('#remote-audio'),rv=$('#remote-video'),isVideo=e.track.kind==='video';
-      const target=isVideo?CALL.remoteVideo:CALL.remoteAudio;if(!target.getTracks().some(t=>t.id===e.track.id))target.addTrack(e.track);
-      const el=isVideo?rv:ra;if(el&&el.srcObject!==target){el.srcObject=target;el.muted=false;el.volume=1;el.onloadedmetadata=()=>CALL.playRemote();el.oncanplay=()=>CALL.playRemote()}
+      const ra=$('#remote-audio'),rv=$('#remote-video'),isVideo=e.track.kind==='video',stream=e.streams?.[0]||(isVideo?CALL.remoteVideo:CALL.remoteAudio);
+      const target=isVideo?CALL.remoteVideo:CALL.remoteAudio;if(!e.streams?.[0]&&!target.getTracks().some(t=>t.id===e.track.id))target.addTrack(e.track);
+      if(ra&&ra.srcObject!==stream){ra.srcObject=stream;ra.muted=false;ra.volume=1;ra.onloadedmetadata=()=>CALL.playRemote();ra.oncanplay=()=>CALL.playRemote()}if(rv&&rv.srcObject!==stream){rv.srcObject=stream;rv.muted=false;rv.volume=1;rv.onloadedmetadata=()=>CALL.playRemote();rv.oncanplay=()=>CALL.playRemote()}
       e.track.onunmute=()=>CALL.playRemote();e.track.onended=()=>{const cs=$('#call-status');if(cs)cs.textContent='FLUX DISTANT TERMINE'};
       const cs=$('#call-status');if(cs)cs.textContent='FLUX DISTANT '+(isVideo?'VIDEO':'AUDIO')+' RECU // '+ICECFG.status();
       CALL.playRemote();
     };
     pc.onconnectionstatechange=()=>{if(['failed','closed'].includes(pc.connectionState))CALL.end(false)};
   },
+  async restart(peerId){const pc=CALL.pc;if(!pc||CALL.restarting||pc.signalingState==='closed')return;CALL.restarting=true;try{pc.restartIce?.();const retry=await pc.createOffer({iceRestart:true});await pc.setLocalDescription(retry);CALL.sig(peerId,{a:'offer',sdp:{type:retry.type,sdp:retry.sdp},video:S.call?.video,restart:true});const cs=$('#call-status');if(cs)cs.textContent='RECONNEXION ICE…'}catch(e){CALL.end(false)}},
+  async probe(){const pc=CALL.pc;if(!pc||pc.connectionState==='closed')return;try{const stats=await pc.getStats(),inbound={audio:0,video:0},outbound={audio:0,video:0};stats.forEach(r=>{if(r.type==='inbound-rtp'&&r.kind&&r.bytesReceived!==undefined)inbound[r.kind]=(inbound[r.kind]||0)+r.bytesReceived;if(r.type==='outbound-rtp'&&r.kind&&r.bytesSent!==undefined)outbound[r.kind]=(outbound[r.kind]||0)+r.bytesSent});const out=$('#call-media-debug');if(out)out.textContent=`ICE ${pc.iceConnectionState.toUpperCase()} · ↓A ${inbound.audio||0} ↓V ${inbound.video||0} · ↑A ${outbound.audio||0} ↑V ${outbound.video||0}`}catch(e){}},
   async playRemote(){const ra=$('#remote-audio'),rv=$('#remote-video');try{if(ra?.srcObject)await ra.play();if(S.call?.video&&rv?.srcObject)await rv.play();const b=$('#btn-audio');if(b)b.textContent='[SON ACTIF]'}catch(e){const b=$('#btn-audio');if(b)b.textContent='[ACTIVER SON]'}},
   async flushIce(){for(const c of CALL.pendingIce){try{await CALL.pc.addIceCandidate(c)}catch(e){}}CALL.pendingIce=[]},
   async onSignal(pid,m){
     if(!S.allowP2P){if(m?.a==='offer')CALL.sig(pid,{a:'end'});return}
     if(m.a==='offer'){
+      if(S.call&&m.restart&&S.call.peerId===pid&&CALL.pc){try{await CALL.pc.setRemoteDescription(m.sdp);await CALL.flushIce();const an=await CALL.pc.createAnswer();await CALL.pc.setLocalDescription(an);CALL.sig(pid,{a:'answer',sdp:{type:an.type,sdp:an.sdp},restart:true});CALL.restarting=false}catch(e){CALL.end(false)}return}
       if(S.call){CALL.sig(pid,{a:'busy'});return}
       S.call={peerId:pid,video:m.video,dir:'in',sdp:m.sdp};CALL.pendingIce=CALL.earlyIce.get(pid)||[];CALL.earlyIce.delete(pid);
       UI.showIncoming(pid,m.video);
@@ -3658,7 +3665,6 @@ const CALL={
     try{CALL.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:video?{width:{ideal:640},height:{ideal:480}}:false})}
     catch(e){toast('!! ACCES MICRO/CAMERA REFUSE');return CALL.end(true)}
     CALL.setup(peerId);UI.showCall('CONNEXION…');
-    CALL.pc.addTransceiver('audio',{direction:'sendrecv'});if(video)CALL.pc.addTransceiver('video',{direction:'sendrecv'});
     CALL.stream.getTracks().forEach(t=>CALL.pc.addTrack(t,CALL.stream));
     if(video)$('#local-video').srcObject=CALL.stream;
     try{await CALL.pc.setRemoteDescription(sdp);await CALL.flushIce();
@@ -3670,7 +3676,7 @@ const CALL={
     if(notify&&S.call)CALL.sig(S.call.peerId,{a:'end'});
     CALL.stream?.getTracks().forEach(t=>t.stop());
     try{CALL.pc?.close()}catch(e){}
-    CALL.pc=null;CALL.stream=null;CALL.remoteAudio=null;CALL.remoteVideo=null;CALL.pendingIce=[];
+    clearTimeout(CALL.restartTimer);clearInterval(CALL.statsTimer);CALL.restarting=false;CALL.pc=null;CALL.stream=null;CALL.remoteAudio=null;CALL.remoteVideo=null;CALL.pendingIce=[];
     if(S.call)await DB.put('calls',{id:uid(),peer:S.call.peerId,video:S.call.video,dir:S.call.dir,ts:now()});
     S.call=null;$('#call-ui')?.remove();UI.renderCallList();
   }
@@ -3927,7 +3933,7 @@ const UI={
     const div=document.createElement('div');div.id='call-ui';
     div.innerHTML=`<audio id="remote-audio" autoplay playsinline></audio><video id="remote-video" autoplay playsinline></video>
       ${S.call.video?'<video id="local-video" autoplay playsinline muted></video>':''}
-      <div id="call-info"><h2>${upName(c?.localName||c?.name||'?')}</h2><p id="call-status">${esc(status)}</p></div>
+      <div id="call-info"><h2>${upName(c?.localName||c?.name||'?')}</h2><p id="call-status">${esc(status)}</p><small id="call-media-debug">INITIALISATION DES FLUX…</small></div>
       <div id="call-controls">
         <button class="call-btn" id="btn-audio">[ACTIVER SON]</button>
         <button class="call-btn" id="btn-mute">[MUTE]</button>
@@ -4155,7 +4161,7 @@ const Modal={
         <div style="flex:1">
           <div class="field"><label>CODENAME</label><input id="set-name" maxlength="30" value="${esc(S.me.name)}"></div>
           <div class="field"><label>BIO</label><input id="set-bio" maxlength="80" value="${esc(S.me.bio)}"></div></div></div>
-      <input type="file" id="set-avatar" accept="image/*">
+      <input type="file" id="set-avatar" accept="image/*"><label class="file-picker" for="set-avatar"><span>◈ CHOISIR UN PORTRAIT</span><small id="set-avatar-name">AUCUN FICHIER</small></label>
       <button style="width:100%;margin-top:10px" id="set-save">[ SAUVEGARDER &amp; PROPAGER LE PROFIL ]</button>
       <h4>MON MESH ID</h4><div class="code-box">${S.me.pub}</div>
       <div class="stat-grid">
@@ -4179,12 +4185,13 @@ const Modal={
         <p class="dim" style="font-size:.61rem;line-height:1.65;margin-top:9px">La publication est manuelle dans cette première version. Les relais ne reçoivent que des fragments chiffrés. Une clé NFC NDEF est un objet à protéger : elle peut être copiée et ne doit jamais être partagée.</p></details>
       <details open><summary>⚙ PREFERENCES D’INTERFACE</summary>
         <div class="field"><label>APPARENCE</label><div class="theme-switch"><button type="button" class="${Theme.mode==='dark'?'active':''}" id="theme-dark">◐ SOMBRE</button><button type="button" class="${Theme.mode==='light'?'active':''}" id="theme-light">☼ CLAIR</button></div></div>
-        <label class="check-row"><input type="checkbox" id="set-notif" ${Notif.enabled?'checked':''}>NOTIFICATIONS SYSTEME</label><label class="check-row"><input type="checkbox" id="set-notif-sound" ${Notif.prefs.sound?'checked':''}>SIGNAL SONORE DANS L’APPLICATION</label><label class="check-row"><input type="checkbox" id="set-notif-vibrate" ${Notif.prefs.vibrate?'checked':''}>VIBRATION COURTE</label><div class="range-row"><label>VOLUME</label><input id="set-notif-volume" type="range" min="0" max="100" value="${Notif.prefs.volume}"><output id="notif-volume-out">${Notif.prefs.volume}</output></div><div class="field"><label>SON</label><select id="set-notif-tone"><option value="tick" ${Notif.prefs.tone==='tick'?'selected':''}>TICK</option><option value="soft" ${Notif.prefs.tone==='soft'?'selected':''}>DOUX</option><option value="alert" ${Notif.prefs.tone==='alert'?'selected':''}>ALERTE</option></select></div><button class="btn-sm" id="notif-test" style="width:100%">[TESTER LE SIGNAL]</button><label class="check-row"><input type="checkbox" id="set-p2p" ${S.allowP2P?'checked':''}>AUTORISER LE P2P / APPELS DIRECTS (VOTRE IP PEUT ETRE VISIBLE PAR LE PAIR)</label><button class="btn-sm" id="ask-notif" style="width:100%">[AUTORISER LES NOTIFICATIONS SYSTEME]</button><button class="btn-sm" id="install-pwa" style="width:100%;margin-top:8px">[ INSTALLER THRENYX SUR CET APPAREIL ]</button><p class="dim" id="pwa-status" style="font-size:.62rem;line-height:1.6;margin-top:8px"></p><p class="dim" style="font-size:.62rem;line-height:1.6">Le son d’une notification système est contrôlé par Android/iOS. Ici, vous réglez seulement le signal de l’application au premier plan ; les alertes système sont silencieuses pour ne pas apparaître comme de la musique.</p></details>
+        <label class="check-row"><input type="checkbox" id="set-notif" ${Notif.enabled?'checked':''}>NOTIFICATIONS SYSTEME</label><label class="check-row"><input type="checkbox" id="set-notif-sound" ${Notif.prefs.sound?'checked':''}>SIGNAL SONORE DANS L’APPLICATION</label><label class="check-row"><input type="checkbox" id="set-notif-vibrate" ${Notif.prefs.vibrate?'checked':''}>VIBRATION COURTE</label><div class="range-row"><label>VOLUME</label><input id="set-notif-volume" type="range" min="0" max="100" value="${Notif.prefs.volume}"><output id="notif-volume-out">${Notif.prefs.volume}</output></div><div class="field"><label>SON</label><select id="set-notif-tone"><option value="tick" ${Notif.prefs.tone==='tick'?'selected':''}>TICK</option><option value="soft" ${Notif.prefs.tone==='soft'?'selected':''}>DOUX</option><option value="alert" ${Notif.prefs.tone==='alert'?'selected':''}>ALERTE</option></select></div><button class="btn-sm" id="notif-test" style="width:100%">[TESTER LE SIGNAL]</button><label class="check-row"><input type="checkbox" id="set-p2p" ${S.allowP2P?'checked':''}>AUTORISER LE P2P / APPELS DIRECTS (VOTRE IP PEUT ETRE VISIBLE PAR LE PAIR)</label><label class="check-row"><input type="checkbox" id="set-panic" ${S.panicEnabled?'checked':''}>AFFICHER LA FLAMME D’EFFACEMENT LOCAL</label><p class="dim" style="font-size:.61rem;line-height:1.55;margin:2px 0 8px">Désactivée par défaut. La flamme ferme les liens et efface les données locales ; elle ne retire pas les éléments déjà reçus par les pairs ou publiés aux relais.</p><button class="btn-sm" id="ask-notif" style="width:100%">[AUTORISER LES NOTIFICATIONS SYSTEME]</button><button class="btn-sm" id="install-pwa" style="width:100%;margin-top:8px">[ INSTALLER THRENYX SUR CET APPAREIL ]</button><p class="dim" id="pwa-status" style="font-size:.62rem;line-height:1.6;margin-top:8px"></p><p class="dim" style="font-size:.62rem;line-height:1.6">Le son d’une notification système est contrôlé par Android/iOS. Ici, vous réglez seulement le signal de l’application au premier plan ; les alertes système sont silencieuses pour ne pas apparaître comme de la musique.</p></details>
       <details><summary>▣ DEVERROUILLAGE BIOMETRIQUE</summary><p class="dim" id="bio-status" style="font-size:.64rem;line-height:1.6">VERIFICATION DE LA COMPATIBILITE BIOMETRIQUE…</p><button class="btn-sm" id="bio-enroll" style="width:100%">[ ACTIVER FACE ID / EMPREINTE ]</button><button class="btn-sm btn-danger" id="bio-remove" style="width:100%;margin-top:8px">[ SUPPRIMER LA BIOMETRIE ]</button></details>
       <details><summary>⌁ CODE DE DETRESSE</summary><p class="dim" style="font-size:.64rem;line-height:1.6">Un code distinct peut déclencher le wipe local sans ouvrir le coffre. Seul son hash est conservé séparément ; il ne remplace pas la phrase secrète et ne retire pas les événements déjà publiés.</p><button class="btn-sm" style="width:100%" id="duress-set">[ CONFIGURER / REMPLACER ]</button><button class="btn-sm btn-danger" style="width:100%;margin-top:8px" id="duress-clear">[ SUPPRIMER LE CODE ]</button></details>
       <details><summary style="color:var(--red)">⚠ ZONE DESTRUCTION</summary>
         <button class="btn-sm btn-danger" style="width:100%" id="nuke">[ DETRUIRE L'IDENTITE &amp; TOUTES LES DONNEES ]</button></details>`);
-    $('#duress-set').onclick=async()=>{try{await Vault.setDuress();Modal.settings()}catch(e){toast('!! '+String(e.message||'CODE INVALIDE').toUpperCase())}};$('#duress-clear').onclick=async()=>{await Vault.clearDuress();Modal.settings()};
+    $('#duress-set').onclick=async()=>{try{await Vault.setDuress();Modal.settings()}catch(e){toast('!! '+String(e.message||'CODE INVALIDE').toUpperCase())}};$('#duress-clear').onclick=async()=>{await Vault.clearDuress();Modal.settings()};$('#set-panic').onchange=async e=>{S.panicEnabled=e.currentTarget.checked;await DB.kvSet('panicEnabled',S.panicEnabled);$('#btn-panic').classList.toggle('hidden',!S.panicEnabled);toast(S.panicEnabled?'>> FLAMME D’EFFACEMENT ACTIVEE':'>> FLAMME D’EFFACEMENT DESACTIVEE')};
+    $('#set-avatar').onchange=e=>{const name=e.currentTarget.files?.[0]?.name||'AUCUN FICHIER';$('#set-avatar-name').textContent=name};
     $('#set-save').onclick=async()=>{
       S.me.name=($('#set-name').value||S.me.name).trim();S.me.bio=($('#set-bio').value||'').trim();
       const f=$('#set-avatar').files[0];
@@ -4249,7 +4256,7 @@ const PWA={
   standalone(){return matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true},
   async init(){
     if(!('serviceWorker' in navigator)||!window.isSecureContext)return;
-    try{PWA.registration=await navigator.serviceWorker.register('./service-worker.js?v=20',{scope:'./',updateViaCache:'none'});await PWA.registration.update();await navigator.serviceWorker.ready;let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!reloaded){reloaded=true;location.reload()}})}catch(e){}
+    try{PWA.registration=await navigator.serviceWorker.register('./service-worker.js?v=21',{scope:'./',updateViaCache:'none'});await PWA.registration.update();await navigator.serviceWorker.ready;let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!reloaded){reloaded=true;location.reload()}})}catch(e){}
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();PWA.deferred=e;PWA.refreshUI()});
     window.addEventListener('appinstalled',()=>{PWA.deferred=null;PWA.refreshUI();toast('>> THRENYX INSTALLE COMME APPLICATION')});
   },
@@ -4362,14 +4369,12 @@ async function enterApp(){
   for(const s of await DB.all('shards'))S.seen.add(s.id);
   S.lastSync=(await DB.kvGet('lastSync'))||0;
   S.allowP2P=(await DB.kvGet('allowP2P'))??true;
+  S.panicEnabled=(await DB.kvGet('panicEnabled'))??false;
   Notif.enabled=(await DB.kvGet('notif'))??true;
   await Notif.load();
   await Invite.ensure();
-  if(!enterApp._panicBound){
-    enterApp._panicBound=true;let taps=[],panicTimer;
-    const panicTap=()=>{const t=now();taps=taps.filter(x=>t-x<600);taps.push(t);if(taps.length===1){$('#topbar').dataset.panic='·';$('#open-profile').dataset.panic='·';clearTimeout(panicTimer);panicTimer=setTimeout(()=>{taps=[];delete $('#topbar').dataset.panic;delete $('#open-profile').dataset.panic},600)}if(taps.length>=3){taps=[];clearTimeout(panicTimer);delete $('#topbar').dataset.panic;delete $('#open-profile').dataset.panic;Vault.panicWipe()}};
-    $('#topbar').addEventListener('pointerup',panicTap);$('#open-profile').addEventListener('pointerup',panicTap);
-  }
+  $('#btn-panic').classList.toggle('hidden',!S.panicEnabled);
+  if(!enterApp._panicBound){enterApp._panicBound=true;$('#btn-panic').addEventListener('click',()=>{if(S.panicEnabled)Vault.panicWipe()})}
   UI.renderChatList();UI.renderCommList();UI.renderCallList();UI.renderStatusList();
   startSyncLines();
   await ICECFG.load();
