@@ -6,8 +6,9 @@ const callStart = source.indexOf('const CALL={');
 const callEnd = source.indexOf('/* ================================================================\n   NOTIFICATIONS', callStart);
 const callSource = source.slice(callStart, callEnd);
 
-assert.ok(source.includes('if(bio&&!duress)'), 'un coffre ayant un code de détresse doit afficher le choix avant la biométrie');
+assert.ok(source.includes('if(bio){'), 'la biométrie doit être tentée automatiquement à l’ouverture quand elle est configurée');
 assert.ok(source.includes('id="gate-duress"'), 'l’écran verrouillé doit exposer le code de détresse');
+assert.ok(source.includes('Choisissez Face ID / empreinte ou le code de détresse.'), 'après annulation biométrique, le choix de secours doit être explicite');
 assert.ok(source.includes('body.panic-flame::before'), 'le wipe doit avoir un retour visuel local');
 assert.ok(source.includes('id="set-panic"'), 'la flamme doit rester désactivable depuis les réglages');
 assert.ok(!source.includes('panicTap'), 'le geste triple-tap caché ne doit plus exister');
