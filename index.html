@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-xNrKyMeRVAqcdAYUGj2t6rzS8NL2h4Lj4Q+GbytYGu4=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob: mediastream:; connect-src wss: https: blob:; worker-src 'self' blob:; manifest-src 'self' blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-ShqATRsSLVsKOPj0/9efvJww3P2C4L5+xv/YMfnAnuc=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob: mediastream:; connect-src wss: https: blob:; worker-src 'self' blob:; manifest-src 'self' blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
 <meta name="theme-color" content="#060606">
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="application-name" content="Threnyx">
@@ -86,7 +86,7 @@ body.panic-flame::before{content:'';position:fixed;inset:0;z-index:9999;pointer-
 .avatar{width:38px;height:38px;border:var(--border);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--beige);overflow:hidden;flex-shrink:0;position:relative;background:#000}
 .avatar img{width:100%;height:100%;object-fit:cover;image-rendering:pixelated;filter:grayscale(.35) contrast(1.15)}
 .avatar.lg{width:84px;height:84px;font-size:1.9rem}
-.icon-btn{border:none;padding:6px 8px;font-size:.7rem;letter-spacing:0}.panic-action{color:#ff825c!important;border:1px solid rgba(255,85,64,.42)!important;border-radius:9px;background:rgba(255,85,64,.06)!important}.panic-action:hover{background:var(--red)!important;color:var(--black)!important}.panic-action span{font-size:1rem;line-height:1}.panic-action b{display:block;font-size:.48rem;margin-top:2px;letter-spacing:.35px}
+.icon-btn{border:none;padding:6px 8px;font-size:.7rem;letter-spacing:0}.panic-action,.panic-chat-action{color:#ff825c!important;border:1px solid rgba(255,85,64,.42)!important;border-radius:9px;background:rgba(255,85,64,.06)!important}.panic-action:hover{background:var(--red)!important;color:var(--black)!important}.panic-action span{font-size:1rem;line-height:1}.panic-action b{display:block;font-size:.48rem;margin-top:2px;letter-spacing:.35px}
 .online-dot{position:absolute;bottom:0;right:0;width:9px;height:9px;border:1px solid #000}
 .online-dot.p2p{background:var(--bright)}
 .online-dot.relay{background:var(--dim)}
@@ -351,6 +351,7 @@ html[data-theme="light"] .nfc-card{background:linear-gradient(135deg,rgba(81,70,
           <div class="avatar" id="ch-avatar">?</div>
           <div class="info" id="ch-info"><div class="name" id="ch-name"></div><div class="presence" id="ch-presence"></div></div>
           <button class="icon-btn chat-action" id="btn-find" title="Rechercher" aria-label="Rechercher">⌕</button>
+          <button class="icon-btn chat-action panic-chat-action hidden" id="btn-panic-chat" title="Flamme : effacement local" aria-label="Flamme : effacement local"><span aria-hidden="true">♨</span></button>
           <button class="icon-btn chat-action" id="btn-call-audio" title="Appel audio" aria-label="Appel audio">☎</button>
           <button class="icon-btn chat-action" id="btn-call-video" title="Appel vidéo" aria-label="Appel vidéo">◉</button>
         </div>
@@ -2939,7 +2940,7 @@ const Bio={
 const Gate={
   async show(){
     const bio=await Bio.config(),vault=await DB.kvGet('vault'),duress=await DB.kvGet('duressHash'),deviceOnly=vault?.kdf==='DEVICE-BIOMETRIC';
-    if(bio&&!duress){
+    if(bio){
       try{S.me=await Bio.unlock();await enterApp();return}
       catch(e){} // Annulation ou indisponibilité : présenter immédiatement les secours.
     }
@@ -4190,7 +4191,7 @@ const Modal={
       <details><summary>⌁ CODE DE DETRESSE</summary><p class="dim" style="font-size:.64rem;line-height:1.6">Un code distinct peut déclencher le wipe local sans ouvrir le coffre. Seul son hash est conservé séparément ; il ne remplace pas la phrase secrète et ne retire pas les événements déjà publiés.</p><button class="btn-sm" style="width:100%" id="duress-set">[ CONFIGURER / REMPLACER ]</button><button class="btn-sm btn-danger" style="width:100%;margin-top:8px" id="duress-clear">[ SUPPRIMER LE CODE ]</button></details>
       <details><summary style="color:var(--red)">⚠ ZONE DESTRUCTION</summary>
         <button class="btn-sm btn-danger" style="width:100%" id="nuke">[ DETRUIRE L'IDENTITE &amp; TOUTES LES DONNEES ]</button></details>`);
-    $('#duress-set').onclick=async()=>{try{await Vault.setDuress();Modal.settings()}catch(e){toast('!! '+String(e.message||'CODE INVALIDE').toUpperCase())}};$('#duress-clear').onclick=async()=>{await Vault.clearDuress();Modal.settings()};$('#set-panic').onchange=async e=>{S.panicEnabled=e.currentTarget.checked;await DB.kvSet('panicEnabled',S.panicEnabled);$('#btn-panic').classList.toggle('hidden',!S.panicEnabled);toast(S.panicEnabled?'>> FLAMME D’EFFACEMENT ACTIVEE':'>> FLAMME D’EFFACEMENT DESACTIVEE')};
+    $('#duress-set').onclick=async()=>{try{await Vault.setDuress();Modal.settings()}catch(e){toast('!! '+String(e.message||'CODE INVALIDE').toUpperCase())}};$('#duress-clear').onclick=async()=>{await Vault.clearDuress();Modal.settings()};$('#set-panic').onchange=async e=>{S.panicEnabled=e.currentTarget.checked;await DB.kvSet('panicEnabled',S.panicEnabled);$('#btn-panic').classList.toggle('hidden',!S.panicEnabled);$('#btn-panic-chat').classList.toggle('hidden',!S.panicEnabled);toast(S.panicEnabled?'>> FLAMME D’EFFACEMENT ACTIVEE':'>> FLAMME D’EFFACEMENT DESACTIVEE')};
     $('#set-avatar').onchange=e=>{const name=e.currentTarget.files?.[0]?.name||'AUCUN FICHIER';$('#set-avatar-name').textContent=name};
     $('#set-save').onclick=async()=>{
       S.me.name=($('#set-name').value||S.me.name).trim();S.me.bio=($('#set-bio').value||'').trim();
@@ -4256,7 +4257,7 @@ const PWA={
   standalone(){return matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true},
   async init(){
     if(!('serviceWorker' in navigator)||!window.isSecureContext)return;
-    try{PWA.registration=await navigator.serviceWorker.register('./service-worker.js?v=21',{scope:'./',updateViaCache:'none'});await PWA.registration.update();await navigator.serviceWorker.ready;let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!reloaded){reloaded=true;location.reload()}})}catch(e){}
+    try{PWA.registration=await navigator.serviceWorker.register('./service-worker.js?v=22',{scope:'./',updateViaCache:'none'});await PWA.registration.update();await navigator.serviceWorker.ready;let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!reloaded){reloaded=true;location.reload()}})}catch(e){}
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();PWA.deferred=e;PWA.refreshUI()});
     window.addEventListener('appinstalled',()=>{PWA.deferred=null;PWA.refreshUI();toast('>> THRENYX INSTALLE COMME APPLICATION')});
   },
@@ -4374,7 +4375,7 @@ async function enterApp(){
   await Notif.load();
   await Invite.ensure();
   $('#btn-panic').classList.toggle('hidden',!S.panicEnabled);
-  if(!enterApp._panicBound){enterApp._panicBound=true;$('#btn-panic').addEventListener('click',()=>{if(S.panicEnabled)Vault.panicWipe()})}
+  if(!enterApp._panicBound){enterApp._panicBound=true;const fire=()=>{if(S.panicEnabled)Vault.panicWipe()};$('#btn-panic').addEventListener('click',fire);$('#btn-panic-chat').addEventListener('click',fire)}
   UI.renderChatList();UI.renderCommList();UI.renderCallList();UI.renderStatusList();
   startSyncLines();
   await ICECFG.load();
