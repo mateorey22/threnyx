@@ -1,6 +1,6 @@
 # Rapport d’audit de sécurité — Threnyx
 
-**Périmètre :** PWA statique `index.html`, service worker, manifeste, mécanismes Nostr/WebRTC/NFC/Constellation, coffre local et documentation publiés jusqu’à la révision PWA v23. Ce rapport est une revue d’architecture et de code statique ; il ne remplace pas un audit indépendant du navigateur, une revue de cryptographie formelle ou un test matériel exhaustif.
+**Périmètre :** PWA statique `index.html`, service worker, manifeste, mécanismes Nostr/WebRTC/NFC/Constellation, coffre local et documentation publiés jusqu’à la révision PWA v24. Ce rapport est une revue d’architecture et de code statique ; il ne remplace pas un audit indépendant du navigateur, une revue de cryptographie formelle ou un test matériel exhaustif.
 
 ## Synthèse
 
