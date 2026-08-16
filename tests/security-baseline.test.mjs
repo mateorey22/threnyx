@@ -1,12 +1,16 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const sw = readFileSync(new URL('../service-worker.js', import.meta.url), 'utf8');
 const csp = html.match(/<meta http-equiv="Content-Security-Policy" content="([^"]+)"/i)?.[1] || '';
+const inlineScript = html.match(/<script>([\s\S]*?)<\/script>/i)?.[1] || '';
+const scriptHash = `sha256-${createHash('sha256').update(inlineScript).digest('base64')}`;
 
 assert.ok(csp.startsWith("default-src 'none'"), 'le CSP doit partir d’un refus par défaut');
 assert.match(csp, /script-src 'sha256-[A-Za-z0-9+/=]+' 'wasm-unsafe-eval'/, 'le script principal doit être autorisé par hash CSP');
+assert.ok(csp.includes(`'${scriptHash}'`), 'le hash CSP doit correspondre exactement au script inline réellement publié');
 assert.ok(!csp.includes("script-src 'unsafe-inline'"), 'le CSP ne doit pas autoriser les scripts inline arbitraires');
 assert.ok(!csp.includes("script-src 'unsafe-eval'"), 'le CSP ne doit pas autoriser eval pour les scripts applicatifs');
 assert.match(csp, /object-src 'none'/, 'les objets embarqués doivent être interdits');
@@ -23,7 +27,7 @@ assert.ok(html.includes('await Nostr.verifySigned(ev)'), 'un événement Nostr r
 assert.ok(html.includes('unwrapNip17'), 'le lecteur NIP-17 doit rester présent');
 assert.ok(html.includes("console.error('THRENYX_BOOT_ERROR');"), 'le démarrage doit journaliser uniquement un marqueur sans détails sensibles');
 assert.ok(!html.includes("console.error('THRENYX_BOOT_ERROR',e);"), 'le démarrage ne doit pas journaliser l’objet d’erreur');
-assert.ok(sw.includes("const CACHE='threnyx-pwa-v25'"), 'le cache PWA doit être explicitement versionné');
+assert.ok(sw.includes("const CACHE='threnyx-pwa-v26'"), 'le cache PWA doit être explicitement versionné');
 assert.ok(sw.includes("keys.filter(k=>k.startsWith('threnyx-pwa-')&&k!==CACHE)"), 'les anciens caches Threnyx doivent être nettoyés à l’activation');
 
 console.log('security baseline checks: OK');

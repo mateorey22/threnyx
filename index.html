@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-67I5Zq9CdiGiaZv1GPpjnTQrnBA1f3gE+GLqNPNUfgc=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob: mediastream:; connect-src 'self' wss: blob:; worker-src 'self' blob:; manifest-src 'self' blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-mD4yN4/MztGTD1gtuQbA3w4nweLOrd3lkxKxnuuMNP0=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob: mediastream:; connect-src 'self' wss: blob:; worker-src 'self' blob:; manifest-src 'self' blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
 <meta name="theme-color" content="#060606">
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="application-name" content="Threnyx">
@@ -4257,7 +4257,7 @@ const PWA={
   standalone(){return matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true},
   async init(){
     if(!('serviceWorker' in navigator)||!window.isSecureContext)return;
-    try{PWA.registration=await navigator.serviceWorker.register('./service-worker.js?v=25',{scope:'./',updateViaCache:'none'});await PWA.registration.update();await navigator.serviceWorker.ready;let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!reloaded){reloaded=true;location.reload()}})}catch(e){}
+    try{PWA.registration=await navigator.serviceWorker.register('./service-worker.js?v=26',{scope:'./',updateViaCache:'none'});await PWA.registration.update();await navigator.serviceWorker.ready;let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!reloaded){reloaded=true;location.reload()}})}catch(e){}
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();PWA.deferred=e;PWA.refreshUI()});
     window.addEventListener('appinstalled',()=>{PWA.deferred=null;PWA.refreshUI();toast('>> THRENYX INSTALLE COMME APPLICATION')});
   },
