@@ -1,6 +1,6 @@
 # Rapport d’audit de sécurité — Threnyx
 
-**Périmètre :** PWA statique `index.html`, service worker, manifeste, mécanismes Nostr/WebRTC/NFC/Constellation, coffre local et documentation publiés jusqu’à la révision PWA v24. Ce rapport est une revue d’architecture et de code statique ; il ne remplace pas un audit indépendant du navigateur, une revue de cryptographie formelle ou un test matériel exhaustif.
+**Périmètre :** PWA statique `index.html`, service worker, manifeste, mécanismes Nostr/WebRTC/NFC/Constellation, coffre local et documentation publiés jusqu’à la révision PWA v25. Ce rapport est une revue d’architecture et de code statique ; il ne remplace pas un audit indépendant du navigateur, une revue de cryptographie formelle ou un test matériel exhaustif.
 
 ## Synthèse
 
@@ -23,7 +23,7 @@
 | Changement de clé | Alerte locale, invalidation du statut vérifié et fingerprint hors-bande. | Objet contact et `KeyGuard.profile`. |
 | Coffre | Argon2id versionné, chiffrement AES-GCM, assistance WebAuthn PRF, limite d’échecs et wipe local. | Module `Vault`, test de base de présence Argon2id. |
 | Chaîne de livraison | CSP de script par hash, aucun script HTML externe, `object-src/base-uri/form-action/frame-ancestors` verrouillés. | `tests/security-baseline.test.mjs`. |
-| Service worker | Cache `threnyx-pwa-v23`, suppression des caches Threnyx plus anciens à l’activation. | `service-worker.js`, test de base. |
+| Service worker | Cache `threnyx-pwa-v25`, suppression des caches Threnyx plus anciens à l’activation. | `service-worker.js`, test de base. |
 | Constellation / NFC | Manifestes signés, fragments chiffrés, vérification de kind, protection rollback et réauthentification avant export NFC. | `constellation-vault-architecture.md` et tests historiques associés. |
 | Appels | Pistes distantes attachées au flux négocié, redémarrage ICE traité et compteurs RTP locaux pour diagnostic. | `tests/v21-controls-webrtc.test.mjs`. |
 | Logs | Suppression de l’objet d’erreur du journal de démarrage. | `tests/security-baseline.test.mjs`. |

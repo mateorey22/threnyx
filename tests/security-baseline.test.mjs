@@ -13,8 +13,9 @@ assert.match(csp, /object-src 'none'/, 'les objets embarqués doivent être inte
 assert.match(csp, /base-uri 'none'/, 'la base URL doit être verrouillée');
 assert.match(csp, /form-action 'none'/, 'les soumissions de formulaires doivent être interdites');
 assert.match(csp, /frame-ancestors 'none'/, 'l’application ne doit pas être intégrable dans une frame');
-assert.match(csp, /connect-src wss: blob:/, 'les connexions applicatives doivent rester limitées aux relais WSS et blobs nécessaires');
+assert.match(csp, /connect-src 'self' wss: blob:/, 'les connexions applicatives doivent autoriser seulement l’origine de la PWA, les relais WSS et les blobs nécessaires');
 assert.ok(!/connect-src[^;]*\bhttps:/.test(csp), 'le CSP ne doit pas autoriser les requêtes HTTPS sortantes arbitraires');
+assert.ok(/connect-src[^;]*'self'/.test(csp), 'le CSP doit autoriser les mises à jour et requêtes internes de la PWA sur sa propre origine');
 assert.ok(!/<script[^>]+src=/i.test(html), 'aucun script externe ne doit être chargé par le HTML');
 assert.ok(!/<link[^>]+href="https?:\/\//i.test(html), 'aucune feuille ou police distante ne doit être chargée par le HTML');
 assert.ok(html.includes('Vault.rawArgon'), 'le coffre moderne doit conserver le chemin Argon2id');
@@ -22,7 +23,7 @@ assert.ok(html.includes('await Nostr.verifySigned(ev)'), 'un événement Nostr r
 assert.ok(html.includes('unwrapNip17'), 'le lecteur NIP-17 doit rester présent');
 assert.ok(html.includes("console.error('THRENYX_BOOT_ERROR');"), 'le démarrage doit journaliser uniquement un marqueur sans détails sensibles');
 assert.ok(!html.includes("console.error('THRENYX_BOOT_ERROR',e);"), 'le démarrage ne doit pas journaliser l’objet d’erreur');
-assert.ok(sw.includes("const CACHE='threnyx-pwa-v24'"), 'le cache PWA doit être explicitement versionné');
+assert.ok(sw.includes("const CACHE='threnyx-pwa-v25'"), 'le cache PWA doit être explicitement versionné');
 assert.ok(sw.includes("keys.filter(k=>k.startsWith('threnyx-pwa-')&&k!==CACHE)"), 'les anciens caches Threnyx doivent être nettoyés à l’activation');
 
 console.log('security baseline checks: OK');
