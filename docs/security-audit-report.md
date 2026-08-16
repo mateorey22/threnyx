@@ -22,7 +22,7 @@
 | Messagerie Nostr | NIP-17/NIP-44 v2/NIP-59, vérification de signature et contrôles de format avant routage. | `tests/security-baseline.test.mjs` et chemin `Nostr.unwrapNip17`. |
 | Changement de clé | Alerte locale, invalidation du statut vérifié et fingerprint hors-bande. | Objet contact et `KeyGuard.profile`. |
 | Coffre | Argon2id versionné, chiffrement AES-GCM, assistance WebAuthn PRF, limite d’échecs et wipe local. | Module `Vault`, test de base de présence Argon2id. |
-| Chaîne de livraison | CSP de script par hash exact vérifié par test, aucun script HTML externe, `object-src/base-uri/form-action/frame-ancestors` verrouillés. | `tests/security-baseline.test.mjs`. |
+| Chaîne de livraison | CSP de script par hash exact vérifié par test, aucun script HTML externe, `object-src/base-uri/form-action/frame-ancestors` verrouillés. `connect-src` autorise strictement `'self'`, `wss:` et `blob:` : `'self'` est indispensable aux requêtes et mises à jour internes de la PWA, sans ouvrir des destinations HTTPS arbitraires. | `tests/security-baseline.test.mjs`. |
 | Service worker | Cache `threnyx-pwa-v26`, suppression des caches Threnyx plus anciens à l’activation. | `service-worker.js`, test de base. |
 | Constellation / NFC | Manifestes signés, fragments chiffrés, vérification de kind, protection rollback et réauthentification avant export NFC. | `constellation-vault-architecture.md` et tests historiques associés. |
 | Appels | Pistes distantes attachées au flux négocié, redémarrage ICE traité et compteurs RTP locaux pour diagnostic. | `tests/v21-controls-webrtc.test.mjs`. |
@@ -44,3 +44,5 @@
 ## Conclusion de publication
 
 Les remédiations de coffre, CSP de scripts, vérification d’événements, service worker, diagnostics WebRTC, NIP-17 et documentation réduisent des risques identifiés. Elles ne transforment pas le protocole de messagerie actuel en Signal/Double Ratchet ou MLS. La prochaine migration ne doit être engagée qu’après pilote isolé, tests de propriétés, analyse de persistance et revue de sécurité dédiée.
+
+> **Incident CSP v24–v26.** Retirer `'self'` de `connect-src` a bloqué les requêtes same-origin nécessaires au shell et au service worker de la PWA. Ajouter l’autorisation de schéma générale `https:` aurait rétabli le fonctionnement, mais aurait élargi inutilement la surface réseau. La règle publiée est donc `connect-src 'self' wss: blob:` ; le test de base interdit explicitement `https:` et vérifie la présence de `'self'`.
