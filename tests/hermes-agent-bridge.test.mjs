@@ -29,8 +29,13 @@ assert.match(html, /class="md-table"/, 'le sous-ensemble Markdown doit supporter
 assert.match(html, /const AgentCommands=\{/, 'les commandes agent doivent être séparées du transport');
 assert.match(html, /id="agent-commands"/, 'la saisie doit exposer une aide de commandes contextuelle');
 assert.match(html, /id="btn-agent-commands"/, 'le chat agent doit offrir un accès tactile aux commandes');
-assert.match(html, /\/model &lt;nom&gt;|\/model <nom>/, 'la commande de sélection de modèle doit être documentée');
-assert.match(html, /AgentCommands\.handle\(text\)/, 'seule l’aide locale doit être interceptée avant l’envoi du message');
+assert.match(html, /agentManifest/, 'le catalogue de commandes doit pouvoir provenir du connecteur Hermes');
+assert.match(html, /agentPrompt/, 'les choix et confirmations Hermes doivent être reçus comme prompts corrélés');
+assert.match(html, /agentPromptResponse/, 'un bouton doit transmettre une réponse corrélée au connecteur');
+assert.match(html, /prompt_id/, 'les actions interactives doivent porter un identifiant opaque de prompt');
+assert.match(html, /response_id/, 'les réponses aux boutons doivent avoir un identifiant de déduplication');
+assert.match(html, /AgentBridge\.choosePrompt/, 'la pression d’un bouton ne doit déclencher que le transport agent');
+assert.ok(!html.includes('AgentCommands.handle(text)'), 'aucune commande, y compris /help, ne doit être exécutée localement');
 assert.ok(!html.includes('GATEWAY_RELAY_SECRET'), 'la PWA ne doit jamais contenir un secret gateway Hermes');
 assert.ok(!html.includes('GATEWAY_ALLOW_ALL_USERS'), 'la PWA ne doit jamais demander une autorisation Hermes ouverte');
 

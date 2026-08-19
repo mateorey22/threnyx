@@ -31,3 +31,46 @@ La révocation Threnyx bloque les prochains envois localement et émet `agentRev
 Threnyx transmet les messages commençant par `/` uniquement au bot explicitement appairé. La PWA n’exécute aucune commande Hermes localement. L’interface rend visibles les conventions `/model <nom>`, `/new`, `/reset` et `/status`; leur disponibilité concrète dépend du connecteur Hermes. La commande `/help` affiche l’aide locale Threnyx avant tout envoi.
 
 Les réponses du bot utilisent un sous-ensemble Markdown strict : gras, italique, barré, code en ligne ou en bloc, titres, citations, listes et tableaux. Le texte est toujours échappé comme donnée non fiable avant que Threnyx n’ajoute ses propres balises de présentation. Les liens actifs et tout HTML transmis par l’agent restent du texte inerte afin de réduire le risque de phishing et d’injection XSS.
+
+## 9. Synchronisation d’interface `THX-HERMES-UI1`
+
+Le connecteur ne maintient pas une seconde liste de commandes propre à Threnyx. Il lit le registre Hermes — le `command_manifest` Relay lorsqu’il est fourni au handshake, ou le registre de commandes du gateway — puis transmet le catalogue filtré au seul appairage concerné, dans un message NIP-17 signé par la clé bot.
+
+```json
+{
+  "t": "agentManifest",
+  "v": 1,
+  "aid": "<id THX-HERMES1>",
+  "revision": 1,
+  "commands": [
+    {"name": "model", "description": "Afficher ou changer le modèle", "options": [{"name": "name"}]},
+    {"name": "new", "description": "Démarrer une nouvelle session"}
+  ]
+}
+```
+
+Threnyx limite le catalogue à 60 commandes et n’accepte que des noms courts `[a-z][a-z0-9_-]`. Tant qu’aucun manifeste n’a été reçu, l’interface affiche un petit jeu de commandes Hermes conventionnelles et indique qu’il n’est pas encore synchronisé. Toute commande, **y compris `/help`**, est transmise au bot ; Threnyx n’interprète ni la commande ni ses arguments.
+
+## 10. Boutons, choix de modèle et confirmations
+
+Le Relay Hermes définit une opération abstraite `prompt` pour les clarifications, confirmations et choix. Le connecteur Threnyx doit convertir cette opération en un message NIP-17 `agentPrompt` :
+
+```json
+{
+  "t": "agentPrompt",
+  "v": 1,
+  "aid": "<id THX-HERMES1>",
+  "prompt_id": "<id opaque Hermes>",
+  "prompt_kind": "choice",
+  "content": "Choisir le modèle pour cette session",
+  "options": [
+    {"id": "fast", "label": "Rapide", "style": "primary"},
+    {"id": "reasoning", "label": "Raisonnement", "style": "secondary"}
+  ],
+  "timeout_s": 300
+}
+```
+
+Threnyx affiche les options sous forme de boutons dans le chat agent. Lors d’une pression, il émet `agentPromptResponse` avec `aid`, `prompt_id`, `option_id`, un `response_id` aléatoire et l’horodatage. Le connecteur doit vérifier la clé Nostr de l’émetteur, l’appairage, l’expiration, l’option et l’unicité de `response_id`, puis convertir le choix en `prompt_response` Hermes. Un bouton n’a jamais accès au coffre, aux réglages locaux, aux clés privées ou aux appels WebRTC.
+
+> Hermes Relay est expérimental : le connecteur doit annoncer seulement les capacités effectivement reçues au handshake. Lorsqu’un prompt ou un manifeste n’est pas disponible, il faut conserver le repli texte et ne pas inventer une interaction.
