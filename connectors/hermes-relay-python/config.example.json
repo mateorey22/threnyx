@@ -1,0 +1,19 @@
+{
+  "bot_priv_hex": "GENERATE_WITH_python3_-c_from_nostr_crypto_import_NostrKey_k=NostrKey_print_k.priv_hex",
+  "bot_pub_hex": "GENERATE_WITH_python3_-c_from_nostr_crypto_import_NostrKey_k=NostrKey_print_k.pub_hex",
+  "relay_urls": [
+    "wss://nos.lol",
+    "wss://relay.primal.net",
+    "wss://nostr.mom",
+    "wss://relay.damus.io",
+    "wss://relay.nostr.band"
+  ],
+  "hermes_api_url": "http://localhost:8642",
+  "hermes_api_key": "YOUR_HERMES_API_SERVER_KEY",
+  "hermes_model": "openai-gpt-56-luna",
+  "grant_state_path": "state/grants.json",
+  "media_ttl": 300,
+  "max_history": 20,
+  "session_idle_minutes": 1440,
+  "session_reset_hour": 4
+}

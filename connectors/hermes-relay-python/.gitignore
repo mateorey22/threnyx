@@ -1,0 +1,20 @@
+# Secrets — never commit
+config.json
+*.env
+.env
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Media cache
+media_cache/
+
+# Runtime authorization state (contains public keys, grant IDs and nonce hashes)
+state/
+
+# OS
+.DS_Store
+Thumbs.db

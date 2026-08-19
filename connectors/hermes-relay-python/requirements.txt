@@ -1,0 +1,7 @@
+# Install inside a dedicated virtual environment. Pin exact versions in your
+# deployment lockfile after validation on the target platform.
+aiohttp>=3.9
+coincurve>=20
+cryptography>=42
+secp256k1>=0.14
+websockets>=12
