@@ -13,5 +13,7 @@ Quand Hermes émet une action Relay prompt (approval, clarify ou choice), conver
 
 Quand Threnyx envoie agentPromptResponse, vérifie : signature/event NIP-17, pubkey utilisateur appairé, aid, prompt_id actif, option_id déclarée, expiration et response_id jamais consommé. Convertis ensuite la réponse en prompt_response Hermes ; n’exécute aucune action locale depuis le texte du bouton. Accuse ou réponds au chat normalement.
 
+Après traitement, renvoie un NIP-17 agentPromptAck avec aid, prompt_id, response_id et status accepted, rejected ou expired. Persiste chaque response_id consommé jusqu’à expiration du prompt : un doublon doit être refusé sans re-déclencher l’action Hermes.
+
 Toutes les commandes / envoyées par Threnyx, y compris /help, doivent être remises au dispatcher Hermes sans interprétation côté connecteur. Préserve les contrôles Hermes d’autorisation, de session et d’approbation. N’accorde jamais au bot l’accès aux clés privées Threnyx, au coffre local, aux appels WebRTC ou aux conversations humaines non adressées au bot. Ajoute des tests de replay, prompt expiré, mauvais aid, mauvaise pubkey et option inconnue.
 ```

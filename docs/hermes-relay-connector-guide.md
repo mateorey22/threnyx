@@ -74,3 +74,20 @@ Le Relay Hermes définit une opération abstraite `prompt` pour les clarificatio
 Threnyx affiche les options sous forme de boutons dans le chat agent. Lors d’une pression, il émet `agentPromptResponse` avec `aid`, `prompt_id`, `option_id`, un `response_id` aléatoire et l’horodatage. Le connecteur doit vérifier la clé Nostr de l’émetteur, l’appairage, l’expiration, l’option et l’unicité de `response_id`, puis convertir le choix en `prompt_response` Hermes. Un bouton n’a jamais accès au coffre, aux réglages locaux, aux clés privées ou aux appels WebRTC.
 
 > Hermes Relay est expérimental : le connecteur doit annoncer seulement les capacités effectivement reçues au handshake. Lorsqu’un prompt ou un manifeste n’est pas disponible, il faut conserver le repli texte et ne pas inventer une interaction.
+
+## 11. Accusé d’action et anti-rejeu
+
+Après avoir validé puis transmis une réponse de bouton au `prompt_response` Hermes, le connecteur renvoie immédiatement un accusé NIP-17 `agentPromptAck` au même appairage :
+
+```json
+{
+  "t": "agentPromptAck",
+  "v": 1,
+  "aid": "<id THX-HERMES1>",
+  "prompt_id": "<id opaque Hermes>",
+  "response_id": "<id de réponse Threnyx>",
+  "status": "accepted"
+}
+```
+
+Les statuts autorisés sont `accepted`, `rejected` et `expired`. Threnyx n’accepte l’accusé que depuis le bot appairé et seulement pour une réponse encore dans l’état `sent`. Le connecteur conserve chaque `response_id` consommé jusqu’à l’expiration du prompt ; une seconde réception doit être reconnue comme un rejeu, sans re-déclencher l’action Hermes.

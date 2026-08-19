@@ -32,9 +32,11 @@ assert.match(html, /id="btn-agent-commands"/, 'le chat agent doit offrir un acc�
 assert.match(html, /agentManifest/, 'le catalogue de commandes doit pouvoir provenir du connecteur Hermes');
 assert.match(html, /agentPrompt/, 'les choix et confirmations Hermes doivent être reçus comme prompts corrélés');
 assert.match(html, /agentPromptResponse/, 'un bouton doit transmettre une réponse corrélée au connecteur');
+assert.match(html, /agentPromptAck/, 'le connecteur doit confirmer explicitement le traitement d’une action interactive');
 assert.match(html, /prompt_id/, 'les actions interactives doivent porter un identifiant opaque de prompt');
 assert.match(html, /response_id/, 'les réponses aux boutons doivent avoir un identifiant de déduplication');
 assert.match(html, /AgentBridge\.choosePrompt/, 'la pression d’un bouton ne doit déclencher que le transport agent');
+assert.match(html, /prompt\.state!==\'sent\'/, 'un accusé ne doit être accepté que pour une réponse interactive encore en attente');
 assert.ok(!html.includes('AgentCommands.handle(text)'), 'aucune commande, y compris /help, ne doit être exécutée localement');
 assert.ok(!html.includes('GATEWAY_RELAY_SECRET'), 'la PWA ne doit jamais contenir un secret gateway Hermes');
 assert.ok(!html.includes('GATEWAY_ALLOW_ALL_USERS'), 'la PWA ne doit jamais demander une autorisation Hermes ouverte');
