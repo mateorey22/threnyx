@@ -20,8 +20,17 @@ assert.match(html, /id="agent-open"/, 'les réglages doivent offrir un point d�
 assert.match(html, /id="agent-image"/, 'le consentement image doit être explicite');
 assert.match(html, /id="agent-file"/, 'le consentement fichier doit être explicite');
 assert.match(html, /id="agent-voice"/, 'le consentement vocal doit être explicite');
-assert.match(html, /id="agent-qr"/, 'le code d’appairage doit être disponible sous forme de QR');
-assert.match(html, /COPIER LE GUIDE POUR HERMES/, 'le guide de raccordement doit être copiable depuis le parcours');
+assert.ok(!html.includes('id="agent-qr"'), 'le QR Hermes doit être retiré : le code copiable est le parcours supporté');
+assert.ok(!html.includes("QR.draw($('#agent-qr')"), 'le code Hermes ne doit plus tenter de dessiner un QR instable');
+assert.match(html, /COPIER LE GUIDE/, 'le guide de raccordement doit être copiable depuis le parcours');
+assert.match(html, /const richText=s=>\{/, 'le rendu Markdown doit être isolé dans un moteur explicite');
+assert.match(html, /const inline=value=>esc\(value\)/, 'le Markdown doit échapper le texte non fiable avant toute balise de formatage');
+assert.match(html, /class="md-table"/, 'le sous-ensemble Markdown doit supporter des tableaux lisibles');
+assert.match(html, /const AgentCommands=\{/, 'les commandes agent doivent être séparées du transport');
+assert.match(html, /id="agent-commands"/, 'la saisie doit exposer une aide de commandes contextuelle');
+assert.match(html, /id="btn-agent-commands"/, 'le chat agent doit offrir un accès tactile aux commandes');
+assert.match(html, /\/model &lt;nom&gt;|\/model <nom>/, 'la commande de sélection de modèle doit être documentée');
+assert.match(html, /AgentCommands\.handle\(text\)/, 'seule l’aide locale doit être interceptée avant l’envoi du message');
 assert.ok(!html.includes('GATEWAY_RELAY_SECRET'), 'la PWA ne doit jamais contenir un secret gateway Hermes');
 assert.ok(!html.includes('GATEWAY_ALLOW_ALL_USERS'), 'la PWA ne doit jamais demander une autorisation Hermes ouverte');
 

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-TZnku5nWplYjZZvpdxMUWoIOOq3YV6g/LbxHdhfDTok=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob: mediastream:; connect-src 'self' wss: blob:; worker-src 'self' blob:; manifest-src 'self' blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-oy1c6WR7kB2cPwzPlxckcFPzUEQ68ELK2aezmlVRXkc=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob: mediastream:; connect-src 'self' wss: blob:; worker-src 'self' blob:; manifest-src 'self' blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
 <meta name="theme-color" content="#060606">
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="application-name" content="Threnyx">
@@ -158,6 +158,8 @@ body.panic-flame::before{content:'';position:fixed;inset:0;z-index:9999;pointer-
 .compose textarea{flex:1;max-height:110px;font-size:.82rem;padding:9px 12px}
 .send-btn{flex-shrink:0;font-weight:700;padding:10px 14px}
 .send-btn.rec{background:var(--red);border-color:var(--red);color:#fff;animation:blink 1s infinite}
+.md{min-width:0}.md-line,.md-list,.md-quote{overflow-wrap:anywhere}.md-gap{height:.65em}.md-h{font-weight:800;letter-spacing:.5px;color:var(--bright);margin:.22em 0}.md-h1{font-size:1.16em}.md-h2{font-size:1.07em}.md-h3{font-size:1em}.md-list{padding-left:.25em}.md-quote{margin:.35em 0;padding:.22em .65em;border-left:2px solid var(--beige);color:var(--dim);background:rgba(216,207,174,.05)}.md-code{padding:1px 4px;border-radius:4px;background:#000;border:1px solid var(--dim2);font-family:ui-monospace,'SFMono-Regular',monospace;font-size:.9em}.md-pre{margin:.45em 0;padding:9px;max-width:100%;overflow:auto;border:1px solid var(--dim2);background:#000;font-size:.74em;line-height:1.45}.md-table-wrap{overflow-x:auto;margin:.45em 0;max-width:100%;border:1px solid var(--dim2)}.md-table{width:max-content;min-width:100%;border-collapse:collapse;font-size:.77em}.md-table th,.md-table td{padding:6px 8px;border-right:1px solid var(--dim2);border-bottom:1px solid var(--dim2);text-align:left;vertical-align:top}.md-table th{color:var(--bright);background:rgba(216,207,174,.08);font-weight:800}.md-table tr:last-child td{border-bottom:none}.md-table th:last-child,.md-table td:last-child{border-right:none}
+#agent-commands{border-top:1px solid var(--dim2);background:var(--panel);padding:7px 10px;max-height:170px;overflow:auto}.agent-command-title{display:flex;justify-content:space-between;gap:10px;color:var(--dim);font-size:.6rem;letter-spacing:.8px;margin:0 0 6px}.agent-command-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.agent-command{min-height:38px;padding:7px 9px;text-align:left;background:rgba(216,207,174,.035);border-color:var(--dim2);text-transform:none;letter-spacing:0}.agent-command b{display:block;color:var(--beige);font-size:.68rem}.agent-command small{display:block;margin-top:2px;color:var(--dim);font-size:.56rem;line-height:1.35}.settings-profile{display:flex;gap:14px;align-items:center;margin-bottom:14px}.settings-profile .field-wrap{flex:1;min-width:0}.agent-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
 
 /* ===== MODALES ===== */
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:120;display:flex;align-items:center;justify-content:center;padding:14px;overflow-y:auto}
@@ -227,7 +229,7 @@ details>*:not(summary){margin-top:10px}
 .msg-menu button{min-height:49px;padding:12px 16px;font-size:.76rem}.msg-menu .emoji-row{padding:11px 8px}.msg-menu .emoji-row span{font-size:1.2rem;padding:4px}
 .voice-player{border-radius:12px!important;padding:10px 12px}.voice-play{border-radius:50%!important;width:36px;height:36px}.voice-wave{border-radius:8px!important;overflow:hidden}.voice-wave i{border-radius:8px!important}
 #notif-permission{display:flex;align-items:center;gap:10px;padding:8px 12px;background:#14120c;border-bottom:1px solid var(--beige);font-size:.66rem;color:var(--beige);position:relative;z-index:5}#notif-permission span{flex:1;line-height:1.45}#notif-permission button{padding:7px 10px;white-space:nowrap;border-radius:7px!important}
-@media(max-width:560px){#msgs{padding:14px 10px;gap:10px}.bubble{max-width:94%;padding:13px 52px 12px 13px;border-radius:13px!important}.msg-menu{min-width:min(250px,calc(100vw - 16px))}.bubble .actions{top:8px;right:8px;min-width:37px;min-height:37px}.compose{padding:8px 8px}.icon-btn{min-height:35px}.chat-head{padding:8px}.chat-head .avatar{width:34px;height:34px}}
+@media(max-width:560px){#msgs{padding:14px 10px;gap:10px}.bubble{max-width:94%;padding:13px 52px 12px 13px;border-radius:13px!important}.msg-menu{min-width:min(250px,calc(100vw - 16px))}.bubble .actions{top:8px;right:8px;min-width:37px;min-height:37px}.compose{padding:8px 8px}.icon-btn{min-height:35px}.chat-head{padding:8px}.chat-head .avatar{width:34px;height:34px}.agent-command-grid{grid-template-columns:1fr}.settings-profile{align-items:flex-start}.settings-profile .avatar{width:58px;height:58px}.agent-actions{grid-template-columns:1fr}.modal-body{overflow-wrap:anywhere}.md-table{font-size:.7em}.md-table th,.md-table td{padding:5px 7px}}
 
 .qr-help{font-size:.66rem;color:var(--dim);line-height:1.65;margin-top:10px}.peer-exchange-note{display:grid;grid-template-columns:28px 1fr;gap:9px;margin:10px 0 13px;padding:10px 11px;border-left:2px solid var(--beige);background:rgba(216,207,174,.07);border-radius:0 var(--radius-sm) var(--radius-sm) 0}.peer-exchange-note span{color:var(--beige);font-size:1.05rem;line-height:1.25}.peer-exchange-note p{margin:0;color:var(--dim);font-size:.67rem;line-height:1.55}.peer-exchange-note strong{color:var(--beige)}
 /* ===== INTERFACE MODERNE / TERMINAL PARCHEMIN ===== */
@@ -356,12 +358,14 @@ html[data-theme="light"] .nfc-card{background:linear-gradient(135deg,rgba(81,70,
           <button class="icon-btn chat-action" id="btn-call-video" title="Appel vidéo" aria-label="Appel vidéo">◉</button>
         </div>
         <div id="chat-search" class="hidden"><input id="cs-input" placeholder="> FILTRER LES MESSAGES_"><span id="cs-count"></span><button class="icon-btn" id="cs-close">[X]</button></div>
-        <div id="msgs"></div>
-        <div id="reply-bar" class="hidden"><div class="quote" id="reply-quote"></div><button class="icon-btn" id="reply-cancel">[X]</button></div>
-        <div class="compose">
-          <button class="icon-btn compose-action" id="btn-attach" title="Joindre un fichier" aria-label="Joindre un fichier">＋</button>
-          <input type="file" id="file-input" class="hidden" multiple>
-          <span class="prompt" id="prompt-char">&gt;</span>
+	<div id="msgs"></div>
+	<div id="reply-bar" class="hidden"><div class="quote" id="reply-quote"></div><button class="icon-btn" id="reply-cancel">[X]</button></div>
+	<div id="agent-commands" class="hidden" aria-live="polite"></div>
+	<div class="compose">
+	  <button class="icon-btn compose-action" id="btn-attach" title="Joindre un fichier" aria-label="Joindre un fichier">＋</button>
+	  <input type="file" id="file-input" class="hidden" multiple>
+	  <button class="icon-btn compose-action hidden" id="btn-agent-commands" title="Commandes de l’agent" aria-label="Commandes de l’agent">/</button>
+	  <span class="prompt" id="prompt-char">&gt;</span>
           <textarea id="msg-input" rows="1" maxlength="5000" placeholder="MESSAGE_ (*gras* _italique_ ~barre~)"></textarea>
           <button class="send-btn" id="btn-send">[REC]</button>
         </div>
@@ -2738,7 +2742,33 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const fmtTime=t=>new Date(t).toLocaleTimeString('fr',{hour:'2-digit',minute:'2-digit'});
 const fmtDay=t=>{const d=new Date(t),td=new Date();if(d.toDateString()===td.toDateString())return"AUJOURD'HUI";td.setDate(td.getDate()-1);return d.toDateString()===td.toDateString()?'HIER':d.toLocaleDateString('fr')};
 const toast=m=>{const t=document.createElement('div');t.className='toast';t.textContent=m;$('#toasts').appendChild(t);setTimeout(()=>t.remove(),3500)};
-const richText=s=>esc(s).replace(/\*([^*]+)\*/g,'<b>$1</b>').replace(/_([^_]+)_/g,'<i>$1</i>').replace(/~([^~]+)~/g,'<s>$1</s>').replace(/`([^`]+)`/g,'<code style="background:#000;padding:0 4px">$1</code>');
+const richText=s=>{
+  const raw=String(s??'').slice(0,5000).replace(/\r/g,'');
+  const inline=value=>esc(value)
+    .replace(/`([^`\n]{1,300})`/g,'<code class="md-code">$1</code>')
+    .replace(/\*\*([^*\n][\s\S]{0,500}?)\*\*/g,'<strong>$1</strong>')
+    .replace(/__([^_\n][\s\S]{0,500}?)__/g,'<strong>$1</strong>')
+    .replace(/~~([^~\n][\s\S]{0,500}?)~~/g,'<s>$1</s>')
+    .replace(/(^|[^*])\*([^*\n][\s\S]{0,500}?)\*(?!\*)/g,'$1<em>$2</em>')
+    .replace(/(^|[^_])_([^_\n][\s\S]{0,500}?)_(?!_)/g,'$1<em>$2</em>')
+    .replace(/(^|[^~])~([^~\n][\s\S]{0,500}?)~(?!~)/g,'$1<s>$2</s>');
+  const out=[],lines=raw.split('\n');let code=[],table=[];
+  const flushCode=()=>{if(!code.length)return;out.push('<pre class="md-pre"><code>'+esc(code.join('\n'))+'</code></pre>');code=[]};
+  const flushTable=()=>{if(!table.length)return;const rows=table.map(line=>line.slice(1,-1).split('|').map(cell=>cell.trim()));const divider=rows[1]?.every(cell=>/^:?-{3,}:?$/.test(cell));const head=divider?rows[0]:null,body=divider?rows.slice(2):rows;out.push('<div class="md-table-wrap"><table class="md-table">'+(head?'<thead><tr>'+head.map(cell=>'<th>'+inline(cell)+'</th>').join('')+'</tr></thead>':'')+'<tbody>'+body.map(row=>'<tr>'+row.map(cell=>'<td>'+inline(cell)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>');table=[]};
+  let fenced=false;
+  for(const line of lines){
+    if(/^```/.test(line)){if(fenced){flushCode();fenced=false}else{flushTable();fenced=true}continue}
+    if(fenced){code.push(line);continue}
+    if(/^\|.*\|$/.test(line)){table.push(line);continue}
+    flushTable();
+    if(!line){out.push('<div class="md-gap"></div>');continue}
+    const h=line.match(/^(#{1,3})\s+(.{1,300})$/);if(h){out.push('<div class="md-h md-h'+h[1].length+'">'+inline(h[2])+'</div>');continue}
+    const quote=line.match(/^>\s?(.*)$/);if(quote){out.push('<blockquote class="md-quote">'+inline(quote[1])+'</blockquote>');continue}
+    const list=line.match(/^[-*]\s+(.{1,1000})$/);if(list){out.push('<div class="md-list">• '+inline(list[1])+'</div>');continue}
+    out.push('<div class="md-line">'+inline(line)+'</div>');
+  }
+  if(fenced)flushCode();flushTable();return '<div class="md">'+out.join('')+'</div>'
+};
 const fileToB64=f=>new Promise((res,rej)=>{const fr=new FileReader();fr.onerror=()=>rej(Error('lecture fichier'));fr.onload=()=>res(String(fr.result||''));fr.readAsDataURL(f)});
 const upName=x=>esc((x||'').toUpperCase());
 const Safe={
@@ -3162,7 +3192,7 @@ const AgentBridge={
   async revoke(id){const agent=S.agents.get(id);if(!agent)return;agent.state='revoked';agent.revokedAt=now();agent.card='';await DB.put('agents',agent);S.agents.set(id,agent);const c=S.contacts.get(agent.pub);if(c){c.agentPermissions={text:false,image:false,file:false,voice:false};await DB.put('contacts',c)}try{await sendPayload(agent.pub,{t:'agentRevoke',aid:agent.id},{eph:false})}catch(e){}toast('>> AGENT REVOQUE LOCALEMENT')},
   copy(agent){if(!agent?.card)throw Error('CODE INDISPONIBLE OU DEJA CONSOMME');navigator.clipboard?.writeText(agent.card);toast('>> CODE THX-HERMES1 COPIE — VALIDE 10 MINUTES')},
   exportGuide(agent){if(!agent?.card)throw Error('CODE INDISPONIBLE OU DEJA CONSOMME');const text=['THRENYX × HERMES RELAY — APPARIAGE PILOTE','BOT NOSTR : '+agent.pub,'VERIFIER BIP-340 SUR SHA-256("threnyx/hermes-grant/v1:" + JSON payload).','REFUSER EXPIRATION, REJEU, MAUVAIS BOT OU PERMISSION ABSENTE.','ACCEPTER SEULEMENT NIP-17 POUR CE BOT.','RENVOYER VIA NIP-17 : {t:"agentAck",aid:"'+agent.id+'",nonceHash:"'+agent.nonceHash+'"}.','','CODE A USAGE UNIQUE :',agent.card].join('\n');navigator.clipboard?.writeText(text);toast('>> GUIDE HERMES + CODE COPIES')},
-  openCreate(){Modal.open('// CONNECTER UN AGENT HERMES',`<p class="qr-help">Threnyx prépare un code signé à usage unique pour une <b>identité bot Nostr dédiée</b>. Votre phrase secrète, vos conversations humaines et vos appels ne sont jamais transmis. Le code expire après 10 minutes.</p><div class="field"><label>NOM DU BOT</label><input id="agent-name" maxlength="30" value="HERMES"></div><div class="field"><label>CLE PUBLIQUE NOSTR DU BOT (64 HEX)</label><input id="agent-pub" autocomplete="off" spellcheck="false" placeholder="clé hexadécimale du bot"></div><p class="dim" style="font-size:.61rem;line-height:1.55">Vérifiez l’empreinte bot avec son opérateur. Ne collez jamais votre clé privée.</p><label class="check-row"><input type="checkbox" id="agent-image">AUTORISER LES IMAGES ENVOYEES AU BOT</label><label class="check-row"><input type="checkbox" id="agent-file">AUTORISER LES FICHIERS ENVOYES AU BOT</label><label class="check-row"><input type="checkbox" id="agent-voice">AUTORISER LES NOTES VOCALES ENVOYEES AU BOT</label><button id="agent-create" style="width:100%;margin-top:10px">[ CREER LE CODE SIGNE ]</button>`);$('#agent-create').onclick=async()=>{try{const agent=await AgentBridge.build({pub:($('#agent-pub').value||'').trim().toLowerCase(),name:$('#agent-name').value,permissions:{text:true,image:$('#agent-image').checked,file:$('#agent-file').checked,voice:$('#agent-voice').checked}});Modal.open('// CODE HERMES PRET',`<p class="qr-help">Copiez ou faites scanner ce code par le connecteur Hermes. Il n’est pas une clé de coffre et devient invalide dans 10 minutes. Le connecteur doit confirmer par un message NIP-17 du bot.</p><canvas id="agent-qr" aria-label="QR d’appairage Hermes"></canvas><div class="code-box" style="font-size:.55rem;max-height:100px;overflow:auto">${esc(agent.card)}</div><button id="agent-copy" style="width:100%">[ COPIER LE CODE ]</button><button class="btn-sm" id="agent-guide" style="width:100%;margin-top:8px">[ COPIER LE GUIDE POUR HERMES ]</button>`);QR.draw($('#agent-qr'),agent.card);$('#agent-copy').onclick=()=>{try{AgentBridge.copy(agent)}catch(e){toast('!! '+String(e.message||'COPIE IMPOSSIBLE'))}};$('#agent-guide').onclick=()=>{try{AgentBridge.exportGuide(agent)}catch(e){toast('!! '+String(e.message||'EXPORT IMPOSSIBLE'))}}}catch(e){toast('!! '+String(e.message||'APPARIAGE IMPOSSIBLE').toUpperCase())}}}
+  openCreate(){Modal.open('// CONNECTER UN AGENT HERMES',`<p class="qr-help">Threnyx prépare un code signé à usage unique pour une <b>identité bot Nostr dédiée</b>. Votre phrase secrète, vos conversations humaines et vos appels ne sont jamais transmis. Le code expire après 10 minutes.</p><div class="field"><label>NOM DU BOT</label><input id="agent-name" maxlength="30" value="HERMES"></div><div class="field"><label>CLE PUBLIQUE NOSTR DU BOT (64 HEX)</label><input id="agent-pub" autocomplete="off" spellcheck="false" placeholder="clé hexadécimale du bot"></div><p class="dim" style="font-size:.61rem;line-height:1.55">Vérifiez l’empreinte bot avec son opérateur. Ne collez jamais votre clé privée.</p><label class="check-row"><input type="checkbox" id="agent-image">AUTORISER LES IMAGES ENVOYEES AU BOT</label><label class="check-row"><input type="checkbox" id="agent-file">AUTORISER LES FICHIERS ENVOYES AU BOT</label><label class="check-row"><input type="checkbox" id="agent-voice">AUTORISER LES NOTES VOCALES ENVOYEES AU BOT</label><button id="agent-create" style="width:100%;margin-top:10px">[ CREER LE CODE SIGNE ]</button>`);$('#agent-create').onclick=async()=>{try{const agent=await AgentBridge.build({pub:($('#agent-pub').value||'').trim().toLowerCase(),name:$('#agent-name').value,permissions:{text:true,image:$('#agent-image').checked,file:$('#agent-file').checked,voice:$('#agent-voice').checked}});Modal.open('// CODE HERMES PRET',`<p class="qr-help">Copiez ce code dans le connecteur Hermes. Il n’est pas une clé de coffre et devient invalide dans 10 minutes. Le connecteur doit confirmer par un message NIP-17 du bot.</p><div class="code-box" style="font-size:.55rem;max-height:150px;overflow:auto">${esc(agent.card)}</div><div class="agent-actions"><button id="agent-copy">[ COPIER LE CODE ]</button><button class="btn-sm" id="agent-guide">[ COPIER LE GUIDE ]</button></div>`);$('#agent-copy').onclick=()=>{try{AgentBridge.copy(agent)}catch(e){toast('!! '+String(e.message||'COPIE IMPOSSIBLE'))}};$('#agent-guide').onclick=()=>{try{AgentBridge.exportGuide(agent)}catch(e){toast('!! '+String(e.message||'EXPORT IMPOSSIBLE'))}}}catch(e){toast('!! '+String(e.message||'APPARIAGE IMPOSSIBLE').toUpperCase())}}}
 };
 
 /* ================================================================
@@ -3773,6 +3803,26 @@ const VUI={
     audio.addEventListener('loadedmetadata',paint);audio.addEventListener('timeupdate',paint);audio.addEventListener('play',sync);audio.addEventListener('pause',sync);audio.addEventListener('ended',()=>{audio.currentTime=0;sync()});audio.addEventListener('error',()=>{time.textContent='ERR';play.disabled=true});
   }
 };
+const AgentCommands={
+  list:[
+    {cmd:'/help',hint:'ouvrir cette aide locale'},
+    {cmd:'/model <nom>',hint:'demander un modèle au gateway'},
+    {cmd:'/new',hint:'démarrer un nouveau contexte agent'},
+    {cmd:'/reset',hint:'réinitialiser le contexte agent'},
+    {cmd:'/status',hint:'demander l’état du gateway'}
+  ],
+  active(){return !!AgentBridge.recordFor(S.activeChat)},
+  render(query=''){
+    const box=$('#agent-commands'),button=$('#btn-agent-commands');if(!box||!button)return;
+    const on=this.active();button.classList.toggle('hidden',!on);if(!on){box.classList.add('hidden');box.innerHTML='';return}
+    const q=String(query||'').trim().toLowerCase();if(!q.startsWith('/')){box.classList.add('hidden');return}
+    const rows=this.list.filter(x=>x.cmd.startsWith(q)||q==='/').map(x=>`<button type="button" class="agent-command" data-agent-command="${esc(x.cmd.replace(' <nom>',''))}"><b>${esc(x.cmd)}</b><small>${esc(x.hint)}</small></button>`).join('');
+    box.innerHTML=`<div class="agent-command-title"><span>COMMANDES HERMES — TRANSMISES AU BOT</span><span>↵ POUR ENVOYER</span></div><div class="agent-command-grid">${rows||'<span class="dim" style="font-size:.62rem">COMMANDE PERSONNALISEE : ELLE SERA ENVOYEE AU GATEWAY.</span>'}</div>`;box.classList.remove('hidden');
+    box.querySelectorAll('[data-agent-command]').forEach(b=>b.onclick=()=>{const cmd=b.dataset.agentCommand;const input=$('#msg-input');input.value=cmd==='/model'?'/model ':cmd+' ';input.focus();this.render(input.value)})
+  },
+  open(){if(!this.active())return;const input=$('#msg-input');input.value='/';input.focus();this.render('/')},
+  handle(text){if(!this.active()||String(text||'').trim()!=='/help')return false;Modal.open('// COMMANDES HERMES',`<p class="qr-help">Les commandes sont envoyées au bot Hermes par le canal NIP-17. Threnyx n’exécute aucune commande du gateway localement.</p><div class="agent-command-grid">${this.list.map(x=>`<div class="agent-command"><b>${esc(x.cmd)}</b><small>${esc(x.hint)}</small></div>`).join('')}</div><p class="dim" style="font-size:.61rem;line-height:1.55;margin-top:10px">Les commandes hors liste restent transmissibles ; leur disponibilité dépend de votre connecteur Hermes.</p>`);return true}
+};
 const UI={
   expireLabel:ms=>({0:'DESACTIVE',3600000:'1 HEURE',86400000:'24 HEURES',604800000:'7 JOURS'})[ms]||'—',
   dotHtml(id){const st=onlineState(id);return st?`<span class="online-dot ${st===2?'p2p':'relay'}"></span>`:''},
@@ -3807,6 +3857,7 @@ const UI={
     $('#main').classList.add('open');$('#main-empty').classList.add('hidden');
     $('#chat-view').classList.remove('hidden');$('#chat-search').classList.add('hidden');
     UI.refreshChatHead();
+    AgentCommands.render($('#msg-input').value||'');
     const box=$('#msgs');box.innerHTML='';
     const msgs=(await DB.byIndex('messages','chat',chatId)).sort((a,b)=>a.ts-b.ts);
     let lastDay='';
@@ -3825,7 +3876,9 @@ const UI={
     $('#ch-name').textContent=(c.localName||c.name).toUpperCase()+(c.verified?' ✓':'')+(c.expire?' ⏱':'');
     {const avatar=Safe.image(c.avatar);$('#ch-avatar').innerHTML=avatar?`<img src="${esc(avatar)}" alt="">`:esc((c.localName||c.name)[0].toUpperCase());}
     const p=$('#ch-presence');p.className='presence';
+    const isAgent=!!AgentBridge.recordFor(id);$('#btn-call-audio').classList.toggle('hidden',isAgent);$('#btn-call-video').classList.toggle('hidden',isAgent);$('#msg-input').placeholder=isAgent?'MESSAGE POUR HERMES_ (/ POUR COMMANDES)':'MESSAGE_ (*gras* _italique_ ~barre~)';
     if(isG)p.textContent=c.members.length+' MEMBRES // ETAT REPLIQUE LAMPORT#'+c.lamport;
+    else if(isAgent)p.textContent='◈ AGENT RELAY · TEXTE ET PERMISSIONS EXPLICITES · PAS D’APPEL';
     else if(S.typing.get(id)&&now()-S.typing.get(id)<4000){p.textContent='TRANSMISSION EN COURS…█';p.classList.add('typing')}
     else{const st=onlineState(id);
       p.textContent=st===2?'● EN LIGNE // LIEN P2P DIRECT':st===1?'◐ EN LIGNE // VIA RELAIS NOSTR':
@@ -4189,9 +4242,9 @@ const Modal={
       <span class="url">${esc(r.url)}</span>
       <button class="btn-sm btn-danger" data-rdel="${esc(r.url)}">[X]</button></div>`).join('');
     Modal.open('// CONFIGURATION DU NOEUD',`
-      <div style="display:flex;gap:14px;align-items:center;margin-bottom:14px">
+      <div class="settings-profile">
         ${UI.avatarHtml({name:S.me.name,avatar:S.me.avatar},'lg')}
-        <div style="flex:1">
+        <div class="field-wrap">
           <div class="field"><label>CODENAME</label><input id="set-name" maxlength="30" value="${esc(S.me.name)}"></div>
           <div class="field"><label>BIO</label><input id="set-bio" maxlength="80" value="${esc(S.me.bio)}"></div></div></div>
       <input type="file" id="set-avatar" accept="image/*"><label class="file-picker" for="set-avatar"><span>◈ CHOISIR UN PORTRAIT</span><small id="set-avatar-name">AUCUN FICHIER</small></label>
@@ -4205,7 +4258,7 @@ const Modal={
       <details><summary>◈ RELAIS TURN — FIABILITE DES APPELS</summary><p class="dim" style="font-size:.64rem;line-height:1.6">STATUT: ${ICECFG.status()}. Un TURN est nécessaire lorsque deux réseaux ne permettent pas de lien P2P direct. Vos identifiants TURN sont chiffrés dans le stockage local.</p><div class="field"><label>URL TURN / TURNS</label><input id="turn-urls" placeholder="turns:turn.exemple.com:5349?transport=tcp"></div><div class="field"><label>UTILISATEUR TURN</label><input id="turn-user" autocomplete="off"></div><div class="field"><label>MOT DE PASSE TURN</label><input id="turn-cred" type="password" autocomplete="new-password"></div><button class="btn-sm" id="turn-save" style="width:100%">[ ENREGISTRER LE RELAIS TURN ]</button></details>
       <details><summary>◈ GESTIONNAIRE DE RELAIS NOSTR</summary>
         ${relayRows}
-        <div style="display:flex;gap:8px"><input id="relay-add" placeholder="wss://relay.exemple.com">
+        <div class="agent-actions"><input id="relay-add" placeholder="wss://relay.exemple.com">
         <button class="btn-sm" id="relay-add-do">[+]</button></div>
         <p class="dim" style="font-size:.62rem">>> LES RELAIS NE VOIENT QUE DES ENVELOPPES ANONYMES (GIFT WRAP NIP-59).</p></details>
       <details><summary>▤ SAUVEGARDE / MIGRATION</summary>
@@ -4220,6 +4273,7 @@ const Modal={
         <p class="dim" style="font-size:.64rem;line-height:1.65">Créez un code signé de 10 minutes pour un bot Nostr dédié. Threnyx ne donne jamais votre clé privée, le coffre, les conversations humaines ou les appels à Hermes. Le Relay Hermes reste expérimental : commencez avec le texte.</p>
         <div id="agent-status" class="security-strip">${[...S.agents.values()].length?[...S.agents.values()].map(a=>`${esc(a.name)} · ${esc(AgentBridge.status(a))}`).join('<br>'):'AUCUN AGENT CONNECTE'}</div>
         <button class="btn-sm" id="agent-open" style="width:100%;margin-top:8px">[ CONNECTER UN BOT HERMES ]</button>
+        <button class="btn-sm" id="agent-command-help" style="width:100%;margin-top:8px">[ VOIR LES COMMANDES HERMES ]</button>
         ${[...S.agents.values()].filter(a=>a.state!=='revoked').map(a=>`<button class="btn-sm btn-danger" data-agent-revoke="${esc(a.id)}" style="width:100%;margin-top:8px">[ REVOQUER ${esc(a.name).toUpperCase()} ]</button>`).join('')}
       </details>
       <details open><summary>⚙ PREFERENCES D’INTERFACE</summary>
@@ -4261,7 +4315,7 @@ const Modal={
       toast('>> SAUVEGARDE CHIFFREE GENEREE')};
     $('#cv-snapshot').onclick=async e=>{const b=e.currentTarget;b.disabled=true;try{toast('>> CONSTELLATION : CHIFFREMENT ET REPLICATION EN COURS');const head=await Constellation.snapshot();toast('>> SNAPSHOT CONFIRME — '+head.parts+' FRAGMENT(S) SUR PLUSIEURS RELAIS');Modal.settings()}catch(err){toast('!! '+String(err.message||'ECHEC CONSTELLATION').toUpperCase())}finally{b.disabled=false}};
     document.querySelector('#cv-write').onclick=async e=>{const b=e.currentTarget;if(b.disabled)return;try{if((S.me.constellation?.head??null)===null)throw Error('PUBLIEZ D ABORD UN SNAPSHOT CHIFFRE');if(Number(S.cvExportUntil||0)<=now()){b.disabled=true;await Vault.approveRecoveryExport();S.cvExportUntil=now()+60000;b.textContent='[ ECRIRE LA CLE NFC — 60 S ]';toast('>> CONFIRMATION ACCEPTEE — APPUYEZ UNE SECONDE FOIS POUR ECRIRE');return}S.cvExportUntil=0;b.disabled=true;const card=Constellation.card();toast('>> APPROCHEZ LE TAG NFC — 97 CARACTERES — SON CONTENU SERA REMPLACE');await NFC.write(card);navigator.vibrate?.([25,45,25]);toast('>> CLE NFC CONSTELLATION ECRITE')}catch(err){toast('!! '+NFC.explain(err,'write'))}finally{b.disabled=false}};
-    $('#agent-open').onclick=()=>AgentBridge.openCreate();$$('[data-agent-revoke]').forEach(b=>b.onclick=async()=>{if(!confirm('REVOQUER CET AGENT LOCALEMENT ?'))return;await AgentBridge.revoke(b.dataset.agentRevoke);Modal.settings()});
+    $('#agent-open').onclick=()=>AgentBridge.openCreate();$('#agent-command-help').onclick=()=>AgentCommands.handle('/help');$$('[data-agent-revoke]').forEach(b=>b.onclick=async()=>{if(!confirm('REVOQUER CET AGENT LOCALEMENT ?'))return;await AgentBridge.revoke(b.dataset.agentRevoke);Modal.settings()});
     $('#theme-dark').onclick=async()=>{await Theme.set('dark');Modal.settings()};$('#theme-light').onclick=async()=>{await Theme.set('light');Modal.settings()};
     $('#set-notif').onchange=e=>{Notif.enabled=e.target.checked;DB.kvSet('notif',Notif.enabled)};$('#set-notif-sound').onchange=e=>{Notif.prefs.sound=e.target.checked;Notif.save()};$('#set-notif-vibrate').onchange=e=>{Notif.prefs.vibrate=e.target.checked;Notif.save()};$('#set-notif-volume').oninput=e=>{$('#notif-volume-out').textContent=e.target.value;Notif.prefs.volume=+e.target.value;Notif.save()};$('#set-notif-tone').onchange=e=>{Notif.prefs.tone=e.target.value;Notif.save()};$('#notif-test').onclick=()=>{Notif.beep();if(Notif.prefs.vibrate)navigator.vibrate?.(20)};
     $('#set-p2p').onchange=e=>{S.allowP2P=e.target.checked;DB.kvSet('allowP2P',S.allowP2P);if(!S.allowP2P){for(const[,p]of S.peers)try{p.pc.close()}catch(err){};toast('>> P2P DESACTIVE — RELAIS UNIQUEMENT')}};
@@ -4482,6 +4536,7 @@ function bindEvents(){
   input.oninput=()=>{
     input.style.height='auto';input.style.height=Math.min(110,input.scrollHeight)+'px';
     refreshBtn();
+    AgentCommands.render(input.value);
     if(S.activeChat&&!S.activeChat.startsWith('g_')){
       const t=now();
       if(t-typingT>2500){typingT=t;sendPayload(S.activeChat,{t:'typing',on:true},{eph:true,p2pOnly:!S.allowP2P})}
@@ -4495,10 +4550,13 @@ function bindEvents(){
     const text=input.value.trim();
     if(!text&&!S.editing)return startVoice();
     if(!S.activeChat)return;
+    if(AgentCommands.handle(text)){input.value='';input.style.height='auto';refreshBtn();AgentCommands.render('');return}
     input.value='';input.style.height='auto';refreshBtn();
+    AgentCommands.render('');
     await MSG.sendText(S.activeChat,text,null);
   }
   sendBtn.onclick=doSend;
+  $('#btn-agent-commands').onclick=()=>AgentCommands.open();
   $('#reply-cancel').onclick=()=>{S.replyTo=null;$('#reply-bar').classList.add('hidden')};
 
   /* Fichiers */

@@ -25,3 +25,9 @@ Threnyx ne passe l’agent à l’état connecté que si cet accusé provient de
 Le gateway Hermes doit utiliser une instance isolée, une identité bot séparée, des approbations manuelles, aucune liste `allow all`, et un stockage média temporaire chiffré. Le Relay Hermes est expérimental : commencez avec le texte. Images, fichiers et vocaux nécessitent une permission explicite dans Threnyx ; les appels WebRTC restent hors périmètre.
 
 La révocation Threnyx bloque les prochains envois localement et émet `agentRevoke` vers le bot lorsque le réseau le permet. Le connecteur doit aussi supprimer les permissions, sessions et médias temporaires liés à l’appairage.
+
+## Commandes et réponses enrichies
+
+Threnyx transmet les messages commençant par `/` uniquement au bot explicitement appairé. La PWA n’exécute aucune commande Hermes localement. L’interface rend visibles les conventions `/model <nom>`, `/new`, `/reset` et `/status`; leur disponibilité concrète dépend du connecteur Hermes. La commande `/help` affiche l’aide locale Threnyx avant tout envoi.
+
+Les réponses du bot utilisent un sous-ensemble Markdown strict : gras, italique, barré, code en ligne ou en bloc, titres, citations, listes et tableaux. Le texte est toujours échappé comme donnée non fiable avant que Threnyx n’ajoute ses propres balises de présentation. Les liens actifs et tout HTML transmis par l’agent restent du texte inerte afin de réduire le risque de phishing et d’injection XSS.

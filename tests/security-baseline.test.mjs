@@ -27,7 +27,7 @@ assert.ok(html.includes('await Nostr.verifySigned(ev)'), 'un événement Nostr r
 assert.ok(html.includes('unwrapNip17'), 'le lecteur NIP-17 doit rester présent');
 assert.ok(html.includes("console.error('THRENYX_BOOT_ERROR');"), 'le démarrage doit journaliser uniquement un marqueur sans détails sensibles');
 assert.ok(!html.includes("console.error('THRENYX_BOOT_ERROR',e);"), 'le démarrage ne doit pas journaliser l’objet d’erreur');
-assert.ok(sw.includes("const CACHE='threnyx-pwa-v27'"), 'le cache PWA doit être explicitement versionné');
+assert.ok(sw.includes("const CACHE='threnyx-pwa-v28'"), 'le cache PWA doit être explicitement versionné');
 assert.ok(sw.includes("keys.filter(k=>k.startsWith('threnyx-pwa-')&&k!==CACHE)"), 'les anciens caches Threnyx doivent être nettoyés à l’activation');
 
 console.log('security baseline checks: OK');
