@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-mD4yN4/MztGTD1gtuQbA3w4nweLOrd3lkxKxnuuMNP0=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob: mediastream:; connect-src 'self' wss: blob:; worker-src 'self' blob:; manifest-src 'self' blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-TZnku5nWplYjZZvpdxMUWoIOOq3YV6g/LbxHdhfDTok=' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob: mediastream:; connect-src 'self' wss: blob:; worker-src 'self' blob:; manifest-src 'self' blob:; font-src data:; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
 <meta name="theme-color" content="#060606">
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="application-name" content="Threnyx">
@@ -2853,9 +2853,9 @@ const Crypto={
 /* ---------------- BASE DE DONNÉES ---------------- */
 const DB={db:null,
   open(){return new Promise((res,rej)=>{
-    const rq=indexedDB.open('threnyx_secure_v3',2);
+    const rq=indexedDB.open('threnyx_secure_v3',3);
     rq.onupgradeneeded=e=>{const d=e.target.result;
-      for(const s of['kv','contacts','groups','statuses','calls','shards','outbox','invites'])
+      for(const s of['kv','contacts','groups','statuses','calls','shards','outbox','invites','agents'])
         if(!d.objectStoreNames.contains(s))d.createObjectStore(s,{keyPath:'id'});
       if(!d.objectStoreNames.contains('messages')){const m=d.createObjectStore('messages',{keyPath:'id'});m.createIndex('chat','chatId')}
       else {const m=e.target.transaction.objectStore('messages');if(!m.indexNames.contains('chat'))m.createIndex('chat','chatId')}};
@@ -2896,7 +2896,7 @@ const DB={db:null,
 };
 
 /* ---------------- ÉTAT GLOBAL ---------------- */
-const S={me:null,localKey:null,contacts:new Map(),groups:new Map(),peers:new Map(),seen:new Set(),
+const S={me:null,localKey:null,contacts:new Map(),groups:new Map(),agents:new Map(),peers:new Map(),seen:new Set(),
  typing:new Map(),activeChat:null,replyTo:null,editing:null,call:null,mediaRec:null,fileDialog:false,
   lastSync:0,allowP2P:true,panicEnabled:false,bootTs:now()};
 const Vault={
@@ -3134,6 +3134,37 @@ const QRScan={
     const detector=new BarcodeDetector({formats:['qr_code']}),bitmap=await createImageBitmap(file);try{const found=await detector.detect(bitmap);if(!found[0]?.rawValue)throw Error('aucun QR détecté');onValue(found[0].rawValue)}finally{bitmap.close?.()}}
 };
 
+/* THX-HERMES1 : grant signé, court et strictement limité à un bot Nostr. */
+const AgentBridge={
+  TAG:'THX-HERMES1',V:1,TTL:10*60e3,MAX:8,PERMS:['text','image','file','voice'],
+  b64url:bytes=>b64(bytes).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''),
+  fromB64url:text=>{const s=String(text||'').replace(/-/g,'+').replace(/_/g,'/');return new Uint8Array(ub64(s+'='.repeat((4-s.length%4)%4)))},
+  cleanName:name=>Safe.text(String(name||''),30)||'HERMES',
+  perms(raw={}){const out={};for(const k of AgentBridge.PERMS)out[k]=raw[k]===true;out.text=true;return out},
+  validAgent:a=>!!a&&a.v===1&&/^[0-9a-f]{32}$/i.test(a.id||'')&&Safe.PUB(a.pub)&&typeof a.name==='string'&&Number.isSafeInteger(a.createdAt)&&Number.isSafeInteger(a.expiresAt)&&a.permissions&&typeof a.permissions==='object'&&['prepared','connected','revoked','expired'].includes(a.state),
+  async hash(text){return Hex.to(await sha256(enc8(text)))},
+  status(a){if(!AgentBridge.validAgent(a))return 'CONFIGURATION INVALIDE';if(a.state==='revoked')return 'REVOQUE LOCALEMENT';if(a.state==='connected')return 'CONNECTE · BOT A VERIFIER';if(a.expiresAt<=now())return 'CODE EXPIRE — REGENEREZ';return 'CODE PRET · EXPIRE DANS '+Math.max(1,Math.ceil((a.expiresAt-now())/60000))+' MIN'},
+  can(pub,kind='text'){const a=[...S.agents.values()].find(x=>x.pub===pub);if(!a)return true;if(a.state==='revoked'||(a.state==='prepared'&&a.expiresAt<=now()))return false;return a.permissions?.[kind]===true},
+  recordFor:pub=>[...S.agents.values()].find(x=>x.pub===pub)||null,
+  async build({pub,name,permissions}){
+    if(!S.me?.priv||!Safe.PUB(pub)||pub===S.me.pub)throw Error('IDENTITE BOT INVALIDE');if(S.agents.size>=AgentBridge.MAX)throw Error('LIMITE DE '+AgentBridge.MAX+' AGENTS ATTEINTE');
+    const id=uid(),nonce=AgentBridge.b64url(crypto.getRandomValues(new Uint8Array(32))),createdAt=now(),expiresAt=createdAt+AgentBridge.TTL,perms=AgentBridge.perms(permissions);
+    const payload={v:AgentBridge.V,type:'threnyx-hermes-grant',id,userPub:S.me.pub,botPub:pub,nonce,createdAt,expiresAt,permissions:perms,origin:location.origin,protocols:['nip17']};
+    const payloadText=JSON.stringify(payload),digest=await sha256(enc8('threnyx/hermes-grant/v1:'+payloadText)),sig=await Secp.sign(digest,S.me.priv),card=AgentBridge.TAG+'.'+AgentBridge.b64url(enc8(payloadText))+'.'+sig;
+    if(card.length>2200)throw Error('CODE D’APPAIRAGE TROP VOLUMINEUX');
+    const agent={v:1,id,pub,name:AgentBridge.cleanName(name),createdAt,expiresAt,nonce,nonceHash:await AgentBridge.hash(nonce),permissions:perms,state:'prepared',cardHash:await AgentBridge.hash(card),card,verified:false,verifiedAt:0};
+    if(!AgentBridge.validAgent(agent))throw Error('CONFIGURATION AGENT INVALIDE');await DB.put('agents',agent);S.agents.set(id,agent);await addPeer(pub,agent.name,'');
+    const contact=S.contacts.get(pub);if(contact){contact.agent=true;contact.agentId=id;contact.agentPermissions=perms;contact.p2pDisabled=true;await DB.put('contacts',contact)}return agent;
+  },
+  parse(card){const m=String(card||'').trim().match(/^THX-HERMES1\.([A-Za-z0-9_-]{40,4000})\.([0-9a-f]{128})$/i);if(!m)throw Error('FORMAT THX-HERMES1 INVALIDE');let payload;try{payload=JSON.parse(new TextDecoder().decode(AgentBridge.fromB64url(m[1])))}catch(e){throw Error('CHARGE THX-HERMES1 INVALIDE')}if(!payload||payload.v!==1||payload.type!=='threnyx-hermes-grant'||!/^[0-9a-f]{32}$/i.test(payload.id||'')||!Safe.PUB(payload.userPub)||!Safe.PUB(payload.botPub)||typeof payload.nonce!=='string'||payload.nonce.length<32||!Number.isSafeInteger(payload.createdAt)||!Number.isSafeInteger(payload.expiresAt)||payload.expiresAt<=payload.createdAt||payload.expiresAt-payload.createdAt>AgentBridge.TTL||!payload.permissions||typeof payload.permissions!=='object'||!Array.isArray(payload.protocols)||payload.protocols.join(',')!=='nip17')throw Error('CHAMPS THX-HERMES1 INVALIDES');return {payload,sig:m[2].toLowerCase(),payloadText:JSON.stringify(payload)}},
+  async verify(card){const parsed=AgentBridge.parse(card);if(parsed.payload.expiresAt<=now())throw Error('CODE THX-HERMES1 EXPIRE');const ok=await Secp.verify(await sha256(enc8('threnyx/hermes-grant/v1:'+parsed.payloadText)),parsed.sig,parsed.payload.userPub);if(!ok)throw Error('SIGNATURE THX-HERMES1 INVALIDE');return parsed},
+  async acknowledge(from,p){if(!p||typeof p!=='object'||typeof p.aid!=='string'||typeof p.nonceHash!=='string')return;const agent=S.agents.get(p.aid);if(!agent||agent.pub!==from||agent.state!=='prepared'||agent.expiresAt<=now()||p.nonceHash!==agent.nonceHash)return;agent.state='connected';agent.connectedAt=now();agent.card='';await DB.put('agents',agent);S.agents.set(agent.id,agent);toast('✓ AGENT '+agent.name.toUpperCase()+' CONNECTE — VERIFIEZ SON EMPREINTE')},
+  async revoke(id){const agent=S.agents.get(id);if(!agent)return;agent.state='revoked';agent.revokedAt=now();agent.card='';await DB.put('agents',agent);S.agents.set(id,agent);const c=S.contacts.get(agent.pub);if(c){c.agentPermissions={text:false,image:false,file:false,voice:false};await DB.put('contacts',c)}try{await sendPayload(agent.pub,{t:'agentRevoke',aid:agent.id},{eph:false})}catch(e){}toast('>> AGENT REVOQUE LOCALEMENT')},
+  copy(agent){if(!agent?.card)throw Error('CODE INDISPONIBLE OU DEJA CONSOMME');navigator.clipboard?.writeText(agent.card);toast('>> CODE THX-HERMES1 COPIE — VALIDE 10 MINUTES')},
+  exportGuide(agent){if(!agent?.card)throw Error('CODE INDISPONIBLE OU DEJA CONSOMME');const text=['THRENYX × HERMES RELAY — APPARIAGE PILOTE','BOT NOSTR : '+agent.pub,'VERIFIER BIP-340 SUR SHA-256("threnyx/hermes-grant/v1:" + JSON payload).','REFUSER EXPIRATION, REJEU, MAUVAIS BOT OU PERMISSION ABSENTE.','ACCEPTER SEULEMENT NIP-17 POUR CE BOT.','RENVOYER VIA NIP-17 : {t:"agentAck",aid:"'+agent.id+'",nonceHash:"'+agent.nonceHash+'"}.','','CODE A USAGE UNIQUE :',agent.card].join('\n');navigator.clipboard?.writeText(text);toast('>> GUIDE HERMES + CODE COPIES')},
+  openCreate(){Modal.open('// CONNECTER UN AGENT HERMES',`<p class="qr-help">Threnyx prépare un code signé à usage unique pour une <b>identité bot Nostr dédiée</b>. Votre phrase secrète, vos conversations humaines et vos appels ne sont jamais transmis. Le code expire après 10 minutes.</p><div class="field"><label>NOM DU BOT</label><input id="agent-name" maxlength="30" value="HERMES"></div><div class="field"><label>CLE PUBLIQUE NOSTR DU BOT (64 HEX)</label><input id="agent-pub" autocomplete="off" spellcheck="false" placeholder="clé hexadécimale du bot"></div><p class="dim" style="font-size:.61rem;line-height:1.55">Vérifiez l’empreinte bot avec son opérateur. Ne collez jamais votre clé privée.</p><label class="check-row"><input type="checkbox" id="agent-image">AUTORISER LES IMAGES ENVOYEES AU BOT</label><label class="check-row"><input type="checkbox" id="agent-file">AUTORISER LES FICHIERS ENVOYES AU BOT</label><label class="check-row"><input type="checkbox" id="agent-voice">AUTORISER LES NOTES VOCALES ENVOYEES AU BOT</label><button id="agent-create" style="width:100%;margin-top:10px">[ CREER LE CODE SIGNE ]</button>`);$('#agent-create').onclick=async()=>{try{const agent=await AgentBridge.build({pub:($('#agent-pub').value||'').trim().toLowerCase(),name:$('#agent-name').value,permissions:{text:true,image:$('#agent-image').checked,file:$('#agent-file').checked,voice:$('#agent-voice').checked}});Modal.open('// CODE HERMES PRET',`<p class="qr-help">Copiez ou faites scanner ce code par le connecteur Hermes. Il n’est pas une clé de coffre et devient invalide dans 10 minutes. Le connecteur doit confirmer par un message NIP-17 du bot.</p><canvas id="agent-qr" aria-label="QR d’appairage Hermes"></canvas><div class="code-box" style="font-size:.55rem;max-height:100px;overflow:auto">${esc(agent.card)}</div><button id="agent-copy" style="width:100%">[ COPIER LE CODE ]</button><button class="btn-sm" id="agent-guide" style="width:100%;margin-top:8px">[ COPIER LE GUIDE POUR HERMES ]</button>`);QR.draw($('#agent-qr'),agent.card);$('#agent-copy').onclick=()=>{try{AgentBridge.copy(agent)}catch(e){toast('!! '+String(e.message||'COPIE IMPOSSIBLE'))}};$('#agent-guide').onclick=()=>{try{AgentBridge.exportGuide(agent)}catch(e){toast('!! '+String(e.message||'EXPORT IMPOSSIBLE'))}}}catch(e){toast('!! '+String(e.message||'APPARIAGE IMPOSSIBLE').toUpperCase())}}}
+};
+
 /* ================================================================
    NOSTR : POOL DE RELAIS + GIFT WRAP NIP-59-LITE
    ================================================================ */
@@ -3347,7 +3378,7 @@ const NET={
 const LINK={
   pending:new Map(),earlyIce:new Map(),
   async ensure(pub){
-    if(!S.allowP2P||!Safe.PUB(pub)||!S.contacts.has(pub)||S.peers.has(pub)||LINK.pending.has(pub))return;
+    if(!S.allowP2P||!Safe.PUB(pub)||!S.contacts.has(pub)||S.contacts.get(pub)?.agent||S.peers.has(pub)||LINK.pending.has(pub))return;
     if(S.me.pub>=pub)return;               // seul le plus petit ID initie (anti-glare)
     const pc=new RTCPeerConnection(NET.ICE);
     const entry={pc,ice:[],ts:now()};LINK.pending.set(pub,entry);
@@ -3432,6 +3463,7 @@ const ROUTE={
         LINK.ensure(from);break}
       case 'groupJoin':{const rid=Safe.ID(p.rid)?p.rid:'';const ack=async(status,reason)=>{if(!rid)return;const a={t:'groupAck',rid,status,reason};const sent=await sendPayload(from,a,{eph:false});if(!sent)await Outbox.add(from,a)};let reason='';if(!/^g_[0-9a-f]{32}$/i.test(p.gid)||!Safe.CAP(p.gcap))reason='INVITATION_INVALIDE';const invite=reason?null:await DB.get('invites','group:'+p.gcap);if(!reason&&(!invite||invite.kind!=='group'||invite.groupId!==p.gid||invite.adminPub!==S.me.pub))reason='INVITATION_INVALIDE';else if(!reason&&invite.revoked)reason='INVITATION_REVOQUEE';else if(!reason&&invite.expiresAt<=now())reason='INVITATION_EXPIREE';else if(!reason&&invite.maxUses>0&&invite.uses>=invite.maxUses)reason='QUOTA_ATTEINT';const g=reason?null:S.groups.get(p.gid);if(!reason&&(!g||!g.admins.includes(S.me.pub)))reason='ADMIN_INDISPONIBLE';if(reason){await ack('rejected',reason);toast('!! GC1 REFUSEE: '+reason);break}if(g.members.includes(from)){await ack('accepted','DEJA_MEMBRE');break}invite.uses++;invite.joined=[...new Set([...(invite.joined||[]),from])];await DB.put('invites',invite);g.members=[...new Set([...g.members,from])];g.lamport++;await DB.put('groups',g);await GRP.broadcast(g);await ack('accepted','AJOUTE_AU_GROUPE');toast('>> NOUVEAU MEMBRE VIA GC1');UI.renderChatList();UI.renderCommList();break}
       case 'groupAck':{if(!Safe.ID(p.rid)||!['accepted','rejected'].includes(p.status))break;const all=await GC1.all(),req=all[p.rid];if(!req||req.adminPub!==from)break;await GC1.put(req,p.status,p.reason||'');toast((p.status==='accepted'?'✓ GC1 ACCEPTEE: ':'✗ GC1 REFUSEE: ')+(p.reason||''));break}
+      case 'agentAck':{await AgentBridge.acknowledge(from,p);break}
       case 'presence':if(S.allowP2P)LINK.ensure(from);UI.refreshChatHead();break;
       case 'typing':if(S.allowP2P)S.typing.set(from,p.on===true?now():0);UI.refreshChatHead();break;
       case 'profile':{const profile=Safe.profile(p);if(!profile)return;await KeyGuard.profile(c,from,profile);Object.assign(c,{name:profile.name||c.name,bio:profile.bio,avatar:profile.avatar});
@@ -4184,6 +4216,12 @@ const Modal={
         <button class="btn-sm" id="cv-snapshot" style="width:100%">[ PUBLIER UN SNAPSHOT CHIFFRE ]</button>
         <button class="btn-sm" id="cv-write" style="width:100%;margin-top:8px">[ ECRIRE MA CLE NFC DE RECUPERATION ]</button>
         <p class="dim" style="font-size:.61rem;line-height:1.65;margin-top:9px">La publication est manuelle dans cette première version. Les relais ne reçoivent que des fragments chiffrés. Une clé NFC NDEF est un objet à protéger : elle peut être copiée et ne doit jamais être partagée.</p></details>
+      <details><summary>◈ AGENTS HERMES / RELAY — APPARIAGE EXPLICITE</summary>
+        <p class="dim" style="font-size:.64rem;line-height:1.65">Créez un code signé de 10 minutes pour un bot Nostr dédié. Threnyx ne donne jamais votre clé privée, le coffre, les conversations humaines ou les appels à Hermes. Le Relay Hermes reste expérimental : commencez avec le texte.</p>
+        <div id="agent-status" class="security-strip">${[...S.agents.values()].length?[...S.agents.values()].map(a=>`${esc(a.name)} · ${esc(AgentBridge.status(a))}`).join('<br>'):'AUCUN AGENT CONNECTE'}</div>
+        <button class="btn-sm" id="agent-open" style="width:100%;margin-top:8px">[ CONNECTER UN BOT HERMES ]</button>
+        ${[...S.agents.values()].filter(a=>a.state!=='revoked').map(a=>`<button class="btn-sm btn-danger" data-agent-revoke="${esc(a.id)}" style="width:100%;margin-top:8px">[ REVOQUER ${esc(a.name).toUpperCase()} ]</button>`).join('')}
+      </details>
       <details open><summary>⚙ PREFERENCES D’INTERFACE</summary>
         <div class="field"><label>APPARENCE</label><div class="theme-switch"><button type="button" class="${Theme.mode==='dark'?'active':''}" id="theme-dark">◐ SOMBRE</button><button type="button" class="${Theme.mode==='light'?'active':''}" id="theme-light">☼ CLAIR</button></div></div>
         <label class="check-row"><input type="checkbox" id="set-notif" ${Notif.enabled?'checked':''}>NOTIFICATIONS SYSTEME</label><label class="check-row"><input type="checkbox" id="set-notif-sound" ${Notif.prefs.sound?'checked':''}>SIGNAL SONORE DANS L’APPLICATION</label><label class="check-row"><input type="checkbox" id="set-notif-vibrate" ${Notif.prefs.vibrate?'checked':''}>VIBRATION COURTE</label><div class="range-row"><label>VOLUME</label><input id="set-notif-volume" type="range" min="0" max="100" value="${Notif.prefs.volume}"><output id="notif-volume-out">${Notif.prefs.volume}</output></div><div class="field"><label>SON</label><select id="set-notif-tone"><option value="tick" ${Notif.prefs.tone==='tick'?'selected':''}>TICK</option><option value="soft" ${Notif.prefs.tone==='soft'?'selected':''}>DOUX</option><option value="alert" ${Notif.prefs.tone==='alert'?'selected':''}>ALERTE</option></select></div><button class="btn-sm" id="notif-test" style="width:100%">[TESTER LE SIGNAL]</button><label class="check-row"><input type="checkbox" id="set-p2p" ${S.allowP2P?'checked':''}>AUTORISER LE P2P / APPELS DIRECTS (VOTRE IP PEUT ETRE VISIBLE PAR LE PAIR)</label><label class="check-row"><input type="checkbox" id="set-panic" ${S.panicEnabled?'checked':''}>AFFICHER LA FLAMME D’EFFACEMENT LOCAL</label><p class="dim" style="font-size:.61rem;line-height:1.55;margin:2px 0 8px">Désactivée par défaut. La flamme ferme les liens et efface les données locales ; elle ne retire pas les éléments déjà reçus par les pairs ou publiés aux relais.</p><button class="btn-sm" id="ask-notif" style="width:100%">[AUTORISER LES NOTIFICATIONS SYSTEME]</button><button class="btn-sm" id="install-pwa" style="width:100%;margin-top:8px">[ INSTALLER THRENYX SUR CET APPAREIL ]</button><p class="dim" id="pwa-status" style="font-size:.62rem;line-height:1.6;margin-top:8px"></p><p class="dim" style="font-size:.62rem;line-height:1.6">Le son d’une notification système est contrôlé par Android/iOS. Ici, vous réglez seulement le signal de l’application au premier plan ; les alertes système sont silencieuses pour ne pas apparaître comme de la musique.</p></details>
@@ -4223,6 +4261,7 @@ const Modal={
       toast('>> SAUVEGARDE CHIFFREE GENEREE')};
     $('#cv-snapshot').onclick=async e=>{const b=e.currentTarget;b.disabled=true;try{toast('>> CONSTELLATION : CHIFFREMENT ET REPLICATION EN COURS');const head=await Constellation.snapshot();toast('>> SNAPSHOT CONFIRME — '+head.parts+' FRAGMENT(S) SUR PLUSIEURS RELAIS');Modal.settings()}catch(err){toast('!! '+String(err.message||'ECHEC CONSTELLATION').toUpperCase())}finally{b.disabled=false}};
     document.querySelector('#cv-write').onclick=async e=>{const b=e.currentTarget;if(b.disabled)return;try{if((S.me.constellation?.head??null)===null)throw Error('PUBLIEZ D ABORD UN SNAPSHOT CHIFFRE');if(Number(S.cvExportUntil||0)<=now()){b.disabled=true;await Vault.approveRecoveryExport();S.cvExportUntil=now()+60000;b.textContent='[ ECRIRE LA CLE NFC — 60 S ]';toast('>> CONFIRMATION ACCEPTEE — APPUYEZ UNE SECONDE FOIS POUR ECRIRE');return}S.cvExportUntil=0;b.disabled=true;const card=Constellation.card();toast('>> APPROCHEZ LE TAG NFC — 97 CARACTERES — SON CONTENU SERA REMPLACE');await NFC.write(card);navigator.vibrate?.([25,45,25]);toast('>> CLE NFC CONSTELLATION ECRITE')}catch(err){toast('!! '+NFC.explain(err,'write'))}finally{b.disabled=false}};
+    $('#agent-open').onclick=()=>AgentBridge.openCreate();$$('[data-agent-revoke]').forEach(b=>b.onclick=async()=>{if(!confirm('REVOQUER CET AGENT LOCALEMENT ?'))return;await AgentBridge.revoke(b.dataset.agentRevoke);Modal.settings()});
     $('#theme-dark').onclick=async()=>{await Theme.set('dark');Modal.settings()};$('#theme-light').onclick=async()=>{await Theme.set('light');Modal.settings()};
     $('#set-notif').onchange=e=>{Notif.enabled=e.target.checked;DB.kvSet('notif',Notif.enabled)};$('#set-notif-sound').onchange=e=>{Notif.prefs.sound=e.target.checked;Notif.save()};$('#set-notif-vibrate').onchange=e=>{Notif.prefs.vibrate=e.target.checked;Notif.save()};$('#set-notif-volume').oninput=e=>{$('#notif-volume-out').textContent=e.target.value;Notif.prefs.volume=+e.target.value;Notif.save()};$('#set-notif-tone').onchange=e=>{Notif.prefs.tone=e.target.value;Notif.save()};$('#notif-test').onclick=()=>{Notif.beep();if(Notif.prefs.vibrate)navigator.vibrate?.(20)};
     $('#set-p2p').onchange=e=>{S.allowP2P=e.target.checked;DB.kvSet('allowP2P',S.allowP2P);if(!S.allowP2P){for(const[,p]of S.peers)try{p.pc.close()}catch(err){};toast('>> P2P DESACTIVE — RELAIS UNIQUEMENT')}};
@@ -4257,7 +4296,7 @@ const PWA={
   standalone(){return matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true},
   async init(){
     if(!('serviceWorker' in navigator)||!window.isSecureContext)return;
-    try{PWA.registration=await navigator.serviceWorker.register('./service-worker.js?v=26',{scope:'./',updateViaCache:'none'});await PWA.registration.update();await navigator.serviceWorker.ready;let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!reloaded){reloaded=true;location.reload()}})}catch(e){}
+    try{PWA.registration=await navigator.serviceWorker.register('./service-worker.js?v=27',{scope:'./',updateViaCache:'none'});await PWA.registration.update();await navigator.serviceWorker.ready;let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!reloaded){reloaded=true;location.reload()}})}catch(e){}
     window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();PWA.deferred=e;PWA.refreshUI()});
     window.addEventListener('appinstalled',()=>{PWA.deferred=null;PWA.refreshUI();toast('>> THRENYX INSTALLE COMME APPLICATION')});
   },
@@ -4367,6 +4406,7 @@ async function enterApp(){
   renderMe();
   for(const c of await DB.all('contacts'))S.contacts.set(c.id,c);
   for(const g of await DB.all('groups'))S.groups.set(g.id,g);
+  for(const a of await DB.all('agents'))if(AgentBridge.validAgent(a))S.agents.set(a.id,a);
   for(const s of await DB.all('shards'))S.seen.add(s.id);
   S.lastSync=(await DB.kvGet('lastSync'))||0;
   S.allowP2P=(await DB.kvGet('allowP2P'))??true;
@@ -4468,12 +4508,13 @@ function bindEvents(){
     let data='';for(const[max,q]of targets){data=await compressImage(file,max,q);if(data.length<=cap)return {data,relaySafe:!p2p||data.length<=720000}}
     return {data,relaySafe:false};
   }
-  $('#btn-attach').onclick=()=>{if(!S.activeChat)return;S.fileDialog=true;Vault.pause();$('#file-input').click()};
+  $('#btn-attach').onclick=()=>{if(!S.activeChat)return;const agent=AgentBridge.recordFor(S.activeChat);if(agent&&(!AgentBridge.can(S.activeChat,'image')&&!AgentBridge.can(S.activeChat,'file')))return toast('!! MEDIAS NON AUTORISES POUR CET AGENT');S.fileDialog=true;Vault.pause();$('#file-input').click()};
   $('#file-input').onchange=async e=>{S.fileDialog=false;Vault.touch();
     const P2P_RAW_MAX=8*1048576,RELAY_DATA_MAX=720000;
     for(const f of e.target.files){
       if(!S.activeChat)break;
-      const isImg=f.type.startsWith('image'),isVid=f.type.startsWith('video');
+      const isImg=f.type.startsWith('image'),isVid=f.type.startsWith('video'),agentKind=isImg?'image':'file';
+      if(!AgentBridge.can(S.activeChat,agentKind)){toast('!! '+agentKind.toUpperCase()+' NON AUTORISE POUR CET AGENT');continue}
       if(f.size>P2P_RAW_MAX){toast('!! '+f.name.toUpperCase()+' DEPASSE 8 MO');continue}
       try{
         const peer=S.peers.get(S.activeChat),p2p=!!peer&&peer.dc.readyState==='open';
@@ -4488,6 +4529,7 @@ function bindEvents(){
   /* Notes vocales */
   async function startVoice(){
     if(!S.activeChat)return;
+    if(!AgentBridge.can(S.activeChat,'voice'))return toast('!! NOTE VOCALE NON AUTORISEE POUR CET AGENT');
     if(S.mediaRec){S.mediaRec.stop();return}
     let stream;
     try{stream=await navigator.mediaDevices.getUserMedia({audio:true})}
